@@ -43,9 +43,40 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       }
       
       if (shouldOpen) {
-        // Auto-send the query when opened from search
+        // Set the input value and auto-send the query
+        setInputValue('');
         setTimeout(() => {
-          sendMessage(initialQuery);
+          // Create and add user message first
+          const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            content: initialQuery,
+            sender: 'user',
+            timestamp: new Date(),
+          };
+          
+          setMessages(prev => [...prev, userMessage]);
+          setIsLoading(true);
+          
+          // Extract keywords for product filtering
+          const keywords = extractKeywords(initialQuery);
+          if (keywords.length > 0) {
+            onProductFilter?.(keywords);
+          }
+          
+          // Generate AI response
+          setTimeout(() => {
+            const aiResponse: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              content: isLiveAgent 
+                ? "Thanks for reaching out! A live agent will be with you shortly. In the meantime, I can help you find relevant products based on your question."
+                : generateAIResponse(initialQuery),
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+            
+            setMessages(prev => [...prev, aiResponse]);
+            setIsLoading(false);
+          }, 1500);
         }, 500);
       }
     }
