@@ -323,7 +323,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
                   className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
                 />
                 <Button 
-                  onClick={sendMessage} 
+                  onClick={() => sendMessage()} 
                   size="icon" 
                   className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
                 >

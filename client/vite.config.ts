@@ -34,8 +34,6 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  },
-  server: {
     fs: {
       strict: true,
       deny: ["**/.*"],
