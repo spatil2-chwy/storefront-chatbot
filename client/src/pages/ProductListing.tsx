@@ -19,6 +19,16 @@ export default function ProductListing() {
   const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
+    // Listen for clear chat events
+    const handleClearChat = () => {
+      setHasSearched(false);
+    };
+    
+    window.addEventListener('clearChat', handleClearChat);
+    return () => window.removeEventListener('clearChat', handleClearChat);
+  }, []);
+
+  useEffect(() => {
     applyFilters();
   }, [products, searchQuery]);
 

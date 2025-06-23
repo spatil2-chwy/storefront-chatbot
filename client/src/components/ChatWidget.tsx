@@ -37,12 +37,11 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
 
   useEffect(() => {
     if (initialQuery && initialQuery.trim()) {
-      // Clear chat if this is a new search (not the first search)
+      // Clear chat if this is a new search and there are existing messages
       if (shouldClearChat && messages.length > 0) {
         setMessages([]);
       }
       
-      setInputValue(initialQuery);
       if (shouldOpen) {
         // Auto-send the query when opened from search
         setTimeout(() => {
@@ -102,7 +101,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
 
   const sendMessage = async (messageText?: string) => {
     const messageToSend = messageText || inputValue;
-    if (!messageToSend.trim()) return;
+    if (!messageToSend || !messageToSend.trim()) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -212,6 +211,8 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
                   onClick={() => {
                     setMessages([]);
                     setInputValue('');
+                    // Reset search state when clearing chat
+                    window.dispatchEvent(new CustomEvent('clearChat'));
                   }}
                   className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
                 >
