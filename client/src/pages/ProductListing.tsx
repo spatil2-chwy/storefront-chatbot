@@ -14,6 +14,8 @@ export default function ProductListing() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(mockProducts);
   const [searchQuery, setSearchQuery] = useState('grain free dog food');
   const [sortBy, setSortBy] = useState('relevance');
+  const [chatQuery, setChatQuery] = useState('');
+  const [shouldOpenChat, setShouldOpenChat] = useState(false);
 
   useEffect(() => {
     applyFilters();
@@ -46,6 +48,13 @@ export default function ProductListing() {
     setSearchQuery(query || 'grain free dog food');
     // For demo purposes, always show products regardless of search query
     setFilteredProducts(mockProducts);
+  };
+
+  const handleOpenChatWithQuery = (query: string) => {
+    setChatQuery(query);
+    setShouldOpenChat(true);
+    // Reset the trigger after a short delay
+    setTimeout(() => setShouldOpenChat(false), 1000);
   };
 
   const handleFilterChange = (filters: any) => {
@@ -88,9 +97,9 @@ export default function ProductListing() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onSearch={handleSearch} />
+      <Header onSearch={handleSearch} onOpenChatWithQuery={handleOpenChatWithQuery} />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
         {/* Autoship Banner */}
         <Card className="bg-chewy-light-blue mb-6">
           <CardContent className="p-4 flex items-center space-x-3">
@@ -152,7 +161,11 @@ export default function ProductListing() {
         </div>
       </main>
 
-      <ChatWidget onProductFilter={handleProductFilter} />
+      <ChatWidget 
+        onProductFilter={handleProductFilter} 
+        initialQuery={chatQuery}
+        shouldOpen={shouldOpenChat}
+      />
     </div>
   );
 }

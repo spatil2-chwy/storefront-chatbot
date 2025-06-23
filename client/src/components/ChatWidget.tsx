@@ -8,13 +8,16 @@ import { ChatMessage } from '@shared/schema';
 
 interface ChatWidgetProps {
   onProductFilter?: (keywords: string[]) => void;
+  initialQuery?: string;
+  shouldOpen?: boolean;
 }
 
-export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
+export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLiveAgent, setIsLiveAgent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -24,6 +27,24 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (shouldOpen) {
+      setIsOpen(true);
+    }
+  }, [shouldOpen]);
+
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      setInputValue(initialQuery);
+      if (shouldOpen) {
+        // Auto-send the query when opened from search
+        setTimeout(() => {
+          sendMessage(initialQuery);
+        }, 500);
+      }
+    }
+  }, [initialQuery, shouldOpen]);
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
@@ -73,31 +94,34 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
     return keywords;
   };
 
-  const sendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const sendMessage = async (messageText?: string) => {
+    const messageToSend = messageText || inputValue;
+    if (!messageToSend.trim()) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: inputValue,
+      content: messageToSend,
       sender: 'user',
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    if (!messageText) setInputValue('');
     setIsLoading(true);
 
     // Extract keywords for product filtering
-    const keywords = extractKeywords(inputValue);
+    const keywords = extractKeywords(messageToSend);
     if (keywords.length > 0) {
       onProductFilter?.(keywords);
     }
 
-    // Simulate AI response delay
+    // Simulate AI or Live Agent response delay
     setTimeout(() => {
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(inputValue),
+        content: isLiveAgent 
+          ? "Thanks for reaching out! A live agent will be with you shortly. In the meantime, I can help you find relevant products based on your question."
+          : generateAIResponse(messageToSend),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -129,30 +153,80 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
       {/* Chat Modal */}
       {isOpen && (
         <Card className="absolute bottom-16 right-0 w-96 h-[500px] shadow-2xl rounded-3xl border-0">
-          <CardHeader className="bg-white border-b border-gray-100 p-4 flex flex-row items-center justify-between rounded-t-3xl">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-chewy-blue rounded-full flex items-center justify-center">
-                <img 
-                  src="/attached_assets/Chewy_C_RGB_White_1750688464636.png" 
-                  alt="Chewy C" 
-                  className="w-6 h-6 filter brightness-0 invert"
-                />
+          <CardHeader className="bg-white border-b border-gray-100 p-4 rounded-t-3xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-chewy-blue rounded-full flex items-center justify-center">
+                  <img 
+                    src="/attached_assets/Chewy_C_RGB_White_1750688464636.png" 
+                    alt="Chewy C" 
+                    className="w-6 h-6 filter brightness-0 invert"
+                  />
+                </div>
+                <CardTitle className="text-gray-900 font-work-sans text-lg">
+                  {isLiveAgent ? 'Live Agent' : 'AI Beta'}
+                </CardTitle>
               </div>
-              <CardTitle className="text-gray-900 font-work-sans text-lg">AI Beta</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </Button>
+            
+            {/* Toggle between AI and Live Agent */}
+            <div className="flex items-center justify-center mt-3">
+              <div className="flex bg-gray-100 rounded-full p-1">
+                <button
+                  onClick={() => setIsLiveAgent(false)}
+                  className={`px-4 py-2 rounded-full text-sm font-work-sans transition-colors ${
+                    !isLiveAgent 
+                      ? 'bg-chewy-blue text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  AI Chat
+                </button>
+                <button
+                  onClick={() => setIsLiveAgent(true)}
+                  className={`px-4 py-2 rounded-full text-sm font-work-sans transition-colors ${
+                    isLiveAgent 
+                      ? 'bg-chewy-blue text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Live Agent
+                </button>
+              </div>
+            </div>
           </CardHeader>
 
-          <CardContent className="flex flex-col h-96 p-0 bg-gray-50">
+          <CardContent className="flex flex-col h-80 p-0 bg-gray-50">
             {/* Messages */}
             <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-white">
+              {/* Initial suggestions if no messages */}
+              {messages.length === 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 font-work-sans">Try asking:</p>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => sendMessage("Easiest way to deal with backyard dog poop?")}
+                      className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-3 rounded-xl border border-gray-200 font-work-sans"
+                    >
+                      "Easiest way to deal with backyard dog poop?"
+                    </button>
+                    <button
+                      onClick={() => sendMessage("Dog developed chicken allergy. Need protein though.")}
+                      className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-3 rounded-xl border border-gray-200 font-work-sans"
+                    >
+                      "Dog developed chicken allergy. Need protein though."
+                    </button>
+                  </div>
+                </div>
+              )}
               {messages.map((message) => (
                 <div
                   key={message.id}
