@@ -20,17 +20,8 @@ export default function ProductListing() {
   }, [products, searchQuery]);
 
   const applyFilters = () => {
+    // Always show all products for demo purposes
     let filtered = [...products];
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.keywords.some(keyword => 
-          keyword.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
-    }
 
     // Apply sorting
     switch (sortBy) {
@@ -52,7 +43,9 @@ export default function ProductListing() {
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
+    setSearchQuery(query || 'grain free dog food');
+    // For demo purposes, always show products regardless of search query
+    setFilteredProducts(mockProducts);
   };
 
   const handleFilterChange = (filters: any) => {

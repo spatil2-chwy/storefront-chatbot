@@ -26,7 +26,11 @@ export default function Header({ onSearch }: HeaderProps) {
           <div className="flex items-center space-x-8">
             <div className="flex-shrink-0">
               <Link href="/">
-                <div className="text-2xl font-bold text-white cursor-pointer">chewy</div>
+                <img 
+                  src="/attached_assets/chewy_logo_full_white_1750688464636.png" 
+                  alt="Chewy" 
+                  className="h-8 cursor-pointer"
+                />
               </Link>
             </div>
             

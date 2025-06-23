@@ -60,7 +60,11 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+  
+  .font-work-sans {
+    font-family: 'Work Sans', system-ui, -apple-system, sans-serif;
   }
 }
 

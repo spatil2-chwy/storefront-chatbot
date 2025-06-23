@@ -118,42 +118,48 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
       {/* Chat Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 bg-chewy-blue hover:bg-blue-700 text-white rounded-full shadow-lg"
+        className="w-16 h-16 bg-chewy-blue hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center"
         size="icon"
       >
-        <MessageCircle className="w-6 h-6" />
+        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+          <MessageCircle className="w-5 h-5 text-chewy-blue" />
+        </div>
       </Button>
 
       {/* Chat Modal */}
       {isOpen && (
-        <Card className="absolute bottom-16 right-0 w-96 h-96 shadow-2xl">
-          <CardHeader className="bg-chewy-blue text-white p-4 flex flex-row items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-chewy-blue rounded-full"></div>
+        <Card className="absolute bottom-16 right-0 w-96 h-[500px] shadow-2xl rounded-3xl border-0">
+          <CardHeader className="bg-white border-b border-gray-100 p-4 flex flex-row items-center justify-between rounded-t-3xl">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-chewy-blue rounded-full flex items-center justify-center">
+                <img 
+                  src="/attached_assets/Chewy_C_RGB_White_1750688464636.png" 
+                  alt="Chewy C" 
+                  className="w-6 h-6 filter brightness-0 invert"
+                />
               </div>
-              <CardTitle className="text-white">AI Beta</CardTitle>
+              <CardTitle className="text-gray-900 font-work-sans text-lg">AI Beta</CardTitle>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
-              className="text-white hover:text-gray-200 hover:bg-blue-600"
+              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </Button>
           </CardHeader>
 
-          <CardContent className="flex flex-col h-80 p-0">
+          <CardContent className="flex flex-col h-96 p-0 bg-gray-50">
             {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+            <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-white">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-xs px-4 py-2 rounded-lg ${
+                    className={`max-w-xs px-4 py-3 rounded-2xl font-work-sans ${
                       message.sender === 'user'
                         ? 'bg-chewy-blue text-white'
                         : 'bg-gray-100 text-gray-900'
@@ -167,14 +173,14 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
               {/* Loading indicator */}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 px-4 py-2 rounded-lg">
-                    <div className="flex items-center space-x-2">
+                  <div className="bg-gray-100 px-4 py-3 rounded-2xl">
+                    <div className="flex items-center space-x-3">
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-300"></div>
                       </div>
-                      <span className="text-sm text-gray-500">LOADING...</span>
+                      <span className="text-sm text-gray-500 font-work-sans">LOADING...</span>
                     </div>
                   </div>
                 </div>
@@ -184,17 +190,23 @@ export default function ChatWidget({ onProductFilter }: ChatWidgetProps) {
             </div>
 
             {/* Input */}
-            <div className="border-t p-4">
-              <div className="flex space-x-2">
+            <div className="border-t border-gray-100 p-4 bg-white rounded-b-3xl">
+              <div className="flex space-x-3">
                 <Input
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="What do you want to learn?"
-                  className="flex-1"
+                  className="flex-1 rounded-full border-gray-200 font-work-sans py-3 px-4 focus:border-chewy-blue focus:ring-chewy-blue"
                 />
-                <Button onClick={sendMessage} size="icon" className="bg-chewy-blue hover:bg-blue-700">
-                  <Send className="w-4 h-4" />
+                <Button 
+                  onClick={sendMessage} 
+                  size="icon" 
+                  className="bg-chewy-blue hover:bg-blue-700 rounded-full w-12 h-12 flex items-center justify-center"
+                >
+                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                    <Send className="w-3 h-3 text-chewy-blue" />
+                  </div>
                 </Button>
               </div>
             </div>
