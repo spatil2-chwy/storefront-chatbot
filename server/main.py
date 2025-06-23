@@ -1,157 +1,100 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from typing import Optional, List
-import os
-from pathlib import Path
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+import json
+from datetime import datetime
+from routes import router
+from storage import storage
 
-app = FastAPI(title="Chewy Clone API")
+# Custom middleware for logging (replicates Express logging)
+class LoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Calculate duration
+        duration = int((time.time() - start_time) * 1000)
+        
+        # Log API requests (similar to Express logging)
+        if request.url.path.startswith("/api"):
+            # Try to capture response body for logging
+            response_body = b""
+            async for chunk in response.body_iterator:
+                response_body += chunk
+            
+            # Reconstruct response
+            response = Response(
+                content=response_body,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type
+            )
+            
+            # Format log message
+            log_line = f"{request.method} {request.url.path} {response.status_code} in {duration}ms"
+            
+            # Try to add response data if it's JSON
+            try:
+                if response.headers.get("content-type", "").startswith("application/json"):
+                    response_data = json.loads(response_body.decode())
+                    if response_data:
+                        log_line += f" :: {json.dumps(response_data)}"
+            except:
+                pass
+            
+            # Truncate long log lines
+            if len(log_line) > 80:
+                log_line = log_line[:79] + "…"
+            
+            # Log with timestamp
+            timestamp = datetime.now().strftime("%I:%M:%S %p")
+            print(f"{timestamp} [fastapi] {log_line}")
+        
+        return response
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Pydantic models
-class User(BaseModel):
-    id: int
-    email: str
-    name: str
-
-class UserCreate(BaseModel):
-    email: str
-    password: str
-    name: str
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
-
-class Product(BaseModel):
-    id: int
-    name: str
-    brand: str
-    price: float
-    originalPrice: Optional[float] = None
-    image: str
-    rating: float
-    reviewCount: int
-    category: str
-    inStock: bool
-    autoshipEligible: bool
-    freeShipping: bool
-    description: str
-
-class ChatMessage(BaseModel):
-    id: str
-    content: str
-    sender: str  # 'user' or 'ai'
-    timestamp: str
-
-# In-memory storage (replace with database in production)
-users_db = {}
-products_db = [
-    {
-        "id": 1,
-        "name": "Blue Buffalo Life Protection Formula Adult Chicken & Brown Rice Recipe Dry Dog Food",
-        "brand": "Blue Buffalo",
-        "price": 54.98,
-        "originalPrice": 64.99,
-        "image": "/api/placeholder/300/300",
-        "rating": 4.5,
-        "reviewCount": 2847,
-        "category": "Dog Food",
-        "inStock": True,
-        "autoshipEligible": True,
-        "freeShipping": True,
-        "description": "Made with real chicken, wholesome whole grains, garden veggies and fruit, BLUE Life Protection Formula is formulated to support the health and well-being of dogs."
-    },
-    {
-        "id": 2,
-        "name": "Hill's Science Diet Adult Perfect Weight Small & Mini Chicken Recipe Dry Dog Food",
-        "brand": "Hill's Science Diet",
-        "price": 43.99,
-        "image": "/api/placeholder/300/300",
-        "rating": 4.3,
-        "reviewCount": 1256,
-        "category": "Dog Food",
-        "inStock": True,
-        "autoshipEligible": True,
-        "freeShipping": True,
-        "description": "Clinically proven nutrition that transforms your dog's life. Precisely balanced nutrition that helps dogs maintain ideal weight."
-    }
-]
-
-current_user_id = 1
-
-# Routes
-@app.get("/")
-async def read_root():
-    return {"message": "Chewy Clone API"}
-
-@app.get("/api/user")
-async def get_current_user():
-    """Get current user (mock authentication)"""
-    if current_user_id in users_db:
-        return users_db[current_user_id]
-    return {"id": 1, "email": "user@example.com", "name": "Test User"}
-
-@app.post("/api/auth/login")
-async def login(user_data: UserLogin):
-    """Mock login endpoint"""
-    # In production, verify password hash
-    user = {
-        "id": 1,
-        "email": user_data.email,
-        "name": "Test User"
-    }
-    users_db[1] = user
-    return user
-
-@app.post("/api/auth/logout")
-async def logout():
-    """Mock logout endpoint"""
-    return {"message": "Logged out successfully"}
-
-@app.get("/api/products")
-async def get_products():
-    """Get all products"""
-    return products_db
-
-@app.get("/api/products/{product_id}")
-async def get_product(product_id: int):
-    """Get specific product"""
-    product = next((p for p in products_db if p["id"] == product_id), None)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
-
-# Serve static files from client dist (when built)
-if Path("client/dist").exists():
-    @app.mount("/assets", StaticFiles(directory="client/dist/assets"), name="assets")
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application"""
+    app = FastAPI(
+        title="Storefront Chatbot API",
+        description="FastAPI backend for the storefront chatbot application",
+        version="1.0.0"
+    )
     
-    # Catch-all route for SPA
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        """Serve the React SPA"""
-        # Check if it's an API route
-        if full_path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
-        
-        # Serve static files
-        static_file_path = Path("client/dist") / full_path
-        if static_file_path.exists() and static_file_path.is_file():
-            return FileResponse(static_file_path)
-        
-        # Serve index.html for SPA routes
-        return FileResponse("client/dist/index.html")
+    # Add CORS middleware (allows frontend to call backend)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # In production, specify your frontend URL
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Add custom logging middleware
+    app.add_middleware(LoggingMiddleware)
+    
+    # Include API routes
+    app.include_router(router)
+    
+    return app
+
+# Create the app instance
+app = create_app()
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    """Initialize storage on startup"""
+    print(f"{datetime.now().strftime('%I:%M:%S %p')} [fastapi] Starting FastAPI server...")
+
+# Shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    print(f"{datetime.now().strftime('%I:%M:%S %p')} [fastapi] Shutting down FastAPI server...")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="localhost", port=8000) 
