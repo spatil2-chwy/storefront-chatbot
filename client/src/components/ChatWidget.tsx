@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chatResponses } from '@/lib/mockData';
-import { ChatMessage } from '@shared/schema';
+import { ChatMessage } from '../types';
 
 interface ChatWidgetProps {
   onProductFilter?: (keywords: string[]) => void;

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@shared/schema';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;

@@ -1,6 +1,7 @@
+import React from 'react';
 import { Link } from 'wouter';
 import { Heart, RotateCcw } from 'lucide-react';
-import { Product } from '@shared/schema';
+import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 

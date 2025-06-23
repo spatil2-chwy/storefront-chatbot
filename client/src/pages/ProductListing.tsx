@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star } from 'lucide-react';
 import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import ProductFilters from '@/components/ProductFilters';
 import ChatWidget from '@/components/ChatWidget';
 import { mockProducts } from '@/lib/mockData';
-import { Product } from '@shared/schema';
+import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
