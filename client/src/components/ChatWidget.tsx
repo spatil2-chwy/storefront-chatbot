@@ -155,7 +155,11 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
-                  <div className="text-sm font-bold text-white">C</div>
+                  <img 
+                    src="/chewy-c-white.png" 
+                    alt="Chewy C" 
+                    className="w-5 h-5"
+                  />
                 </div>
                 <CardTitle className="text-gray-900 font-work-sans text-base">
                   {isLiveAgent ? 'Live Agent' : 'AI Beta'}
@@ -172,7 +176,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }
             </div>
             
             {/* Toggle between AI and Live Agent */}
-            <div className="flex items-center justify-center mt-2">
+            <div className="flex items-center justify-between mt-2">
               <div className="flex bg-gray-100 rounded-full p-0.5">
                 <button
                   onClick={() => setIsLiveAgent(false)}
@@ -195,6 +199,19 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }
                   Live Agent
                 </button>
               </div>
+              
+              {/* Clear Chat Button */}
+              {messages.length > 0 && (
+                <button
+                  onClick={() => {
+                    setMessages([]);
+                    setInputValue('');
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                >
+                  Clear chat
+                </button>
+              )}
             </div>
           </CardHeader>
 

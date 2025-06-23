@@ -19,6 +19,7 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
     if (searchQuery.trim()) {
       onSearch?.(searchQuery);
       onOpenChatWithQuery?.(searchQuery);
+      setSearchQuery(''); // Clear search input after submission
     }
   };
 
@@ -30,7 +31,11 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
           <div className="flex items-center space-x-8">
             <div className="flex-shrink-0">
               <Link href="/">
-                <div className="text-2xl font-bold text-white cursor-pointer font-work-sans">chewy</div>
+                <img 
+                  src="/chewy-logo-white.png" 
+                  alt="Chewy" 
+                  className="h-8 cursor-pointer"
+                />
               </Link>
             </div>
             
