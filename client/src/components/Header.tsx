@@ -30,11 +30,7 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
           <div className="flex items-center space-x-8">
             <div className="flex-shrink-0">
               <Link href="/">
-                <img 
-                  src="/attached_assets/chewy_logo_full_white_1750688464636.png" 
-                  alt="Chewy" 
-                  className="h-8 cursor-pointer"
-                />
+                <div className="text-2xl font-bold text-white cursor-pointer font-work-sans">chewy</div>
               </Link>
             </div>
             
@@ -68,7 +64,7 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
           </div>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl mx-8 relative group">
+          <div className="flex-1 max-w-2xl mx-8">
             <form onSubmit={handleSearch} className="relative">
               <Input
                 type="text"
@@ -84,37 +80,6 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
                 <Search className="w-5 h-5" />
               </button>
             </form>
-            
-            {/* Search Examples */}
-            {!searchQuery && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
-                <p className="text-sm text-gray-600 mb-3 font-work-sans">Try asking:</p>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      const query = "Easiest way to deal with backyard dog poop?";
-                      setSearchQuery(query);
-                      onSearch?.(query);
-                      onOpenChatWithQuery?.(query);
-                    }}
-                    className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded font-work-sans"
-                  >
-                    "Easiest way to deal with backyard dog poop?"
-                  </button>
-                  <button
-                    onClick={() => {
-                      const query = "Dog developed chicken allergy. Need protein though.";
-                      setSearchQuery(query);
-                      onSearch?.(query);
-                      onOpenChatWithQuery?.(query);
-                    }}
-                    className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded font-work-sans"
-                  >
-                    "Dog developed chicken allergy. Need protein though."
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* User Actions */}
