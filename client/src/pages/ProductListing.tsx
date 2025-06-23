@@ -16,6 +16,7 @@ export default function ProductListing() {
   const [sortBy, setSortBy] = useState('relevance');
   const [chatQuery, setChatQuery] = useState('');
   const [shouldOpenChat, setShouldOpenChat] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     applyFilters();
@@ -50,9 +51,10 @@ export default function ProductListing() {
     setFilteredProducts(mockProducts);
   };
 
-  const handleOpenChatWithQuery = (query: string) => {
+  const handleOpenChatWithQuery = (query: string, shouldClearChat = false) => {
     setChatQuery(query);
     setShouldOpenChat(true);
+    setHasSearched(true);
     // Reset the trigger after a short delay
     setTimeout(() => setShouldOpenChat(false), 1000);
   };
@@ -97,7 +99,11 @@ export default function ProductListing() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onSearch={handleSearch} onOpenChatWithQuery={handleOpenChatWithQuery} />
+      <Header 
+        onSearch={handleSearch} 
+        onOpenChatWithQuery={handleOpenChatWithQuery}
+        hasSearched={hasSearched}
+      />
       
       <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
         {/* Autoship Banner */}
@@ -165,6 +171,7 @@ export default function ProductListing() {
         onProductFilter={handleProductFilter} 
         initialQuery={chatQuery}
         shouldOpen={shouldOpenChat}
+        shouldClearChat={hasSearched}
       />
     </div>
   );

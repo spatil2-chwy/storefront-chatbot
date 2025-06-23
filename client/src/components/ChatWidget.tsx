@@ -10,9 +10,10 @@ interface ChatWidgetProps {
   onProductFilter?: (keywords: string[]) => void;
   initialQuery?: string;
   shouldOpen?: boolean;
+  shouldClearChat?: boolean;
 }
 
-export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }: ChatWidgetProps) {
+export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -36,6 +37,11 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }
 
   useEffect(() => {
     if (initialQuery && initialQuery.trim()) {
+      // Clear chat if this is a new search (not the first search)
+      if (shouldClearChat && messages.length > 0) {
+        setMessages([]);
+      }
+      
       setInputValue(initialQuery);
       if (shouldOpen) {
         // Auto-send the query when opened from search
@@ -44,7 +50,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen }
         }, 500);
       }
     }
-  }, [initialQuery, shouldOpen]);
+  }, [initialQuery, shouldOpen, shouldClearChat]);
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();

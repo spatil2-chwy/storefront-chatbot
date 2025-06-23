@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 interface HeaderProps {
   onSearch?: (query: string) => void;
   onOpenChatWithQuery?: (query: string) => void;
+  hasSearched?: boolean;
 }
 
-export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
+export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: HeaderProps) {
   const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -73,7 +74,7 @@ export default function Header({ onSearch, onOpenChatWithQuery }: HeaderProps) {
             <form onSubmit={handleSearch} className="relative">
               <Input
                 type="text"
-                placeholder="Conversational AI Search"
+                placeholder={hasSearched ? "Ask a new question" : "Conversational AI Search"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-chewy-blue focus:ring-2 focus:ring-chewy-blue focus:ring-opacity-50 font-work-sans"
