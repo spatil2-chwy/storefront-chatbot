@@ -1,26 +1,11 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
-from enum import Enum
-
-class SenderType(str, Enum):
-    USER = "user"
-    AI = "ai"
 
 class Size(BaseModel):
     name: str
     price: float
     pricePerLb: str
-
-class User(BaseModel):
-    id: int
-    email: EmailStr
-    name: str
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    name: str
-
+    
 class Product(BaseModel):
     id: int
     title: str
@@ -39,13 +24,3 @@ class Product(BaseModel):
     inStock: bool
     category: str
     keywords: List[str]
-
-class ChatMessage(BaseModel):
-    id: str
-    content: str
-    sender: SenderType
-    timestamp: datetime
-
-class ChatMessageCreate(BaseModel):
-    content: str
-    sender: SenderType 
