@@ -292,7 +292,11 @@ export default function ProductDetail() {
         </div>
       </main>
 
-      <ChatWidget onProductFilter={() => {}} onClearChat={() => {}} />
+      <ChatWidget 
+        onProductFilter={() => {}} 
+        onClearChat={() => {}} 
+        chatContext={{ type: 'product', product: product }}
+      />
     </div>
   );
 }

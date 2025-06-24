@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { MessageCircle, X, Send, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chatResponses } from '@/lib/mockData';
-import { ChatMessage } from '../types';
+import { ChatMessage, ChatContext, Product } from '../types';
+import { useGlobalChat } from '../contexts/ChatContext';
 
 interface ChatWidgetProps {
   onProductFilter?: (keywords: string[]) => void;
@@ -12,11 +13,21 @@ interface ChatWidgetProps {
   shouldOpen?: boolean;
   shouldClearChat?: boolean;
   onClearChat?: () => void;
+  chatContext?: ChatContext;
 }
 
-export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat, onClearChat }: ChatWidgetProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
+  const { 
+    messages, 
+    setMessages, 
+    addMessage, 
+    clearMessages, 
+    currentContext, 
+    setCurrentContext, 
+    isOpen, 
+    setIsOpen 
+  } = useGlobalChat();
+  
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveAgent, setIsLiveAgent] = useState(false);
@@ -37,6 +48,41 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     }
   }, [shouldOpen]);
 
+  // Handle chat context changes
+  useEffect(() => {
+    if (chatContext) {
+      const previousContext = currentContext;
+      setCurrentContext(chatContext);
+      
+      // Auto-open chatbot on context changes
+      if (!isOpen) {
+        setIsOpen(true);
+      }
+      
+      // If switching to product context, add a product discussion message
+      if (chatContext.type === 'product' && chatContext.product && previousContext.type !== 'product') {
+        const productMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Now discussing: ${chatContext.product.title}\n\nAsk me anything about this product - pricing, ingredients, reviews, or recommendations!`,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(productMessage);
+      }
+      
+      // If switching back to general context, add a transition message
+      if (chatContext.type === 'general' && previousContext.type === 'product') {
+        const transitionMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Transitioned to general chat\n\nI'm now ready to help with general questions about pet products!`,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(transitionMessage);
+      }
+    }
+  }, [chatContext]);
+
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
     setIsLiveAgent(liveAgent);
@@ -50,7 +96,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       
       // Clear chat if this is a new search and there are existing messages
       if (shouldClearChat && messages.length > 0) {
-        setMessages([]);
+        clearMessages();
       }
       
       // Create and add user message immediately (don't wait for shouldOpen)
@@ -61,7 +107,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
         timestamp: new Date(),
       };
       
-      setMessages(prev => [...prev, userMessage]);
+      addMessage(userMessage);
       
       setIsLoading(true);
       
@@ -80,7 +126,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
           timestamp: new Date(),
         };
         
-        setMessages(prev => [...prev, aiResponse]);
+        addMessage(aiResponse);
         setIsLoading(false);
       }, 1500);
     }
@@ -89,6 +135,35 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
     
+    // Product-specific responses
+    if (currentContext.type === 'product' && currentContext.product) {
+      const product = currentContext.product;
+      
+      if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('how much')) {
+        return `The ${product.title} is priced at $${product.price}. With Autoship, you can save 5% and get it for $${product.autoshipPrice}. Would you like me to help you set up Autoship?`;
+      }
+      
+      if (lowerMessage.includes('review') || lowerMessage.includes('rating') || lowerMessage.includes('star')) {
+        return `The ${product.title} has a ${product.rating}-star rating from ${product.reviewCount} customers. It's highly rated for quality and value. Would you like to see more details about what customers are saying?`;
+      }
+      
+      if (lowerMessage.includes('ingredient') || lowerMessage.includes('what') || lowerMessage.includes('made')) {
+        return `I'd be happy to tell you about the ingredients in ${product.title}! This product features high-quality, natural ingredients. For detailed nutritional information, you can check the product page or ask me specific questions about ingredients.`;
+      }
+      
+      if (lowerMessage.includes('size') || lowerMessage.includes('weight') || lowerMessage.includes('amount')) {
+        return `The ${product.title} comes in multiple sizes: ${product.sizes.map(s => s.name).join(', ')}. Each size offers different value options. Which size are you considering for your pet?`;
+      }
+      
+      if (lowerMessage.includes('flavor') || lowerMessage.includes('taste')) {
+        return `The ${product.title} comes in these delicious flavors: ${product.flavors.join(', ')}. Most pets love the variety! Which flavor interests you most?`;
+      }
+      
+      // Default product response
+      return `Great question about ${product.title}! This is a ${product.rating}-star rated product that many pet parents love. Is there anything specific you'd like to know about it?`;
+    }
+    
+    // General responses (existing logic)
     if (lowerMessage.includes('train') || lowerMessage.includes('puppy') || lowerMessage.includes('biting')) {
       return "For training puppies, I recommend starting with positive reinforcement and high-value treats. Redirect biting to appropriate chew toys and be consistent with commands. Would you like me to show you some training treat options?";
     }
@@ -148,7 +223,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    addMessage(userMessage);
     setInputValue(''); // Always clear input after sending
     setIsLoading(true);
 
@@ -167,7 +242,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiResponse]);
+      addMessage(aiResponse);
       setIsLoading(false);
     }, 1500);
   };
@@ -245,9 +320,10 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
               {!isLiveAgent && messages.length > 0 && (
                 <button
                   onClick={() => {
-                    setMessages([]);
+                    clearMessages();
                     setInputValue('');
                     processedQueryRef.current = ''; // Reset processed query ref
+                    
                     // Reset search state when clearing chat
                     onClearChat?.();
                   }}
@@ -294,10 +370,28 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
                         className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
+                            : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                            ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
-                        {message.content}
+                        {message.content.includes('🔄 Now discussing:') ? (
+                          <div className="space-y-2">
+                            <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
+                            <div className="text-xs">
+                              Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
+                            </div>
+                          </div>
+                        ) : message.content.includes('🔄 Transitioned to general chat') ? (
+                          <div className="space-y-2">
+                            <div className="font-semibold">🔄 Transitioned to general chat</div>
+                            <div className="text-xs">
+                              I'm now ready to help with general questions about pet products!
+                            </div>
+                          </div>
+                        ) : (
+                          message.content
+                        )}
                       </div>
                     </div>
                   ))}

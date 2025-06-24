@@ -190,6 +190,7 @@ export default function ProductListing() {
         shouldOpen={shouldOpenChat}
         shouldClearChat={hasSearched}
         onClearChat={handleClearChat}
+        chatContext={{ type: 'general' }}
       />
     </div>
   );

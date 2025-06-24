@@ -33,4 +33,9 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+}
+
+export interface ChatContext {
+  type: 'general' | 'product';
+  product?: Product;
 } 
