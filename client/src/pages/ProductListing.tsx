@@ -65,8 +65,15 @@ export default function ProductListing() {
     setChatQuery(query);
     setShouldOpenChat(true);
     setHasSearched(true);
-    // Reset the trigger after a short delay
-    setTimeout(() => setShouldOpenChat(false), 1000);
+    // Reset the trigger after a longer delay to ensure ChatWidget has time to process
+    setTimeout(() => {
+      setShouldOpenChat(false);
+    }, 2000); // Increased from 1000ms to 2000ms
+  };
+
+  const handleClearChat = () => {
+    setChatQuery(''); // Clear the initial query
+    setHasSearched(false);
   };
 
   const handleFilterChange = (filters: any) => {
@@ -182,6 +189,7 @@ export default function ProductListing() {
         initialQuery={chatQuery}
         shouldOpen={shouldOpenChat}
         shouldClearChat={hasSearched}
+        onClearChat={handleClearChat}
       />
     </div>
   );

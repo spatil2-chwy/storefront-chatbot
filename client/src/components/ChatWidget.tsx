@@ -11,15 +11,17 @@ interface ChatWidgetProps {
   initialQuery?: string;
   shouldOpen?: boolean;
   shouldClearChat?: boolean;
+  onClearChat?: () => void;
 }
 
-export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat }: ChatWidgetProps) {
+export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat, onClearChat }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveAgent, setIsLiveAgent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,52 +37,54 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     }
   }, [shouldOpen]);
 
+  // Handle switching between AI and Live Agent modes
+  const handleModeSwitch = (liveAgent: boolean) => {
+    setIsLiveAgent(liveAgent);
+    // Clear input when switching modes
+    setInputValue('');
+  };
+
   useEffect(() => {
-    if (initialQuery && initialQuery.trim()) {
+    if (initialQuery && initialQuery.trim() && initialQuery !== processedQueryRef.current && !isLiveAgent) {
+      processedQueryRef.current = initialQuery; // Mark as processed
+      
       // Clear chat if this is a new search and there are existing messages
       if (shouldClearChat && messages.length > 0) {
         setMessages([]);
       }
       
-      if (shouldOpen) {
-        // Set the input value and auto-send the query
-        setInputValue('');
-        setTimeout(() => {
-          // Create and add user message first
-          const userMessage: ChatMessage = {
-            id: Date.now().toString(),
-            content: initialQuery,
-            sender: 'user',
-            timestamp: new Date(),
-          };
-          
-          setMessages(prev => [...prev, userMessage]);
-          setIsLoading(true);
-          
-          // Extract keywords for product filtering
-          const keywords = extractKeywords(initialQuery);
-          if (keywords.length > 0) {
-            onProductFilter?.(keywords);
-          }
-          
-          // Generate AI response
-          setTimeout(() => {
-            const aiResponse: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              content: isLiveAgent 
-                ? "Thanks for reaching out! A live agent will be with you shortly. In the meantime, I can help you find relevant products based on your question."
-                : generateAIResponse(initialQuery),
-              sender: 'ai',
-              timestamp: new Date(),
-            };
-            
-            setMessages(prev => [...prev, aiResponse]);
-            setIsLoading(false);
-          }, 1500);
-        }, 500);
+      // Create and add user message immediately (don't wait for shouldOpen)
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: initialQuery,
+        sender: 'user',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      setIsLoading(true);
+      
+      // Extract keywords for product filtering
+      const keywords = extractKeywords(initialQuery);
+      if (keywords.length > 0) {
+        onProductFilter?.(keywords);
       }
+      
+      // Generate AI response
+      setTimeout(() => {
+        const aiResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: generateAIResponse(initialQuery),
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+        setIsLoading(false);
+      }, 1500);
     }
-  }, [initialQuery, shouldOpen, shouldClearChat]);
+  }, [initialQuery, shouldClearChat, isLiveAgent]);
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
@@ -131,6 +135,9 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
   };
 
   const sendMessage = async (messageText?: string) => {
+    // Only allow sending messages in AI mode
+    if (isLiveAgent) return;
+    
     const messageToSend = messageText || inputValue;
     if (!messageToSend || !messageToSend.trim()) return;
 
@@ -151,13 +158,11 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       onProductFilter?.(keywords);
     }
 
-    // Simulate AI or Live Agent response delay
+    // Simulate AI response delay
     setTimeout(() => {
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: isLiveAgent 
-          ? "Thanks for reaching out! A live agent will be with you shortly. In the meantime, I can help you find relevant products based on your question."
-          : generateAIResponse(messageToSend),
+        content: generateAIResponse(messageToSend),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -215,7 +220,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
             <div className="flex items-center justify-between mt-2">
               <div className="flex bg-gray-100 rounded-full p-0.5">
                 <button
-                  onClick={() => setIsLiveAgent(false)}
+                  onClick={() => handleModeSwitch(false)}
                   className={`px-3 py-1.5 rounded-full text-xs font-work-sans transition-colors ${
                     !isLiveAgent 
                       ? 'bg-chewy-blue text-white' 
@@ -225,7 +230,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
                   AI Chat
                 </button>
                 <button
-                  onClick={() => setIsLiveAgent(true)}
+                  onClick={() => handleModeSwitch(true)}
                   className={`px-3 py-1.5 rounded-full text-xs font-work-sans transition-colors ${
                     isLiveAgent 
                       ? 'bg-chewy-blue text-white' 
@@ -236,14 +241,15 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
                 </button>
               </div>
               
-              {/* Clear Chat Button */}
-              {messages.length > 0 && (
+              {/* Clear Chat Button - Only show in AI mode */}
+              {!isLiveAgent && messages.length > 0 && (
                 <button
                   onClick={() => {
                     setMessages([]);
                     setInputValue('');
+                    processedQueryRef.current = ''; // Reset processed query ref
                     // Reset search state when clearing chat
-                    window.dispatchEvent(new CustomEvent('clearChat'));
+                    onClearChat?.();
                   }}
                   className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
                 >
@@ -254,83 +260,143 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
           </CardHeader>
 
           <CardContent className="flex flex-col h-80 p-0 bg-gray-50">
-            {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
-              {/* Initial suggestions if no messages */}
-              {messages.length === 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-600 font-work-sans">Try asking:</p>
-                  <div className="space-y-1.5">
-                    <button
-                      onClick={() => setInputValue("Easiest way to deal with backyard dog poop?")}
-                      className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
-                    >
-                      "Easiest way to deal with backyard dog poop?"
-                    </button>
-                    <button
-                      onClick={() => setInputValue("Dog developed chicken allergy. Need protein though.")}
-                      className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
-                    >
-                      "Dog developed chicken allergy. Need protein though."
-                    </button>
-                  </div>
-                </div>
-              )}
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
-                      message.sender === 'user'
-                        ? 'bg-chewy-blue text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
-                </div>
-              ))}
-
-              {/* Loading indicator */}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 px-3 py-2 rounded-2xl">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+            {/* AI Chat Mode */}
+            {!isLiveAgent && (
+              <>
+                {/* Messages */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
+                  {/* Initial suggestions if no messages */}
+                  {messages.length === 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-600 font-work-sans">Try asking:</p>
+                      <div className="space-y-1.5">
+                        <button
+                          onClick={() => setInputValue("Easiest way to deal with backyard dog poop?")}
+                          className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
+                        >
+                          "Easiest way to deal with backyard dog poop?"
+                        </button>
+                        <button
+                          onClick={() => setInputValue("Dog developed chicken allergy. Need protein though.")}
+                          className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
+                        >
+                          "Dog developed chicken allergy. Need protein though."
+                        </button>
                       </div>
-                      <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
+                    </div>
+                  )}
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
+                          message.sender === 'user'
+                            ? 'bg-chewy-blue text-white'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
+                      >
+                        {message.content}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Loading indicator */}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                          </div>
+                          <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div className="border-t border-gray-100 p-3 bg-white rounded-b-3xl">
+                  <div className="flex space-x-2">
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="What do you want to learn?"
+                      className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+                    />
+                    <Button 
+                      onClick={() => sendMessage()} 
+                      size="icon" 
+                      className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Live Agent Mode */}
+            {isLiveAgent && (
+              <div className="flex-1 p-6 bg-white">
+                <div className="text-center space-y-6">
+                  {/* Header */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900 font-work-sans">
+                      Connect with a Human Agent
+                    </h3>
+                  </div>
+
+                  {/* Contact Options */}
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">📞</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Call Us</h4>
+                          <p className="text-gray-600 text-sm">Speak with an agent</p>
+                          <p className="text-chewy-blue font-semibold text-sm">1-800-672-4399</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">💬</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Live Chat</h4>
+                          <p className="text-gray-600 text-sm">Chat with an agent</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">📧</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Email Us</h4>
+                          <p className="text-gray-600 text-sm">Send us a message</p>
+                          <p className="text-chewy-blue font-semibold text-sm">help@chewy.com</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input */}
-            <div className="border-t border-gray-100 p-3 bg-white rounded-b-3xl">
-              <div className="flex space-x-2">
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="What do you want to learn?"
-                  className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
-                />
-                <Button 
-                  onClick={() => sendMessage()} 
-                  size="icon" 
-                  className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
