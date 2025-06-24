@@ -1,6 +1,6 @@
 # Storefront Chatbot
 
-A modern e-commerce chatbot application with a React frontend and FastAPI backend. Features AI-powered product recommendations and live agent support.
+Chewy chatbot application with a React frontend and FastAPI backend. Features AI-powered product recommendations and live agent support.
 
 ## 🚀 Quick Start
 
@@ -92,58 +92,6 @@ The backend will be available at `http://localhost:8000`
 - **CORS middleware** - Frontend integration
 - **Automatic API docs** - Swagger/OpenAPI
 
-### Key Changes
-- ✅ **Monorepo structure** - Clean separation between frontend and backend
-- ✅ **Frontend config in client/** - All frontend configuration files moved to client directory
-- ✅ **Type definitions** - TypeScript types defined in `client/src/types/`
-- ✅ **No shared folder** - Removed shared folder since backend is Python
-- ✅ **Independent package management** - Frontend and backend have separate dependency management
-
-## 🎯 Key Features
-
-### Chat Widget
-- AI-powered product recommendations
-- Live agent support toggle
-- Real-time messaging
-- Product filtering based on chat content
-
-### Product Management
-- Dynamic product catalog
-- Search and filtering
-- Category-based navigation
-- Product details with images and pricing
-
-### User Experience
-- Modern, responsive UI with Tailwind CSS
-- Smooth animations and transitions
-- Intuitive chat interface
-- Authentication system
-
-## 🛠️ Development
-
-### Frontend Development
-```bash
-cd client
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run check        # TypeScript type checking
-```
-
-### Backend Development
-```bash
-cd server
-source venv/bin/activate
-uvicorn main:app --reload --host localhost --port 8000
-```
-
-### Running Both Services
-```bash
-# Terminal 1 - Frontend
-cd client && npm run dev
-
-# Terminal 2 - Backend
-cd server && source venv/bin/activate && uvicorn main:app --reload
-```
 
 ## 🔌 API Endpoints
 
@@ -163,45 +111,3 @@ cd server && source venv/bin/activate && uvicorn main:app --reload
 
 ### Health
 - `GET /api/health` - Health check
-
-## 🚀 Deployment
-
-### Frontend Production Build
-```bash
-cd client
-npm run build
-```
-The built files will be in `../dist/public/`
-
-### Backend Production
-```bash
-cd server
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## 📁 File Organization
-
-### Frontend (`client/`)
-- **Configuration files** - All config files (vite, tailwind, typescript, etc.) are in the client root
-- **Source code** - React components, pages, and utilities in `src/`
-- **Types** - TypeScript interfaces in `src/types/`
-- **Static assets** - Images and public files in `public/`
-
-### Backend (`server/`)
-- **FastAPI app** - Main application logic
-- **API routes** - Endpoint definitions
-- **Data models** - Pydantic schemas
-- **Storage** - In-memory data management
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test both frontend and backend
-5. Submit a pull request
-
-## 📝 License
-
-MIT License - see LICENSE file for details
