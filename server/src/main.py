@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from contextlib import asynccontextmanager
-from routes import router
-from storage import storage
+from src.routers.routes import router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
