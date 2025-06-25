@@ -58,11 +58,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-center mb-2">
             <div className="flex items-center">
               <div className="flex text-sm">
-                {renderStars(product.rating)}
+                {renderStars(product.rating || 0)}
               </div>
               <span className="text-sm text-gray-600 ml-2">{product.rating}</span>
               <span className="text-xs text-gray-500 ml-1">
-                ({product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
               </span>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
               <span className="text-lg font-semibold text-gray-900">${product.price}</span>
-              {product.originalPrice && (
+              {product.originalPrice && product.originalPrice > (product.price || 0) && (
                 <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
               )}
             </div>

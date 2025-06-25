@@ -4,28 +4,28 @@ export interface User {
   name: string;
 }
 
+export interface Size {
+  name?: string; // Variant name
+  price?: number;
+  pricePerLb?: string;
+}
+
 export interface Product {
-  id: number;
-  title: string;
-  brand: string;
-  price: number;
-  originalPrice?: number;
-  autoshipPrice: number;
-  rating: number;
-  reviewCount: number;
-  image: string;
-  images: string[];
-  deal: boolean;
-  flavors: string[];
-  sizes: {
-    name: string;
-    price: number;
-    pricePerLb: string;
-  }[];
-  description: string;
-  inStock: boolean;
-  category: string;
-  keywords: string[];
+  id?: number; // PRODUCT_ID
+  title?: string; // CLEAN_NAME
+  brand?: string; // PURCHASE_BRAND
+  price?: number; // PRICE
+  originalPrice?: number; // PRICE (for strikethrough/original price)
+  autoshipPrice?: number; // AUTOSHIP_PRICE
+  rating?: number; // RATING_AVG
+  reviewCount?: number; // RATING_CNT
+  image?: string; // THUMBNAIL
+  images?: string[]; // FULLIMAGE (array for gallery)
+  deal?: boolean; // Not available, can be false
+  description?: string; // DESCRIPTION_LONG
+  inStock?: boolean; // Not available, can be true
+  category?: string; // CATEGORY_LEVEL1
+  keywords?: string[]; // specialdiettag/ingredienttag
 }
 
 export interface ChatMessage {

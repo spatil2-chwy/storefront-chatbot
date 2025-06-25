@@ -5,14 +5,13 @@ from src.services import product_service
 
 router = APIRouter()
 
-@router.get("/products", response_model=List[Product])
-async def get_products(
-    category: Optional[str] = Query(None, description="Filter by category"),
-    keywords: Optional[str] = Query(None, description="Comma-separated keywords to filter by")
+@router.get("/products/search", response_model=List[Product])
+async def search_products(
+    query: str = Query(..., description="Search query"),
+    limit: int = Query(10, description="Maximum number of results to return")
 ):
-    """Get products with optional filtering"""
-    keyword_list = [k.strip() for k in keywords.split(",")] if keywords else None
-    return await product_service.get_products(category=category, keywords=keyword_list)
+    """Search products using semantic search with embeddings"""
+    return await product_service.search_products(query, limit)
 
 @router.get("/products/{product_id}", response_model=Product)
 async def get_product(product_id: int):

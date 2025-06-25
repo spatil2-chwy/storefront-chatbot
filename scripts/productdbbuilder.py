@@ -3,10 +3,12 @@ import json
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 import chromadb
+import numpy as np
 
 # === Config ===
 CSV_PATH = "all_chewy_products_with_qanda.csv"
 REVIEW_SYNTH_PATH = "results.jsonl"
+
 COLLECTION_NAME = "products"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CHROMADB_PATH = "chroma_db"
@@ -38,17 +40,22 @@ items_dict = {
 # === Step 3: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
     "NAME": "",
+    "CLEAN_NAME": "",
     "DESCRIPTION_LONG": "",
     "CATEGORY_LEVEL1": "",
     "CATEGORY_LEVEL2": "",
     "CATEGORY_LEVEL3": "",
     "PRICE": 0.0,
+    "AUTOSHIP_PRICE": 0.0,
     "RATING_AVG": 0.0,
     "RATING_CNT": 0.0,
     "ATTR_PET_TYPE": "",
     "ATTR_FOOD_FORM": "",
     "ATTR_SPECIAL_DIET": "",
-    "INGREDIENTS": ""
+    "INGREDIENTS": "",
+    "THUMBNAIL": "",
+    "FULLIMAGE": "",
+    "PURCHASE_BRAND": "",
 })
 
 # === Step 4: Load Review Synthesis JSONL ===
@@ -73,16 +80,28 @@ ids = []
 for row in product_rows:
     part_number = row["PART_NUMBER"]
     product_id = row["PRODUCT_ID"]
+    
+    # Ensure we have valid text for embedding
+    clean_name = row["CLEAN_NAME"] or row["NAME"] or f"Product {product_id}"
+    if not clean_name or clean_name.strip() == "":
+        clean_name = f"Product {product_id}"
 
     metadata = {
         "PRODUCT_ID": product_id,
         "PART_NUMBER": part_number,
+        "NAME": row["NAME"],
+        "CLEAN_NAME": row["CLEAN_NAME"],
+        "PURCHASE_BRAND": row["PURCHASE_BRAND"],
         "CATEGORY_LEVEL1": row["CATEGORY_LEVEL1"],
         "CATEGORY_LEVEL2": row["CATEGORY_LEVEL2"],
         "CATEGORY_LEVEL3": row["CATEGORY_LEVEL3"],
         "PRICE": row["PRICE"],
+        "AUTOSHIP_PRICE": row["AUTOSHIP_PRICE"],
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
+        "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
+        "THUMBNAIL": row["THUMBNAIL"],
+        "FULLIMAGE": row["FULLIMAGE"],
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
         "items": json.dumps(items_dict.get(product_id, [])),
@@ -102,28 +121,85 @@ for row in product_rows:
             if tag:
                 metadata[f"ingredienttag:{tag}"] = True
 
-    documents.append(row["NAME"])
+    documents.append(clean_name)
     metadatas.append(metadata)
     ids.append(product_id)
 
+print(f"✅ Prepared {len(documents)} documents for embedding")
+
 # === Step 6: Initialize ChromaDB & Embed ===
+print("🔄 Loading embedding model...")
 model = SentenceTransformer(EMBEDDING_MODEL)
+
+print("🔄 Initializing ChromaDB...")
 client = chromadb.PersistentClient(path=CHROMADB_PATH)
-collection = client.get_or_create_collection(name=COLLECTION_NAME)
+
+# Delete existing collection if it exists
+try:
+    client.delete_collection(name=COLLECTION_NAME)
+    print(f"🗑️  Deleted existing collection: {COLLECTION_NAME}")
+except:
+    pass
+
+# Create new collection with proper embedding function
+collection = client.create_collection(
+    name=COLLECTION_NAME,
+    metadata={"hnsw:space": "cosine"}
+)
+
+print(f"✅ Created collection: {COLLECTION_NAME}")
 
 # === Step 7: Batch Upload ===
+print("🔄 Starting batch embedding and upload...")
+total_processed = 0
+
 for i in tqdm(range(0, len(documents), BATCH_SIZE), desc="Processing batches"):
     doc_batch = documents[i:i + BATCH_SIZE]
     meta_batch = metadatas[i:i + BATCH_SIZE]
     id_batch = ids[i:i + BATCH_SIZE]
 
-    emb_batch = model.encode(doc_batch, batch_size=BATCH_SIZE, show_progress_bar=False)
+    try:
+        # Generate embeddings
+        emb_batch = model.encode(doc_batch, batch_size=32, show_progress_bar=False)
+        
+        # Convert to list format for ChromaDB
+        emb_batch_list = emb_batch.tolist()
+        
+        # Validate embeddings
+        if len(emb_batch_list) != len(doc_batch):
+            print(f"❌ Embedding count mismatch: {len(emb_batch_list)} vs {len(doc_batch)}")
+            continue
+            
+        # Upload to ChromaDB
+        collection.upsert(
+            documents=doc_batch,
+            embeddings=emb_batch_list,
+            metadatas=meta_batch,
+            ids=id_batch,
+        )
+        
+        total_processed += len(doc_batch)
+        
+    except Exception as e:
+        print(f"❌ Error processing batch {i//BATCH_SIZE + 1}: {str(e)}")
+        continue
 
-    collection.upsert(
-        documents=doc_batch,
-        embeddings=emb_batch,
-        metadatas=meta_batch,
-        ids=id_batch,
-    )
+print(f"✅ Successfully processed {total_processed} documents")
 
-print("✅ Embedding complete and uploaded to ChromaDB.")
+# Verify the upload
+try:
+    count = collection.count()
+    print(f"✅ ChromaDB collection now contains {count} documents")
+    
+    # Test a query
+    if count > 0:
+        results = collection.query(
+            query_texts=["pet food"],
+            n_results=1
+        )
+        print(f"✅ Test query successful, found {len(results['ids'][0])} results")
+        
+except Exception as e:
+    print(f"❌ Error verifying upload: {str(e)}")
+
+print("✅ Embedding process complete!")

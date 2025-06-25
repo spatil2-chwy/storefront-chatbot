@@ -48,7 +48,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     if (shouldOpen) {
       setIsOpen(true);
     }
-  }, [shouldOpen]);
+  }, [shouldOpen, setIsOpen]);
 
   // Handle chat context changes
   useEffect(() => {
@@ -56,10 +56,8 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       const previousContext = currentContext;
       setCurrentContext(chatContext);
       
-      // Auto-open chatbot on context changes
-      if (!isOpen) {
-        setIsOpen(true);
-      }
+      // Only auto-open chatbot if there's an explicit shouldOpen trigger
+      // Don't auto-open on context changes alone
       
       // If switching to product context, add a product discussion message
       if (chatContext.type === 'product' && chatContext.product && previousContext.type !== 'product') {
@@ -154,11 +152,11 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       }
       
       if (lowerMessage.includes('size') || lowerMessage.includes('weight') || lowerMessage.includes('amount')) {
-        return `The ${product.title} comes in multiple sizes: ${product.sizes.map(s => s.name).join(', ')}. Each size offers different value options. Which size are you considering for your pet?`;
+        return `The ${product.title} comes in standard packaging sizes. You can check the product page for specific size options and pricing details.`;
       }
       
       if (lowerMessage.includes('flavor') || lowerMessage.includes('taste')) {
-        return `The ${product.title} comes in these delicious flavors: ${product.flavors.join(', ')}. Most pets love the variety! Which flavor interests you most?`;
+        return `The ${product.title} comes in delicious flavors that pets love! You can check the product page for specific flavor options and see which ones are most popular with customers.`;
       }
       
       // Default product response
