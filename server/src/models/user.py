@@ -1,15 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import List, Optional
-from product import Product 
-from pet import PetProfile
 
 class User(BaseModel):
-    customer_id: str
-    operating_revenue: float
-    first_placed_order: datetime
-    zip_code: str
-    city: str
-    state: str
-    orders: List[Product] = []
-    pets: List[PetProfile] = []
+    customer_key: int
+    customer_id: int
+    operating_revenue_trailing_365: float
+    customer_order_first_placed_dttm: datetime
+    customer_address_zip: str
+    customer_address_city: str
+    customer_address_state: str
+
+class UserCreate(BaseModel):
+    customer_key: int
+    customer_id: int
+    operating_revenue_trailing_365: float
+    customer_order_first_placed_dttm: datetime
+    customer_address_zip: str
+    customer_address_city: str
+    customer_address_state: str

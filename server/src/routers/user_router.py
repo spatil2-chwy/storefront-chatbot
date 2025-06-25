@@ -1,26 +1,19 @@
 from fastapi import APIRouter, HTTPException
 from ..models.user import User, UserCreate
-from src.services import user_service
+from src.services.user_service import UserService
 
 router = APIRouter()
+user_service = UserService()
 
-@router.get("/users/{user_id}", response_model=User)
-async def get_user(user_id: int):
-    user = await user_service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+@router.get("/customers/{customer_key}", response_model=User)
+async def get_customer(customer_key: int):
+    customer = await user_service.get_user(customer_key)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
 
-@router.get("/users/email/{email}", response_model=User)
-async def get_user_by_email(email: str):
-    user = await user_service.get_user_by_email(email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@router.post("/users", response_model=User)
-async def create_user(user_data: UserCreate):
-    existing_user = await user_service.get_user_by_email(user_data.email)
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
+@router.post("/customers", response_model=User)
+async def create_customer(user_data: UserCreate):
+    if await user_service.get_user(user_data.customer_key):
+        raise HTTPException(status_code=400, detail="Customer with this key already exists")
     return await user_service.create_user(user_data)
