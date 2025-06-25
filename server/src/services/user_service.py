@@ -47,3 +47,10 @@ class UserService:
               .filter(PetProfile.customer_id == customer_key)
               .all()
         )
+    
+    def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
+        user = db.query(User).filter(User.email == email).one_or_none()
+        if not user or user.password != password:
+            return None
+        return user
+

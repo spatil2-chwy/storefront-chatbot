@@ -9,7 +9,7 @@ def main():
 
     BASE = Path(__file__).resolve().parent.parent  # server/src
     DATA = BASE / "data"
-    USERS_TSV = DATA / "customers_full.tsv"
+    USERS_TSV = DATA / "customers_full_with_creds.tsv"
     PETS_TSV  = DATA / "pet_profiles_assigned.tsv"
 
     try:
@@ -18,6 +18,10 @@ def main():
             USERS_TSV, sep="\t",
             parse_dates=["CUSTOMER_ORDER_FIRST_PLACED_DTTM"]
         )
+        
+        if "password_hash" not in users_df.columns:
+            users_df = users_df.drop(columns=["password_hash"])
+            
         users_df.to_sql(
             name="customers_full",
             con=engine,
@@ -41,7 +45,7 @@ def main():
             if_exists="append",
             index=False
         )
-        print(f"  • Loaded {len(pets_df)} pets")
+        print(f"Loaded {len(pets_df)} pets")
 
     except SQLAlchemyError as e:
         print("Error loading data:", e)

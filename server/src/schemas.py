@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime, date
 from src.models.constants import SenderType
@@ -14,7 +14,6 @@ class PetProfileBase(BaseModel):
     weight_type: Optional[str]
     size_type: Optional[str]
     birthday: Optional[date]
-    birthday_estimated: Optional[bool]
     life_stage: Optional[str]
     adopted: Optional[bool]
     adoption_date: Optional[date]
@@ -37,6 +36,9 @@ class PetProfile(PetProfileBase):
 class UserBase(BaseModel):
     customer_key: int
     customer_id: int
+    name: str
+    email: EmailStr
+    password: str
     operating_revenue_trailing_365: Optional[float]
     customer_order_first_placed_dttm: Optional[datetime]
     customer_address_zip: Optional[str]
@@ -47,6 +49,10 @@ class User(UserBase):
     pets: List[PetProfile] = []
     class Config:
         from_attributes = True
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 class ChatMessageBase(BaseModel):
     id: str

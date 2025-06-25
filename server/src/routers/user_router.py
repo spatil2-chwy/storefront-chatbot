@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from sqlalchemy.orm import Session
 from src.database import get_db
-from src.schemas import User as UserSchema, PetProfile as PetSchema
+from src.schemas import User as UserSchema, UserLogin, PetProfile as PetSchema
 from src.services.user_service import UserService
 
 router = APIRouter(prefix="/customers", tags=["customers"])
@@ -40,3 +40,10 @@ def delete_user(customer_key: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Customer not found")
     return {"detail": "Deleted"}
+
+@router.post("/login", response_model=UserSchema)
+def login(credentials: UserLogin, db: Session = Depends(get_db)):
+    user = user_svc.authenticate_user(db, credentials.email, credentials.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return user

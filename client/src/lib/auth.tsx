@@ -1,45 +1,41 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
+import React, { createContext, ReactNode, useState } from 'react';
+import axios from 'axios';
 
-interface AuthContextType {
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+}
+
+export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    const storedAuth = localStorage.getItem('isAuthenticated');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedAuth === 'true' && storedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simple dummy authentication
-    if (email && password) {
-      const mockUser: User = {
-        id: 1,
-        email,
-        name: email.split('@')[0],
-      };
-      
-      setUser(mockUser);
+    try {
+      const response = await axios.post<User>('http://localhost:8000/customers/login', { email, password });
+      const loggedInUser = response.data;
+
+      setUser(loggedInUser);
       setIsAuthenticated(true);
       localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+
       return true;
+    } catch (error: any) {
+      // inspect error
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
@@ -57,9 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = React.useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
+  return ctx;
 }

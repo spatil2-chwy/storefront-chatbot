@@ -23,7 +23,6 @@ class PetProfile(Base):
     weight_type         = Column(String, nullable=True)
     size_type           = Column(String, nullable=True)
     birthday            = Column(Date, nullable=True)
-    birthday_estimated  = Column(Boolean, default=False)
     life_stage          = Column(String, nullable=True)
     adopted             = Column(Boolean, default=False)
     adoption_date       = Column(Date, nullable=True)
