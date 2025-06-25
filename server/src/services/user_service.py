@@ -1,36 +1,49 @@
-from typing import Dict, Optional
-from datetime import datetime
-from src.models.user import User, UserCreate
+from typing import List
+from sqlalchemy.orm import Session, joinedload
+from src.models.user import User
+from src.models.pet import PetProfile
 
 class UserService:
-    def __init__(self):
-        # keyed by customer_key
-        self.users: Dict[int, User] = {}
-        self._initialize_dummy_data()
+    def get_users(self, db: Session) -> List[User]:
+        return db.query(User).all()
 
-    def _initialize_dummy_data(self):
-        # Load a single sample user based on provided CSV
-        csv_data = [
-            {"customer_key": 24612503152,
-             "customer_id": 72030138,
-             "operating_revenue_trailing_365": 63742.65384,
-             "customer_order_first_placed_dttm": "2019-09-17 00:00:00.000",
-             "customer_address_zip": "64503-1542",
-             "customer_address_city": "SAINT JOSEPH",
-             "customer_address_state": "MO"},
-        ]
-        for rec in csv_data:
-            # parse datetime string
-            rec["customer_order_first_placed_dttm"] = datetime.strptime(
-                rec["customer_order_first_placed_dttm"], "%Y-%m-%d %H:%M:%S.%f"
-            )
-            user = User(**rec)
-            self.users[user.customer_key] = user
+    def get_user(self, db: Session, customer_key: int) -> User | None:
+        return (
+            db.query(User)
+              .options(joinedload(User.pets))
+              .filter(User.customer_key == customer_key)
+              .one_or_none()
+        )
 
-    async def get_user(self, customer_key: int) -> Optional[User]:
-        return self.users.get(customer_key)
+    def create_user(self, db: Session, user_data: User) -> User:
+        db.add(user_data)
+        db.commit()
+        db.refresh(user_data)
+        return user_data
 
-    async def create_user(self, user_data: UserCreate) -> User:
-        user = User(**user_data.dict())
-        self.users[user.customer_key] = user
+    def update_user(self, db: Session, customer_key: int, user_data: User) -> User | None:
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return None
+        for attr, value in vars(user_data).items():
+            if attr.startswith('_') or attr == 'customer_key':
+                continue
+            setattr(user, attr, value)
+        db.commit()
+        db.refresh(user)
         return user
+
+    def delete_user(self, db: Session, customer_key: int) -> bool:
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return False
+        db.delete(user)
+        db.commit()
+        return True
+
+    def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
+        return (
+            db.query(PetProfile)
+              .filter(PetProfile.customer_id == customer_key)
+              .all()
+        )
