@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chatResponses } from '@/lib/mockData';
 import { ChatMessage, ChatContext, Product } from '../types';
 import { useGlobalChat } from '../contexts/ChatContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatWidgetProps {
   onProductFilter?: (keywords: string[]) => void;
@@ -33,6 +34,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
   const [isLiveAgent, setIsLiveAgent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
+  const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -253,6 +255,238 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     }
   };
 
+  // Desktop: floating window, Mobile: bottom drawer/modal
+  if (isMobile) {
+    return (
+      <div className={`fixed left-0 bottom-0 w-full h-1/3 z-50 bg-white shadow-2xl border-t border-gray-200 transition-all ${isOpen ? '' : 'hidden'}`} style={{minHeight: 320, maxHeight: 500}}>
+        {/* Chat Button (floating, bottom right) */}
+        <Button
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-chewy-blue hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center z-50"
+          size="icon"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </Button>
+        {/* Chat Content */}
+        <div className="flex flex-col h-full">
+          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-3xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
+                  <img 
+                    src="/chewy-c-white.png" 
+                    alt="Chewy C" 
+                    className="w-5 h-5"
+                  />
+                </div>
+                <CardTitle className="text-gray-900 font-work-sans text-base">
+                  {isLiveAgent ? 'Live Agent' : 'AI Beta'}
+                </CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-7 h-7"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            {/* Toggle between AI and Live Agent */}
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex bg-gray-100 rounded-full p-0.5">
+                <button
+                  onClick={() => handleModeSwitch(false)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-work-sans transition-colors ${
+                    !isLiveAgent 
+                      ? 'bg-chewy-blue text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  AI Chat
+                </button>
+                <button
+                  onClick={() => handleModeSwitch(true)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-work-sans transition-colors ${
+                    isLiveAgent 
+                      ? 'bg-chewy-blue text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Live Agent
+                </button>
+              </div>
+              {/* Clear Chat Button - Only show in AI mode */}
+              {!isLiveAgent && messages.length > 0 && (
+                <button
+                  onClick={() => {
+                    clearMessages();
+                    setInputValue('');
+                    processedQueryRef.current = '';
+                    onClearChat?.();
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                >
+                  Clear chat
+                </button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1 p-0 bg-gray-50">
+            {/* AI Chat Mode */}
+            {!isLiveAgent && (
+              <>
+                {/* Messages */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
+                  {/* Initial suggestions if no messages */}
+                  {messages.length === 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-600 font-work-sans">Try asking:</p>
+                      <div className="space-y-1.5">
+                        <button
+                          onClick={() => setInputValue("Easiest way to deal with backyard dog poop?")}
+                          className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
+                        >
+                          "Easiest way to deal with backyard dog poop?"
+                        </button>
+                        <button
+                          onClick={() => setInputValue("Dog developed chicken allergy. Need protein though.")}
+                          className="block w-full text-left text-xs text-gray-700 hover:text-chewy-blue hover:bg-gray-50 p-2 rounded-lg border border-gray-200 font-work-sans"
+                        >
+                          "Dog developed chicken allergy. Need protein though."
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
+                          message.sender === 'user'
+                            ? 'bg-chewy-blue text-white'
+                            : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                            ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
+                      >
+                        {message.content.includes('🔄 Now discussing:') ? (
+                          <div className="space-y-2">
+                            <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
+                            <div className="text-xs">
+                              Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
+                            </div>
+                          </div>
+                        ) : message.content.includes('🔄 Transitioned to general chat') ? (
+                          <div className="space-y-2">
+                            <div className="font-semibold">🔄 Transitioned to general chat</div>
+                            <div className="text-xs">
+                              I'm now ready to help with general questions about pet products!
+                            </div>
+                          </div>
+                        ) : (
+                          message.content
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {/* Loading indicator */}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                          </div>
+                          <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+                {/* Input */}
+                <div className="border-t border-gray-100 p-3 bg-white rounded-b-3xl">
+                  <div className="flex space-x-2">
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="What do you want to learn?"
+                      className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+                    />
+                    <Button 
+                      onClick={() => sendMessage()} 
+                      size="icon" 
+                      className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+            {/* Live Agent Mode */}
+            {isLiveAgent && (
+              <div className="flex-1 p-6 bg-white">
+                <div className="text-center space-y-6">
+                  {/* Header */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-gray-900 font-work-sans">
+                      Connect with a Human Agent
+                    </h3>
+                  </div>
+                  {/* Contact Options */}
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">📞</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Call Us</h4>
+                          <p className="text-gray-600 text-sm">Speak with an agent</p>
+                          <p className="text-chewy-blue font-semibold text-sm">1-800-672-4399</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">💬</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Live Chat</h4>
+                          <p className="text-gray-600 text-sm">Chat with an agent</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg">📧</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <h4 className="font-semibold text-gray-900 text-sm">Email Us</h4>
+                          <p className="text-gray-600 text-sm">Send us a message</p>
+                          <p className="text-chewy-blue font-semibold text-sm">help@chewy.com</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </div>
+      </div>
+    );
+  }
+  // Desktop version (unchanged)
   return (
     <div className="fixed bottom-6 right-6 z-50">
       {/* Chat Button */}

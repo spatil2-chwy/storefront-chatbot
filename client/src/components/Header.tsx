@@ -4,6 +4,7 @@ import { Search, ChevronDown, Flag, Headphones, User, ShoppingCart } from 'lucid
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -14,6 +15,7 @@ interface HeaderProps {
 export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: HeaderProps) {
   const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const isMobile = useIsMobile();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +26,48 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
     }
   };
 
+  if (isMobile) {
+    return (
+      <header className="bg-chewy-blue text-white shadow-lg sticky top-0 z-40">
+        <div className="max-w-full mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Search Bar Only */}
+            <div className="flex-1">
+              <form onSubmit={handleSearch} className="relative">
+                <Input
+                  type="text"
+                  placeholder={hasSearched ? "Ask a new question" : "Conversational AI Search"}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-chewy-blue focus:ring-2 focus:ring-chewy-blue focus:ring-opacity-50 font-work-sans"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-chewy-blue"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+            {/* User and Cart Icons */}
+            <div className="flex items-center space-x-4 ml-4">
+              <div 
+                className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer"
+                onClick={logout}
+              >
+                <User className="w-5 h-5" />
+              </div>
+              <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
+                <ShoppingCart className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Desktop version (unchanged)
   return (
     <header className="bg-chewy-blue text-white shadow-lg sticky top-0 z-40">
       <div className="max-w-full mx-auto px-8 sm:px-12 lg:px-16">

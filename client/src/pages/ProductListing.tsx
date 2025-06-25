@@ -8,6 +8,7 @@ import { mockProducts } from '@/lib/mockData';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function ProductListing() {
   const [products, setProducts] = useState<Product[]>(mockProducts);
@@ -17,6 +18,7 @@ export default function ProductListing() {
   const [chatQuery, setChatQuery] = useState('');
   const [shouldOpenChat, setShouldOpenChat] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Listen for clear chat events
@@ -164,7 +166,7 @@ export default function ProductListing() {
         </div>
 
         <div className="flex gap-8">
-          <ProductFilters onFilterChange={handleFilterChange} />
+          {!isMobile && <ProductFilters onFilterChange={handleFilterChange} />}
 
           {/* Product Grid */}
           <div className="flex-1">
