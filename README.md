@@ -35,7 +35,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Start FastAPI server
-uvicorn main:app --reload --host localhost --port 8000
+uvicorn src.main:app --reload --host localhost --port 8000
 ```
 The backend will be available at `http://localhost:8000`
 
