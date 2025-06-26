@@ -80,7 +80,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         addMessage(transitionMessage);
       }
     }
-  }, [chatContext]);
+  }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
