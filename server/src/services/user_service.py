@@ -42,9 +42,15 @@ class UserService:
         return True
 
     def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
+        # First get the user to find their customer_id
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return []
+        
+        # Then find pets using the customer_id
         return (
             db.query(PetProfile)
-              .filter(PetProfile.customer_id == customer_key)
+              .filter(PetProfile.customer_id == user.customer_id)
               .all()
         )
     
