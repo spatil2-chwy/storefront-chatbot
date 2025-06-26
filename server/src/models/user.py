@@ -1,4 +1,3 @@
-<<<<<<< feature/authentication
 from sqlalchemy import Column, Integer, Float, DateTime, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, String as SQLString
@@ -41,15 +40,3 @@ class User(Base):
         primaryjoin="User.customer_id == PetProfile.customer_id",
         cascade="all, delete-orphan",
     )
-=======
-from pydantic import BaseModel, EmailStr
-
-class User(BaseModel):
-    id: int
-    email: EmailStr
-    name: str
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    name: str
->>>>>>> dev
