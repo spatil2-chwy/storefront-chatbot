@@ -53,14 +53,34 @@ class ProductService:
         """
         Reformatting image links to be displayable on web
         """
-        if isinstance(link, str) and link.strip():
+        if not link or not isinstance(link, str) or not link.strip():
+            return "https://via.placeholder.com/400x300?text=Image+Not+Found"
+        
+        link = link.strip()
+        
+        # If it's already a valid HTTP URL, return as is
+        if link.startswith("http"):
+            return link
+        
+        # Handle Amazon-style URLs (base,timestamp format)
+        if "," in link:
             link = link.lstrip("//")
             parts = link.split(",")
             if len(parts) == 2:
                 base, timestamp = parts
-                return f"https://{base}._AC_SL600_V{timestamp}_.jpg"
-            elif link.startswith("http"):
-                return link
+                formatted = f"https://{base}._AC_SL600_V{timestamp}_.jpg"
+                return formatted
+        
+        # If it starts with //, add https:
+        if link.startswith("//"):
+            formatted = f"https:{link}"
+            return formatted
+        
+        # If it's a relative path or other format, try to make it absolute
+        if not link.startswith("http"):
+            formatted = f"https://{link}"
+            return formatted
+        
         return "https://via.placeholder.com/400x300?text=Image+Not+Found"
 
     def _metadata_to_product(self, metadata: dict) -> Product:
@@ -69,10 +89,46 @@ class ProductService:
         if metadata.get("FULLIMAGE"):
             # FULLIMAGE can be a single URL or a comma-separated string
             fullimage_val = metadata["FULLIMAGE"]
+            
             if isinstance(fullimage_val, list):
-                images = [self.reformat_image_link(img) for img in fullimage_val]
+                # If it's already a list, it might be malformed (base, timestamp)
+                if len(fullimage_val) == 2:
+                    # This looks like a base and timestamp that need to be combined
+                    base = str(fullimage_val[0]).strip()
+                    timestamp = str(fullimage_val[1]).strip()
+                    if base and timestamp:
+                        # Combine them into a proper URL
+                        combined_url = f"{base}._AC_SL600_V{timestamp}_.jpg"
+                        formatted_img = self.reformat_image_link(combined_url)
+                        if formatted_img and formatted_img != "https://via.placeholder.com/400x300?text=Image+Not+Found":
+                            images.append(formatted_img)
+                else:
+                    # Process each item normally
+                    for img in fullimage_val:
+                        if img and str(img).strip():
+                            formatted_img = self.reformat_image_link(str(img))
+                            if formatted_img and formatted_img != "https://via.placeholder.com/400x300?text=Image+Not+Found":
+                                images.append(formatted_img)
             else:
-                images = [self.reformat_image_link(img) for img in self.safe_list(fullimage_val)]
+                # If it's a string, split by comma and process
+                img_list = self.safe_list(fullimage_val)
+                if len(img_list) == 2:
+                    # This looks like a base and timestamp that need to be combined
+                    base = img_list[0].strip()
+                    timestamp = img_list[1].strip()
+                    if base and timestamp:
+                        # Combine them into a proper URL
+                        combined_url = f"{base}._AC_SL600_V{timestamp}_.jpg"
+                        formatted_img = self.reformat_image_link(combined_url)
+                        if formatted_img and formatted_img != "https://via.placeholder.com/400x300?text=Image+Not+Found":
+                            images.append(formatted_img)
+                else:
+                    # Process each item normally
+                    for img in img_list:
+                        if img and str(img).strip():
+                            formatted_img = self.reformat_image_link(str(img))
+                            if formatted_img and formatted_img != "https://via.placeholder.com/400x300?text=Image+Not+Found":
+                                images.append(formatted_img)
         
         # Format thumbnail image
         thumbnail = metadata.get("THUMBNAIL", "")
@@ -139,10 +195,29 @@ class ProductService:
             return []
 
     async def get_product(self, product_id: int) -> Optional[Product]:
-        results = self.collection.get(where={"PRODUCT_ID": str(product_id)})
-        if not results["metadatas"]:
+        try:
+            results = self.collection.get(where={"PRODUCT_ID": str(product_id)})
+            
+            if not results["metadatas"] or len(results["metadatas"]) == 0:
+                return None
+            
+            # Get the first (and should be only) metadata
+            metadata = results["metadatas"][0]
+            
+            if metadata is None:
+                return None
+                
+            # Ensure metadata is a proper dictionary
+            if isinstance(metadata, dict):
+                meta_dict = metadata
+            else:
+                meta_dict = dict(metadata)
+            
+            product = self._metadata_to_product(meta_dict)
+            return product
+        except Exception as e:
+            print(f"⚠️ Error fetching product {product_id}: {e}")
             return None
-        return self._metadata_to_product(dict(results["metadatas"][0]))
 
 
 if __name__ == "__main__":

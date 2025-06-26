@@ -141,7 +141,7 @@ export default function ProductDetail() {
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
-              {renderImage(selectedImage || '', product.title || 'Product', "w-full h-96 object-cover rounded-xl")}
+              {renderImage(selectedImage || product?.image || '', product.title || 'Product', "w-full h-96 object-cover rounded-xl")}
               {/* Fallback image (hidden by default) */}
               <div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-xl hidden">
                 <div className="text-center">
@@ -182,6 +182,21 @@ export default function ProductDetail() {
                 ))}
               </div>
             )}
+            
+            {/* Show main product image as thumbnail if no additional images */}
+            {(!product.images || product.images.length <= 1) && product.image && (
+              <div className="flex space-x-2">
+                <div className="relative">
+                  <div className="cursor-pointer">
+                    {renderImage(product.image, product.title || 'Product', `w-16 h-16 object-cover rounded-lg border-2 border-chewy-blue`)}
+                    {/* Fallback thumbnail (hidden by default) */}
+                    <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-lg border-2 border-chewy-blue hidden">
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Details */}
@@ -202,7 +217,7 @@ export default function ProductDetail() {
                   <div className="flex">
                     {renderStars(product.rating || 0)}
                   </div>
-                  <span className="text-sm text-gray-600 ml-2">{product.rating}</span>
+                  <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
                   <span className="text-sm text-chewy-blue ml-2 hover:underline cursor-pointer">
                     {product.reviewCount} Ratings
                   </span>

@@ -13,7 +13,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
 
@@ -51,12 +51,11 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
             </div>
             {/* User and Cart Icons */}
             <div className="flex items-center space-x-4 ml-4">
-              <div 
-                className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer"
-                onClick={logout}
-              >
-                <User className="w-5 h-5" />
-              </div>
+              <Link href="/profile">
+                <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
+                  <User className="w-5 h-5" />
+                </div>
+              </Link>
               <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
                 <ShoppingCart className="w-5 h-5" />
               </div>
@@ -67,7 +66,7 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
     );
   }
 
-  // Desktop version (unchanged)
+  // Desktop version
   return (
     <header className="bg-chewy-blue text-white shadow-lg sticky top-0 z-40">
       <div className="max-w-full mx-auto px-8 sm:px-12 lg:px-16">
@@ -152,13 +151,12 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
               <span className="text-sm">24/7 Help</span>
             </div>
             
-            <div 
-              className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer"
-              onClick={logout}
-            >
-              <User className="w-4 h-4" />
-              <span className="text-sm">{user?.name || 'Sign In'}</span>
-            </div>
+            <Link href="/profile">
+              <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
+                <User className="w-4 h-4" />
+                <span className="text-sm">{user?.name || 'Sign In'}</span>
+              </div>
+            </Link>
             
             <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
               <ShoppingCart className="w-4 h-4" />

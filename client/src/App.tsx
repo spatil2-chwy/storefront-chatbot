@@ -8,10 +8,20 @@ import { GlobalChatProvider } from "@/contexts/ChatContext";
 import Login from "@/pages/Login";
 import ProductListing from "@/pages/ProductListing";
 import ProductDetail from "@/pages/ProductDetail";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-chewy-blue"></div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return <Redirect to="/login" />;
@@ -32,6 +42,11 @@ function Router() {
       <Route path="/product/:id">
         <ProtectedRoute>
           <ProductDetail />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <Profile />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

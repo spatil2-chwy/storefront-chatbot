@@ -1,3 +1,5 @@
+from sqlalchemy import Column, Integer, String, Float, Boolean, JSON
+from src.database import Base
 from pydantic import BaseModel
 from typing import List, Optional
 

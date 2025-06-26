@@ -68,6 +68,26 @@ product_df = df[df['TYPE'] == 'Product'].fillna({
     "PURCHASE_BRAND": "",
 })
 
+# === Step 3.5: Fill Missing Thumbnails and Print Stats ===
+# Track NaNs before filling
+nan_before = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+# Fill thumbnails from images_dict (based on item variants)
+def fill_image(row, col):
+    if not row[col]:  # empty string or NaN
+        return images_dict.get(row['PRODUCT_ID'], {}).get(col, "")
+    return row[col]
+
+product_df['THUMBNAIL'] = product_df.apply(lambda row: fill_image(row, 'THUMBNAIL'), axis=1)
+product_df['FULLIMAGE'] = product_df.apply(lambda row: fill_image(row, 'FULLIMAGE'), axis=1)
+
+# Track NaNs after filling
+nan_after = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+print(f"🖼️ THUMBNAILs missing before fill: {nan_before}")
+print(f"🖼️ THUMBNAILs missing after fill: {nan_after}")
+
+
 # === Step 4: Load Review Synthesis JSONL ===
 with open(REVIEW_SYNTH_PATH, "r") as f:
     review_map = {

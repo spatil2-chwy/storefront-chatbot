@@ -1,13 +1,12 @@
-from pydantic import BaseModel
-from datetime import datetime
-from .constants import SenderType
+from sqlalchemy import Column, String, Text, DateTime, Enum
+from src.models.constants import SenderType as DbSenderType
+from src.database import Base
 
-class ChatMessage(BaseModel):
-    id: str                  
-    content: str              
-    sender: SenderType        
-    timestamp: datetime       
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
 
-class ChatMessageCreate(BaseModel):
-    content: str              
-    sender: SenderType      
+    id        = Column(String, primary_key=True, index=True)
+    content   = Column(Text, nullable=False)
+    sender    = Column(Enum(DbSenderType), nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+

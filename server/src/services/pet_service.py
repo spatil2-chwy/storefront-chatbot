@@ -1,56 +1,50 @@
-from typing import Dict, List, Optional
-from datetime import datetime
-import uuid
+from typing import List
+from sqlalchemy.orm import Session, joinedload
 from src.models.pet import PetProfile
+from src.models.user import User
 
 class PetService:
-    def __init__(self):
-        self.profiles: Dict[int, PetProfile] = {}
-        self._init_dummy()
-        # next ID is one higher than max existing
-        self._next_id = max(self.profiles.keys(), default=0) + 1
+    def get_pet_profiles(self, db: Session) -> List[PetProfile]:
+        return db.query(PetProfile).all()
 
-    def _init_dummy(self):
-        # example dummy
-        now = datetime.now()
-        dummy = PetProfile(
-            pet_profile_id=1,
-            customer_id=1,
-            pet_name="Fido",
-            pet_type="Dog",
-            status="active",
-            time_created=now
+    def get_pet_profile(self, db: Session, pet_profile_id: int) -> PetProfile | None:
+        return (
+            db.query(PetProfile)
+              .filter(PetProfile.pet_profile_id == pet_profile_id)
+              .one_or_none()
         )
-        self.profiles[dummy.pet_profile_id] = dummy
 
-    async def get_pet_profiles(self, customer_id: Optional[int] = None) -> List[PetProfile]:
-        if customer_id is None:
-            return list(self.profiles.values())
-        return [p for p in self.profiles.values() if p.customer_id == customer_id]
+    def get_pet_owner(self, db: Session, pet_profile_id: int) -> User | None:
+        pet = (
+            db.query(PetProfile)
+              .options(joinedload(PetProfile.owner))
+              .filter(PetProfile.pet_profile_id == pet_profile_id)
+              .one_or_none()
+        )
+        return pet.owner if pet else None
 
-    async def get_pet_profile(self, pet_profile_id: int) -> Optional[PetProfile]:
-        return self.profiles.get(pet_profile_id)
-
-    async def create_pet_profile(self, data: PetProfile) -> PetProfile:
-        pid = self._next_id
-        self._next_id += 1
-        now = datetime.now()
-        profile = data.copy(update={
-            "pet_profile_id": pid,
-            "time_created": now,
-            "time_updated": None
-        })
-        self.profiles[pid] = profile
+    def create_pet(self, db: Session, profile: PetProfile) -> PetProfile:
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
         return profile
 
-    async def update_pet_profile(self, pet_profile_id: int, data: PetProfile) -> Optional[PetProfile]:
-        existing = self.profiles.get(pet_profile_id)
-        if not existing:
+    def update_pet(self, db: Session, pet_profile_id: int, profile: PetProfile) -> PetProfile | None:
+        pet = db.query(PetProfile).filter(PetProfile.pet_profile_id == pet_profile_id).one_or_none()
+        if not pet:
             return None
-        now = datetime.now()
-        updated = existing.copy(update={**data.dict(exclude_unset=True), "time_updated": now})
-        self.profiles[pet_profile_id] = updated
-        return updated
+        for attr, value in vars(profile).items():
+            if attr.startswith('_') or attr == 'pet_profile_id':
+                continue
+            setattr(pet, attr, value)
+        db.commit()
+        db.refresh(pet)
+        return pet
 
-    async def delete_pet_profile(self, pet_profile_id: int) -> bool:
-        return self.profiles.pop(pet_profile_id, None) is not None
+    def delete_pet(self, db: Session, pet_profile_id: int) -> bool:
+        pet = db.query(PetProfile).filter(PetProfile.pet_profile_id == pet_profile_id).one_or_none()
+        if not pet:
+            return False
+        db.delete(pet)
+        db.commit()
+        return True

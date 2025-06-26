@@ -1,31 +1,67 @@
-from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, Float, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator, String as SQLString
+from src.database import Base
 
-class PetProfile(BaseModel):
-    pet_profile_id: int
-    customer_id: int
-    pet_name: Optional[str] = None
-    pet_type: Optional[str] = None
-    pet_breed: Optional[str] = None
-    pet_breed_size_type: Optional[str] = None
-    gender: Optional[str] = None
-    weight_type: Optional[str] = None
-    size_type: Optional[str] = None
-    birthday: Optional[date] = None
-    birthday_estimated: Optional[bool] = None
-    life_stage: Optional[str] = None
-    adopted: Optional[bool] = None
-    adoption_date: Optional[date] = None
-    status: str
-    status_reason: Optional[str] = None
-    time_created: datetime
-    time_updated: Optional[datetime] = None
-    weight: Optional[int] = None
-    allergy_count: Optional[int] = None
-    photo_count: Optional[int] = None
-    pet_breed_id: Optional[int] = None
-    pet_type_id: Optional[int] = None
-    pet_new: Optional[bool] = None
-    first_birthday: Optional[date] = None
+class SQLiteDate(TypeDecorator):
+    """SQLite date type that handles string conversion"""
+    impl = SQLString
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                # Handle SQLite datetime format
+                if ' ' in value:
+                    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f").date()
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return None
+        return value
 
+class SQLiteDateTime(TypeDecorator):
+    """SQLite datetime type that handles string conversion"""
+    impl = SQLString
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+            except ValueError:
+                return None
+        return value
+
+class PetProfile(Base):
+    __tablename__ = "pet_profiles"
+    
+    pet_profile_id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers_full.customer_id"), nullable=False)
+    pet_name = Column(String)
+    pet_type = Column(String)
+    pet_breed = Column(String)
+    pet_breed_size_type = Column(String, nullable=True)
+    gender = Column(String)
+    weight_type = Column(String, nullable=True)
+    size_type = Column(String, nullable=True)
+    birthday = Column(SQLiteDate)
+    life_stage = Column(String)
+    adopted = Column(Boolean)
+    adoption_date = Column(SQLiteDate, nullable=True)
+    status = Column(String)
+    status_reason = Column(String, nullable=True)
+    time_created = Column(SQLiteDateTime)
+    time_updated = Column(SQLiteDateTime)
+    weight = Column(Float)
+    allergy_count = Column(Integer)
+    photo_count = Column(Integer)
+    pet_breed_id = Column(Integer)
+    pet_type_id = Column(Integer)
+    pet_new = Column(Boolean)
+    first_birthday = Column(SQLiteDate, nullable=True)
+    
+    # Relationship back to User
+    owner = relationship("User", back_populates="pets")
