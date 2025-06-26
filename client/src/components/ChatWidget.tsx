@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Package } from 'lucide-react';
+import { MessageCircle, X, Send, Package, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,12 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     currentContext, 
     setCurrentContext, 
     isOpen, 
-    setIsOpen 
+    setIsOpen,
+    comparingProducts,
+    isInComparisonMode,
+    clearComparison,
+    shouldAutoOpen,
+    setShouldAutoOpen
   } = useGlobalChat();
   
   const [inputValue, setInputValue] = useState('');
@@ -44,10 +49,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   }, [messages]);
 
   useEffect(() => {
-    if (shouldOpen) {
+    if (shouldOpen || shouldAutoOpen) {
       setIsOpen(true);
+      setShouldAutoOpen(false); // Reset auto-open trigger
     }
-  }, [shouldOpen, setIsOpen]);
+  }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
 
   // Handle chat context changes
   useEffect(() => {
@@ -82,11 +88,44 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
+  // Handle comparison mode changes
+  useEffect(() => {
+    if (isInComparisonMode && comparingProducts.length >= 2) {
+      // Only add comparison message if we don't already have one
+      const hasComparisonMessage = messages.some(msg => 
+        msg.content.includes('🔍 Comparing:') && msg.sender === 'ai'
+      );
+      
+      if (!hasComparisonMessage) {
+        const productNames = comparingProducts.map(p => p.title).join(', ');
+        const comparisonMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔍 Comparing: ${productNames}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(comparisonMessage);
+      }
+    }
+  }, [isInComparisonMode, comparingProducts, messages, addMessage]);
+
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
     setIsLiveAgent(liveAgent);
     // Clear input when switching modes
     setInputValue('');
+  };
+
+  const handleExitToGeneralChat = () => {
+    clearComparison();
+    setCurrentContext({ type: 'general' });
+    const exitMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: `🔄 Transitioned to general chat\n\nI'm now ready to help with general questions about pet products!`,
+      sender: 'ai',
+      timestamp: new Date(),
+    };
+    addMessage(exitMessage);
   };
 
   useEffect(() => {
@@ -127,6 +166,39 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
+    
+    // Comparison-specific responses
+    if (isInComparisonMode && comparingProducts.length >= 2) {
+      if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
+        const productNames = comparingProducts.map(p => p.title).join(' vs ');
+        const priceComparison = comparingProducts.map(p => `${p.title}: $${p.price}`).join(', ');
+        const ratingComparison = comparingProducts.map(p => `${p.title}: ${p.rating}★`).join(', ');
+        
+        return `Here's a comparison of ${productNames}:\n\n💰 Price: ${priceComparison}\n⭐ Ratings: ${ratingComparison}\n\nWould you like me to compare specific aspects like ingredients, reviews, or value for money?`;
+      }
+      
+      if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('cheap')) {
+        const sortedByPrice = [...comparingProducts].sort((a, b) => (a.price || 0) - (b.price || 0));
+        const cheapest = sortedByPrice[0];
+        const mostExpensive = sortedByPrice[sortedByPrice.length - 1];
+        
+        return `Price comparison:\n\n💵 ${cheapest.title} is the most affordable at $${cheapest.price}\n💵 ${mostExpensive.title} is the most expensive at $${mostExpensive.price}\n\nWould you like me to factor in Autoship savings or compare value for money?`;
+      }
+      
+      if (lowerMessage.includes('rating') || lowerMessage.includes('review') || lowerMessage.includes('star')) {
+        const sortedByRating = [...comparingProducts].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        const highestRated = sortedByRating[0];
+        
+        return `Rating comparison:\n\n⭐ ${highestRated.title} has the highest rating at ${highestRated.rating}★ (${highestRated.reviewCount} reviews)\n\nAll products have solid ratings, but ${highestRated.title} seems to be the customer favorite. Would you like me to look into specific review themes?`;
+      }
+      
+      if (lowerMessage.includes('ingredient') || lowerMessage.includes('what') || lowerMessage.includes('made')) {
+        return `I can help you compare ingredients! Here's what I found:\n\n${comparingProducts.map(p => `• ${p.title}: ${p.keywords?.slice(0, 3).join(', ') || 'Ingredients not available'}`).join('\n')}\n\nWould you like me to look for specific ingredients or dietary restrictions?`;
+      }
+      
+      // Default comparison response
+      return `I'm comparing ${comparingProducts.map(p => p.title).join(', ')}. What specific aspect would you like me to compare - price, ratings, ingredients, or something else?`;
+    }
     
     // Product-specific responses
     if (currentContext.type === 'product' && currentContext.product) {
@@ -219,6 +291,55 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   };
 
+  // Render comparison products section
+  const renderComparisonProducts = () => {
+    if (!isInComparisonMode || comparingProducts.length === 0) return null;
+
+    const imageWidth = comparingProducts.length === 2 ? 'w-1/2' : 'w-1/3';
+
+    return (
+      <div className="bg-chewy-light-blue border border-chewy-blue rounded-lg p-3 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-chewy-blue">
+            Comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={clearComparison}
+            className="text-chewy-blue hover:text-blue-700 text-sm"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex space-x-2">
+          {comparingProducts.map((product) => (
+            <div key={product.id} className={`${imageWidth} flex-shrink-0`}>
+              <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
+                {product.image ? (
+                  <img 
+                    src={product.image} 
+                    alt={product.title}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                ) : (
+                  <Package className="w-6 h-6 text-gray-400" />
+                )}
+              </div>
+              <p className="text-xs text-chewy-blue text-center truncate">
+                {product.title?.split(' ').slice(0, 2).join(' ')}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const handleCloseChat = () => {
+    setIsOpen(false);
+    // Store that user closed the chat so we can auto-open on page transitions
+    localStorage.setItem('chatClosed', 'true');
+  };
+
   // Desktop: floating window, Mobile: bottom drawer/modal
   if (isMobile) {
     return (
@@ -254,7 +375,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setIsOpen(false)}
+                    onClick={handleCloseChat}
                     className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-7 h-7"
                   >
                     <X className="w-4 h-4" />
@@ -286,17 +407,28 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   </div>
                   {/* Clear Chat Button - Only show in AI mode */}
                   {!isLiveAgent && messages.length > 0 && (
-                    <button
-                      onClick={() => {
-                        clearMessages();
-                        setInputValue('');
-                        processedQueryRef.current = '';
-                        onClearChat?.();
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-                    >
-                      Clear chat
-                    </button>
+                    <div className="flex flex-col items-end space-y-1">
+                      <button
+                        onClick={() => {
+                          clearMessages();
+                          setInputValue('');
+                          processedQueryRef.current = '';
+                          onClearChat?.();
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                      >
+                        Clear chat
+                      </button>
+                      {isInComparisonMode && (
+                        <button
+                          onClick={handleExitToGeneralChat}
+                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                        >
+                          <ArrowLeft className="w-3 h-3" />
+                          Exit to general chat
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -360,6 +492,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           </div>
                         </div>
                       ))}
+                      
+                      {/* Comparison products section - appears at the end */}
+                      {renderComparisonProducts()}
+                      
                       {/* Loading indicator */}
                       {isLoading && (
                         <div className="flex justify-start">
@@ -488,7 +624,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseChat}
                 className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-7 h-7"
               >
                 <X className="w-4 h-4" />
@@ -522,19 +658,30 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               
               {/* Clear Chat Button - Only show in AI mode */}
               {!isLiveAgent && messages.length > 0 && (
-                <button
-                  onClick={() => {
-                    clearMessages();
-                    setInputValue('');
-                    processedQueryRef.current = ''; // Reset processed query ref
-                    
-                    // Reset search state when clearing chat
-                    onClearChat?.();
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-                >
-                  Clear chat
-                </button>
+                <div className="flex flex-col items-end space-y-1">
+                  <button
+                    onClick={() => {
+                      clearMessages();
+                      setInputValue('');
+                      processedQueryRef.current = ''; // Reset processed query ref
+                      
+                      // Reset search state when clearing chat
+                      onClearChat?.();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                  >
+                    Clear chat
+                  </button>
+                  {isInComparisonMode && (
+                    <button
+                      onClick={handleExitToGeneralChat}
+                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Exit to general chat
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </CardHeader>
@@ -600,6 +747,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     </div>
                   ))}
 
+                  {/* Comparison products section - appears at the end */}
+                  {renderComparisonProducts()}
+                  
                   {/* Loading indicator */}
                   {isLoading && (
                     <div className="flex justify-start">

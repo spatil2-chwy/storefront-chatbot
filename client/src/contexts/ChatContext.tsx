@@ -17,6 +17,16 @@ interface GlobalChatContextType {
   setCurrentSearchQuery: (query: string) => void;
   hasSearched: boolean;
   setHasSearched: (searched: boolean) => void;
+  // Comparison state management
+  comparingProducts: Product[];
+  addToComparison: (product: Product) => void;
+  removeFromComparison: (productId: number) => void;
+  clearComparison: () => void;
+  isInComparisonMode: boolean;
+  setIsInComparisonMode: (mode: boolean) => void;
+  // Auto-open management
+  shouldAutoOpen: boolean;
+  setShouldAutoOpen: (should: boolean) => void;
 }
 
 const GlobalChatContext = createContext<GlobalChatContextType | undefined>(undefined);
@@ -43,12 +53,48 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
+  // Comparison state management
+  const [comparingProducts, setComparingProducts] = useState<Product[]>([]);
+  const [isInComparisonMode, setIsInComparisonMode] = useState<boolean>(false);
+  
+  // Auto-open management
+  const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
+
   const addMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => [...prev, message]);
   }, []);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+  }, []);
+
+  const addToComparison = useCallback((product: Product) => {
+    if (comparingProducts.length >= 3) return; // Max 3 products
+    
+    setComparingProducts(prev => {
+      const exists = prev.find(p => p.id === product.id);
+      if (exists) return prev; // Already in comparison
+      return [...prev, product];
+    });
+    
+    // Enter comparison mode if we have at least 2 products
+    if (comparingProducts.length === 1) {
+      setIsInComparisonMode(true);
+    }
+  }, [comparingProducts.length]);
+
+  const removeFromComparison = useCallback((productId: number) => {
+    setComparingProducts(prev => prev.filter(p => p.id !== productId));
+    
+    // Exit comparison mode if less than 2 products
+    if (comparingProducts.length <= 2) {
+      setIsInComparisonMode(false);
+    }
+  }, [comparingProducts.length]);
+
+  const clearComparison = useCallback(() => {
+    setComparingProducts([]);
+    setIsInComparisonMode(false);
   }, []);
 
   return (
@@ -68,6 +114,14 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         setCurrentSearchQuery,
         hasSearched,
         setHasSearched,
+        comparingProducts,
+        addToComparison,
+        removeFromComparison,
+        clearComparison,
+        isInComparisonMode,
+        setIsInComparisonMode,
+        shouldAutoOpen,
+        setShouldAutoOpen,
       }}
     >
       {children}

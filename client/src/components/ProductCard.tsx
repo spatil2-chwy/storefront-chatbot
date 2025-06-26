@@ -1,15 +1,26 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Heart, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Heart, RotateCcw, Image as ImageIcon, Check } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useGlobalChat } from '../contexts/ChatContext';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const { 
+    comparingProducts, 
+    addToComparison, 
+    removeFromComparison, 
+    isInComparisonMode 
+  } = useGlobalChat();
+
+  const isSelected = comparingProducts.some(p => p.id === product.id);
+  const isMaxReached = comparingProducts.length >= 3 && !isSelected;
+
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -57,6 +68,17 @@ export default function ProductCard({ product }: ProductCardProps) {
     );
   };
 
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isSelected) {
+      removeFromComparison(product.id!);
+    } else if (!isMaxReached) {
+      addToComparison(product);
+    }
+  };
+
   return (
     <Link href={`/product/${product.id}`}>
       <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer h-full flex flex-col">
@@ -69,6 +91,41 @@ export default function ProductCard({ product }: ProductCardProps) {
               <p className="text-sm text-gray-500">Image not available</p>
             </div>
           </div>
+          
+          {/* Compare checkbox */}
+          <div className="absolute top-2 left-2">
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={handleCompareClick}
+                disabled={isMaxReached}
+                className={`p-5.5 rounded transition-all duration-200 ${
+                  isSelected 
+                    ? 'bg-chewy-blue text-white shadow-md' 
+                    : isMaxReached
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-transparent text-white hover:bg-white/20 shadow-md hover:shadow-lg'
+                }`}
+              >
+                {isSelected ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <div className="w-3 h-3 border-2 border-current rounded-sm" />
+                )}
+              </button>
+              <Badge 
+                className={`text-[9px] px-1.5 py-0.5 ${
+                  isSelected 
+                    ? 'bg-chewy-blue text-white' 
+                    : isMaxReached
+                    ? 'bg-gray-300 text-gray-500'
+                    : 'bg-black/50 text-white border border-white/30'
+                }`}
+              >
+                Compare
+              </Badge>
+            </div>
+          </div>
+          
           <button className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50">
             <Heart className="w-4 h-4 text-gray-400" />
           </button>

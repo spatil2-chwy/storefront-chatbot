@@ -26,8 +26,21 @@ export default function ProductListing() {
     currentSearchQuery, 
     setCurrentSearchQuery, 
     hasSearched, 
-    setHasSearched 
+    setHasSearched,
+    setShouldAutoOpen,
+    comparingProducts,
+    isInComparisonMode
   } = useGlobalChat();
+
+  // Auto-open chatbot when navigating to this page
+  useEffect(() => {
+    // Check if user had closed the chatbot before
+    const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
+    if (wasChatClosed) {
+      setShouldAutoOpen(true);
+      localStorage.removeItem('chatClosed'); // Reset the flag
+    }
+  }, [setShouldAutoOpen]);
 
   useEffect(() => {
     // Listen for clear chat events
