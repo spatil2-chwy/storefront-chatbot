@@ -7,6 +7,7 @@ vite.config.ts.*
 /venv
 __pycache__
 .vite
+.env
 
 # product db sources
 scripts/results.jsonl
