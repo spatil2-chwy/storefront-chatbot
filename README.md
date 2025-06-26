@@ -94,7 +94,8 @@ The backend will be available at `http://localhost:8000`
 - **FastAPI** - Modern, fast web framework
 - **Pydantic** - Data validation and serialization
 - **Uvicorn** - ASGI server
-- **In-memory storage** - Dummy data for development
+- **ChromaDB** - Vector database for semantic search
+- **Sentence Transformers** - Text embeddings
 - **CORS middleware** - Frontend integration
 - **Automatic API docs** - Swagger/OpenAPI
 
@@ -107,7 +108,7 @@ The backend will be available at `http://localhost:8000`
 - `POST /api/users` - Create new user
 
 ### Products
-- `GET /api/products` - Get all products (with optional filtering)
+- `GET /api/products/search` - Search products using semantic search
 - `GET /api/products/{product_id}` - Get product by ID
 
 ### Chat

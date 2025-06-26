@@ -81,7 +81,7 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
         addMessage(transitionMessage);
       }
     }
-  }, [chatContext]);
+  }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {

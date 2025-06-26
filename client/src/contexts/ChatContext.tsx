@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { ChatMessage, ChatContext as ChatContextType, Product } from '../types';
 
 interface GlobalChatContextType {
@@ -43,13 +43,13 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
-  const addMessage = (message: ChatMessage) => {
+  const addMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => [...prev, message]);
-  };
+  }, []);
 
-  const clearMessages = () => {
+  const clearMessages = useCallback(() => {
     setMessages([]);
-  };
+  }, []);
 
   return (
     <GlobalChatContext.Provider
