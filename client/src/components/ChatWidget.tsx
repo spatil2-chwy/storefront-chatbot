@@ -9,7 +9,6 @@ import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatWidgetProps {
-  onProductFilter?: (keywords: string[]) => void;
   initialQuery?: string;
   shouldOpen?: boolean;
   shouldClearChat?: boolean;
@@ -17,7 +16,7 @@ interface ChatWidgetProps {
   chatContext?: ChatContext;
 }
 
-export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
+export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
   const { 
     messages, 
     setMessages, 
@@ -111,12 +110,6 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
       
       setIsLoading(true);
       
-      // Extract keywords for product filtering
-      const keywords = extractKeywords(initialQuery);
-      if (keywords.length > 0) {
-        onProductFilter?.(keywords);
-      }
-      
       // Generate AI response
       setTimeout(() => {
         const aiResponse: ChatMessage = {
@@ -188,32 +181,6 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     return chatResponses[Math.floor(Math.random() * chatResponses.length)];
   };
 
-  const extractKeywords = (message: string): string[] => {
-    const keywords: string[] = [];
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes('grain-free') || lowerMessage.includes('grain free')) {
-      keywords.push('grain-free');
-    }
-    if (lowerMessage.includes('treats') || lowerMessage.includes('training')) {
-      keywords.push('treats');
-    }
-    if (lowerMessage.includes('dental') || lowerMessage.includes('chew')) {
-      keywords.push('dental');
-    }
-    if (lowerMessage.includes('salmon')) {
-      keywords.push('salmon');
-    }
-    if (lowerMessage.includes('chicken')) {
-      keywords.push('chicken');
-    }
-    if (lowerMessage.includes('beef')) {
-      keywords.push('beef');
-    }
-    
-    return keywords;
-  };
-
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
     if (isLiveAgent) return;
@@ -231,12 +198,6 @@ export default function ChatWidget({ onProductFilter, initialQuery, shouldOpen, 
     addMessage(userMessage);
     setInputValue(''); // Always clear input after sending
     setIsLoading(true);
-
-    // Extract keywords for product filtering
-    const keywords = extractKeywords(messageToSend);
-    if (keywords.length > 0) {
-      onProductFilter?.(keywords);
-    }
 
     // Simulate AI response delay
     setTimeout(() => {

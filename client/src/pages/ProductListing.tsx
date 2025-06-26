@@ -130,29 +130,6 @@ export default function ProductListing() {
     setSearchResults(filtered);
   };
 
-  const handleProductFilter = async (keywords: string[]) => {
-    if (keywords.length === 0) {
-      setSearchResults([]);
-      setHasSearched(false);
-      return;
-    }
-    
-    setIsSearching(true);
-    setSearchError(null);
-    setHasSearched(true);
-
-    try {
-      // Use semantic search with the first keyword
-      const searchResults = await api.searchProducts(keywords[0], 10);
-      setSearchResults(searchResults);
-    } catch (err) {
-      setSearchError(err instanceof Error ? err.message : 'Search failed');
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   const handleSortChange = (value: string) => {
     setSortBy(value);
   };
@@ -267,7 +244,6 @@ export default function ProductListing() {
       </main>
 
       <ChatWidget 
-        onProductFilter={handleProductFilter} 
         initialQuery={chatQuery}
         shouldOpen={shouldOpenChat}
         shouldClearChat={hasSearched}
