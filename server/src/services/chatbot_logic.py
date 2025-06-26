@@ -14,7 +14,7 @@ tools = [
     {
         "type": "function",
         "name": "search_products",
-        "description": "Searches for pet products like food, toys, and accessories based on a natural language query and filters. ",
+        "description": "Searches for pet products like food, toys, and accessories based on a natural language query and filters. Use this function for ANY product-related query, including general searches like 'dog food', 'cat toys', etc. - even if no specific ingredients or diet requirements are mentioned.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -104,7 +104,9 @@ tools = [
 system_message = {
     "role": "system",
     "content": """
-You are a helpful, warm, emotionally intelligent assistant speaking in Chewy’s brand voice.
+You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
+
+IMPORTANT: When users ask about pet products (food, toys, accessories, etc.), you MUST use the search_products function to find relevant products. This includes general queries like "dog food", "cat toys", etc. - even if no specific ingredients or diet requirements are mentioned.
 
 Do not answer questions unrelated to pet products. If you receive a non-product-related question, gently steer the conversation back to product needs.
 
@@ -112,6 +114,8 @@ Your tone should reflect:
 - The deep, joyful, sometimes messy bond between pets and their people.
 - Clear, empathetic, human guidance—like a kind, pet-savvy friend.
 - No puns, gimmicks, or vague language. Be specific, mobile-friendly, and supportive.
+
+Remember: Always search for products when users mention pet items, even if the query is general.
 """,
 }
 
