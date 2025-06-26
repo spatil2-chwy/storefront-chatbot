@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Heart, RotateCcw } from 'lucide-react';
+import { Heart, RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,29 +31,56 @@ export default function ProductCard({ product }: ProductCardProps) {
     return stars;
   };
 
+  const renderImage = () => {
+    if (!product.image || product.image === '') {
+      return (
+        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={product.image} 
+        alt={product.title}
+        className="w-full h-48 object-cover"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          target.nextElementSibling?.classList.remove('hidden');
+        }}
+      />
+    );
+  };
+
   return (
     <Link href={`/product/${product.id}`}>
-      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer">
+      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer h-full flex flex-col">
         <div className="relative">
-          <img 
-            src={product.image} 
-            alt={product.title}
-            className="w-full h-48 object-cover"
-          />
-          {product.deal && (
-            <div className="absolute top-2 left-2">
-              <Badge className="bg-red-500 text-white text-xs font-medium">Deal</Badge>
+          {renderImage()}
+          {/* Fallback image (hidden by default) */}
+          <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
+            <div className="text-center">
+              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Image not available</p>
             </div>
-          )}
+          </div>
           <button className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50">
             <Heart className="w-4 h-4 text-gray-400" />
           </button>
         </div>
         
-        <CardContent className="p-4">
-          <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">
-            {product.title}
-          </h3>
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <div className="mb-2">
+          <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
+            <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
+            <span className="text-[13px] align-middle">{product.title}</span>
+          </h4>
+          </div>
           
           <div className="flex items-center mb-2">
             <div className="flex items-center">
@@ -67,20 +94,22 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
           
-          <div className="space-y-1">
+          <div className="space-y-1 mt-auto">
             <div className="flex items-center space-x-2">
               <span className="text-lg font-semibold text-gray-900">${product.price}</span>
               {product.originalPrice && product.originalPrice > (product.price || 0) && (
                 <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
-              <div className="flex items-center space-x-1">
-                <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+            {(product.autoshipPrice ?? 0) > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
+                <div className="flex items-center space-x-1">
+                  <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                  <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

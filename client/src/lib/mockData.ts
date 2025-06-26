@@ -151,6 +151,40 @@ export const mockProducts: Product[] = [
     category: "dog-accessories",
     keywords: ["puzzle feeder", "slow feeding", "interactive", "bowl", "accessories"],
   },
+  {
+    id: 9,
+    title: "Premium Cat Scratching Post with Perch - No Autoship Available",
+    brand: "CatFurniture Pro",
+    price: 89.99,
+    autoshipPrice: 0, // No autoship available
+    rating: 4.2,
+    reviewCount: 342,
+    image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
+    images: [
+      "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600",
+    ],
+    deal: false,
+    description: "High-quality scratching post with multiple levels and comfortable perches for cats.",
+    inStock: true,
+    category: "cat-accessories",
+    keywords: ["scratching post", "cat furniture", "perch", "cat accessories"],
+  },
+  {
+    id: 10,
+    title: "Test Product - No Image Available",
+    brand: "Test Brand",
+    price: 29.99,
+    autoshipPrice: 28.49,
+    rating: 4.0,
+    reviewCount: 150,
+    image: "", // No image available
+    images: [],
+    deal: false,
+    description: "This is a test product to verify the image fallback functionality works correctly.",
+    inStock: true,
+    category: "test",
+    keywords: ["test", "fallback", "image"],
+  },
 ];
 
 export const chatResponses = [

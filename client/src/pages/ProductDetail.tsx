@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from 'wouter';
-import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2 } from 'lucide-react';
+import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatWidget from '@/components/ChatWidget';
 import { useProduct } from '@/hooks/useProducts';
@@ -24,6 +24,17 @@ export default function ProductDetail() {
   
   // Get search query from global state
   const { currentSearchQuery } = useGlobalChat();
+
+  const currentPrice = product?.price || 0;
+  const autoshipPrice = product?.autoshipPrice || 0;
+  const hasAutoship = autoshipPrice > 0;
+
+  // Set default purchase option based on autoship availability
+  useEffect(() => {
+    if (product) {
+      setPurchaseOption(hasAutoship ? 'autoship' : 'buyonce');
+    }
+  }, [product, hasAutoship]);
 
   useEffect(() => {
     if (product && product.images && product.images.length > 0) {
@@ -54,8 +65,31 @@ export default function ProductDetail() {
     return stars;
   };
 
-  const currentPrice = product?.price || 0;
-  const autoshipPrice = product?.autoshipPrice || currentPrice * 0.95; // 5% discount
+  const renderImage = (imageSrc: string, altText: string, className: string) => {
+    if (!imageSrc || imageSrc === '') {
+      return (
+        <div className={`${className} bg-gray-100 flex items-center justify-center`}>
+          <div className="text-center">
+            <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Image not available</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={imageSrc} 
+        alt={altText}
+        className={className}
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          target.nextElementSibling?.classList.remove('hidden');
+        }}
+      />
+    );
+  };
 
   if (loading) {
     return (
@@ -107,11 +141,14 @@ export default function ProductDetail() {
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
-              <img 
-                src={selectedImage} 
-                alt={product.title}
-                className="w-full h-96 object-cover rounded-xl"
-              />
+              {renderImage(selectedImage || '', product.title || 'Product', "w-full h-96 object-cover rounded-xl")}
+              {/* Fallback image (hidden by default) */}
+              <div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-xl hidden">
+                <div className="text-center">
+                  <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Image not available</p>
+                </div>
+              </div>
               {product.deal && (
                 <div className="absolute top-4 left-4">
                   <Badge className="bg-red-500 text-white">Deal</Badge>
@@ -126,15 +163,22 @@ export default function ProductDetail() {
             {product.images && product.images.length > 1 && (
               <div className="flex space-x-2">
                 {product.images.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image}
-                    alt={`Product view ${index + 1}`}
-                    className={`w-16 h-16 object-cover rounded-lg cursor-pointer border-2 ${
-                      selectedImage === image ? 'border-chewy-blue' : 'border-gray-300 hover:border-chewy-blue'
-                    }`}
-                    onClick={() => setSelectedImage(image)}
-                  />
+                  <div key={index} className="relative">
+                    <div 
+                      onClick={() => setSelectedImage(image)}
+                      className="cursor-pointer"
+                    >
+                      {renderImage(image, `Product view ${index + 1}`, `w-16 h-16 object-cover rounded-lg border-2 ${
+                        selectedImage === image ? 'border-chewy-blue' : 'border-gray-300 hover:border-chewy-blue'
+                      }`)}
+                      {/* Fallback thumbnail (hidden by default) */}
+                      <div className={`w-16 h-16 bg-gray-100 flex items-center justify-center rounded-lg border-2 hidden ${
+                        selectedImage === image ? 'border-chewy-blue' : 'border-gray-300 hover:border-chewy-blue'
+                      }`}>
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -143,10 +187,15 @@ export default function ProductDetail() {
           {/* Product Details */}
           <div className="space-y-6">
             <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
+                  {product.brand}
+                </Badge>
+                {product.deal && (
+                  <Badge className="bg-red-500 text-white text-xs font-medium">Deal</Badge>
+                )}
+              </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
-              <p className="text-sm text-gray-600">
-                By <span className="text-chewy-blue hover:underline cursor-pointer">{product.brand}</span>
-              </p>
               
               <div className="flex items-center mt-3">
                 <div className="flex items-center">
@@ -166,26 +215,30 @@ export default function ProductDetail() {
             <Card className="bg-gray-50">
               <CardContent className="p-6">
                 <RadioGroup value={purchaseOption} onValueChange={setPurchaseOption}>
-                  {/* Autoship Option */}
-                  <div className="flex items-center space-x-2 mb-4">
-                    <RadioGroupItem value="autoship" id="autoship" />
-                    <Label htmlFor="autoship" className="flex items-center space-x-2 cursor-pointer">
-                      <RotateCcw className="w-4 h-4 text-chewy-blue" />
-                      <span className="font-medium">Autoship</span>
-                      <span className="text-sm text-gray-600">Easy, repeat deliveries</span>
-                    </Label>
-                  </div>
-                  
-                  {purchaseOption === 'autoship' && (
-                    <div className="ml-6 mb-4">
-                      <div className="text-2xl font-bold text-gray-900">${autoshipPrice.toFixed(2)}</div>
-                      <div className="text-sm text-gray-600">
-                        <span className="text-green-600 font-medium">Save 5% on your first Autoship order. Details</span>
+                  {/* Autoship Option - only show if available */}
+                  {hasAutoship && (
+                    <>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <RadioGroupItem value="autoship" id="autoship" />
+                        <Label htmlFor="autoship" className="flex items-center space-x-2 cursor-pointer">
+                          <RotateCcw className="w-4 h-4 text-chewy-blue" />
+                          <span className="font-medium">Autoship</span>
+                          <span className="text-sm text-gray-600">Easy, repeat deliveries</span>
+                        </Label>
                       </div>
-                      <div className="text-sm text-chewy-blue font-medium">
-                        ${(autoshipPrice * 0.95).toFixed(2)} (-5%) future orders
-                      </div>
-                    </div>
+                      
+                      {purchaseOption === 'autoship' && (
+                        <div className="ml-6 mb-4">
+                          <div className="text-2xl font-bold text-gray-900">${autoshipPrice.toFixed(2)}</div>
+                          <div className="text-sm text-gray-600">
+                            <span className="text-green-600 font-medium">Save 5% on your first Autoship order. Details</span>
+                          </div>
+                          <div className="text-sm text-chewy-blue font-medium">
+                            ${(autoshipPrice * 0.95).toFixed(2)} (-5%) future orders
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Buy Once Option */}
@@ -235,9 +288,15 @@ export default function ProductDetail() {
 
               <Button className="w-full bg-chewy-blue hover:bg-blue-700 text-white py-4 px-6 rounded-xl font-semibold text-lg">
                 <div className="flex items-center justify-center space-x-2">
-                  <span>Set Up</span>
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Autoship</span>
+                  {hasAutoship ? (
+                    <>
+                      <span>Set Up</span>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Autoship</span>
+                    </>
+                  ) : (
+                    <span>Add to Cart</span>
+                  )}
                 </div>
               </Button>
             </div>
@@ -253,7 +312,7 @@ export default function ProductDetail() {
             {/* Keywords/Tags */}
             {product.keywords && product.keywords.length > 0 && (
               <div className="border-t pt-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Product Features</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">Product Ingredients</h3>
                 <div className="flex flex-wrap gap-2">
                   {product.keywords.map((keyword, index) => (
                     <Badge key={index} variant="secondary" className="text-xs">

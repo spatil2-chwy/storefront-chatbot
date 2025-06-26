@@ -10,28 +10,7 @@ class ProductService:
         self.collection = self.client.get_collection(name="products")
         # Initialize the same embedding model used in productdbbuilder
         self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-        # Initialize products cache
-        self._products_cache = None
-        # Load products into cache
-        self._load_products()
-
-    def _load_products(self):
-        """Load products from ChromaDB once and cache them in memory"""
-        if self._products_cache is None:
-            try:
-                # Get all products at once (this will be slow the first time, but then cached)
-                all_ids = self.collection.get()["ids"]
-                if all_ids:
-                    results = self.collection.get(ids=all_ids)
-                    metadatas = results["metadatas"] if results["metadatas"] is not None else []
-                    self._products_cache = [dict(meta) for meta in metadatas]
-                else:
-                    self._products_cache = []
-                    
-                print(f"✅ Loaded {len(self._products_cache)} products into memory cache")
-            except Exception as e:
-                print(f"⚠️ Error loading products: {e}")
-                self._products_cache = []
+        print("✅ ProductService initialized successfully")
 
     @staticmethod
     def safe_float(val, default=0.0):
@@ -110,7 +89,7 @@ class ProductService:
             title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
             brand=self.safe_str(metadata.get("PURCHASE_BRAND", "Unknown Brand")),
             price=round(self.safe_float(metadata.get("PRICE", 0.0)), 1),
-            originalPrice=round(self.safe_float(metadata.get("PRICE", 0.0)), 1),
+            originalPrice=None,  # No separate original price field in database
             autoshipPrice=round(self.safe_float(metadata.get("AUTOSHIP_PRICE", 0.0)), 1),
             rating=self.safe_float(metadata.get("RATING_AVG", 0.0)),
             reviewCount=self.safe_int(metadata.get("RATING_CNT", 0)),
