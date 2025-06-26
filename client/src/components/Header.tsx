@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
-import { Search, ChevronDown, Flag, Headphones, User, ShoppingCart } from 'lucide-react';
+import { Link, useLocation } from 'wouter';
+import { Search, ChevronDown, Flag, Headphones, User, ShoppingCart, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ interface HeaderProps {
 export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: HeaderProps) {
   const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [, setLocation] = useLocation();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +23,11 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
       onOpenChatWithQuery?.(searchQuery);
       setSearchQuery(''); // Clear search input after submission
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setLocation('/login');
   };
 
   return (
@@ -108,12 +114,19 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
               <span className="text-sm">24/7 Help</span>
             </div>
             
+            <Link href="/profile">
+              <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
+                <User className="w-4 h-4" />
+                <span className="text-sm">{user?.name || 'Sign In'}</span>
+              </div>
+            </Link>
+            
             <div 
-              className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer"
-              onClick={logout}
+              className="flex items-center space-x-1 hover:text-red-400 cursor-pointer"
+              onClick={handleLogout}
+              title="Sign Out"
             >
-              <User className="w-4 h-4" />
-              <span className="text-sm">{user?.name || 'Sign In'}</span>
+              <LogOut className="w-4 h-4" />
             </div>
             
             <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">

@@ -6,6 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { ChevronDown } from 'lucide-react';
+
+// 5 users who have pets - these will always be suggested
+const USERS_WITH_PETS = [
+  'diane.anderson@gmail.com',
+  'jessica.ewing@gmail.com',
+  'rebecca.ellis@gmail.com',
+  'kathleen.simpson@gmail.com',
+  'aaron.simon@gmail.com',
+];
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -14,6 +24,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredEmails, setFilteredEmails] = useState<string[]>([]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -21,6 +33,20 @@ export default function Login() {
       setLocation('/');
     }
   }, [isAuthenticated, authLoading, setLocation]);
+
+  // Filter emails based on input - but always show all 5 if there's any input
+  useEffect(() => {
+    if (email.length > 0) {
+      const filtered = USERS_WITH_PETS.filter(emailOption => 
+        emailOption.toLowerCase().includes(email.toLowerCase())
+      );
+      setFilteredEmails(filtered);
+      setShowSuggestions(true); // Always show suggestions if there's input
+    } else {
+      setShowSuggestions(false);
+      setFilteredEmails([]);
+    }
+  }, [email]);
 
   // Show loading while checking auth state
   if (authLoading) {
@@ -35,6 +61,11 @@ export default function Login() {
   if (isAuthenticated) {
     return null;
   }
+
+  const handleEmailSelect = (selectedEmail: string) => {
+    setEmail(selectedEmail);
+    setShowSuggestions(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,11 +101,11 @@ export default function Login() {
         <Card className="shadow-xl">
           <CardContent className="py-8 px-10">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
+              <div className="relative">
                 <Label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email Address
                 </Label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
                   <Input
                     id="email"
                     name="email"
@@ -82,9 +113,25 @@ export default function Login() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onFocus={() => email.length > 0 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Enter your email"
                     className="w-full"
                   />
+                  {showSuggestions && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredEmails.map((emailOption, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none text-sm"
+                          onClick={() => handleEmailSelect(emailOption)}
+                        >
+                          {emailOption}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

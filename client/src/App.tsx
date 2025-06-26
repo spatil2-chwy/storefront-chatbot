@@ -8,6 +8,7 @@ import { GlobalChatProvider } from "@/contexts/ChatContext";
 import Login from "@/pages/Login";
 import ProductListing from "@/pages/ProductListing";
 import ProductDetail from "@/pages/ProductDetail";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,11 @@ function Router() {
       <Route path="/product/:id">
         <ProtectedRoute>
           <ProductDetail />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <Profile />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
