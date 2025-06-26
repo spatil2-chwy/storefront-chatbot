@@ -111,3 +111,9 @@ The backend will be available at `http://localhost:8000`
 
 ### Health
 - `GET /api/health` - Health check
+
+Load the data from server:
+
+```bash
+python -m src.scripts.load_data
+````

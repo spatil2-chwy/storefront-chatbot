@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime, date
 from src.models.constants import SenderType
+from src.models.pet import PetProfile as PetProfileModel
 
 class PetProfileBase(BaseModel):
     pet_profile_id: int

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -9,21 +9,46 @@ import { Separator } from '@/components/ui/separator';
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      setLocation('/');
+    }
+  }, [isAuthenticated, authLoading, setLocation]);
+
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-chewy-blue"></div>
+      </div>
+    );
+  }
+
+  // Don't show login form if already authenticated
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
+    setError(null);
+    const ok = await login(email, password);
+    setIsSubmitting(false);
 
-    const success = await login(email, password);
-    if (success) {
-      setLocation('/');
+    if (ok) {
+      // first click → they existed in the DB, so we just redirect
+      setLocation("/");
+    } else {
+      setError("No account found for that email.");
     }
-    
-    setIsLoading(false);
   };
 
   return (
@@ -81,12 +106,18 @@ export default function Login() {
                 </div>
               </div>
 
+              {error && (
+                <div className="text-red-600 text-sm text-center">
+                  {error}
+                </div>
+              )}
+
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="w-full bg-chewy-blue hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-medium"
               >
-                {isLoading ? 'Signing in...' : 'Continue'}
+                {isSubmitting ? 'Signing in...' : 'Continue'}
               </Button>
 
               <div className="mt-6">

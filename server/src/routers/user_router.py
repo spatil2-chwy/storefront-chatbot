@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from typing import List
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import User as UserSchema, UserLogin, PetProfile as PetSchema
 from src.services.user_service import UserService
+from src.models.user import User
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 user_svc = UserService()

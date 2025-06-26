@@ -25,7 +25,7 @@ def main():
         users_df.to_sql(
             name="customers_full",
             con=engine,
-            if_exists="append",
+            if_exists="replace",
             index=False
         )
         print(f"  • Loaded {len(users_df)} users")
@@ -42,7 +42,7 @@ def main():
         pets_df.to_sql(
             name="pet_profiles",
             con=engine,
-            if_exists="append",
+            if_exists="replace",
             index=False
         )
         print(f"Loaded {len(pets_df)} pets")
