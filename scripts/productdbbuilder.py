@@ -37,6 +37,16 @@ items_dict = {
     for parent_id, vals in items_grouped.items()
 }
 
+# Get first available images for each parent product from items
+images_grouped = df_items.groupby('PARENT_ID')[['THUMBNAIL', 'FULLIMAGE']].agg(lambda x: x.dropna().iloc[0] if x.dropna().size > 0 else None).to_dict(orient='index')
+images_dict = {
+    parent_id: {
+        "THUMBNAIL": vals["THUMBNAIL"],
+        "FULLIMAGE": vals["FULLIMAGE"]
+    }
+    for parent_id, vals in images_grouped.items()
+}
+
 # === Step 3: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
     "NAME": "",
@@ -100,8 +110,8 @@ for row in product_rows:
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
         "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
-        "THUMBNAIL": row["THUMBNAIL"],
-        "FULLIMAGE": row["FULLIMAGE"],
+        "THUMBNAIL": row["THUMBNAIL"] if row["THUMBNAIL"] else images_dict.get(part_number, {}).get("THUMBNAIL", ""),
+        "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
         "items": json.dumps(items_dict.get(product_id, [])),
