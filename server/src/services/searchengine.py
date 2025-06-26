@@ -70,7 +70,7 @@ def build_where_clause(required_ingredients: list, special_diet_tags: list):
 
     return where_clause
 
-def query_products(query: str, required_ingredients: list, excluded_ingredients:list, special_diet_tags: list):
+def query_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     where_clause = build_where_clause(required_ingredients, special_diet_tags)
     print(where_clause)
     if where_clause == {}:
@@ -94,6 +94,7 @@ def rank_products(results):
 if __name__ == "__main__":
     special_diet_needs = []
     ingredient_needs = ['Chicken', 'Pumpkin']
+    excluded_ingredients = []
     # where_clause = build_where_clause(ingredient_needs, special_diet_needs)
     # print(where_clause)
     # results = collection.query(
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     #     print(f"Document: {doc}, Metadata: {meta}")
     # print(f"Total results found: {len(results['documents'])}")
 
-    results = query_products("dog food", ingredient_needs, special_diet_needs)
+    results = query_products("dog food", ingredient_needs, excluded_ingredients, special_diet_needs)
     ranked_products = rank_products(results)
     print("Ranked Products:")
     for metadata, document, product_id, distance in ranked_products:

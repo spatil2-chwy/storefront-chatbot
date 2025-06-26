@@ -1,15 +1,13 @@
-import chromadb
 from typing import List, Optional
 from src.models.product import Product
-from sentence_transformers import SentenceTransformer
-import numpy as np
+from src.services.chatbot_logic import chat
 
 class ProductService:
     def __init__(self):
+
+        import chromadb
         self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
         self.collection = self.client.get_collection(name="products")
-        # Initialize the same embedding model used in productdbbuilder
-        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         print("✅ ProductService initialized successfully")
 
     @staticmethod
@@ -158,40 +156,42 @@ class ProductService:
             keywords=keywords,
         )
 
+    def _ranked_result_to_product(self, ranked_result) -> Product:
+        """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
+        metadata, document, product_id, distance = ranked_result
+        
+        # Use the existing _metadata_to_product method
+        return self._metadata_to_product(metadata)
+
     async def search_products(self, query: str, limit: int = 10) -> List[Product]:
-        """Search products using semantic search with embeddings and cosine similarity"""
+        """Search products using LLM agent to parse and filter the query, then semantic search"""
         try:
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=limit,
-                include=["distances", "metadatas", "documents"]
-            )
-            metadatas = results["metadatas"]
-            if metadatas is None or len(metadatas) == 0:
+            # Use the LLM agent to parse the query and get filtered results
+            # We pass an empty history since we're not in a chat context
+            result = chat(query, [])
+            
+            # Extract products from the result
+            ranked_products = result.get("products", [])
+            
+            if not ranked_products:
+                print(f"No products found for query: '{query}'")
                 return []
             
+            # Convert ranked results to Product objects
             products = []
-            # metadatas is a list of lists, where each inner list contains metadata for one result
-            # The first (and only) inner list contains all the metadata for the search results
-            metadata_list = metadatas[0] if metadatas else []
+            for ranked_result in ranked_products[:limit]:  # Limit the results
+                try:
+                    product = self._ranked_result_to_product(ranked_result)
+                    products.append(product)
+                except Exception as e:
+                    print(f"⚠️ Error converting ranked result to product: {e}")
+                    continue
             
-            for meta in metadata_list:
-                if meta is not None:
-                    try:
-                        # Ensure meta is a proper dictionary
-                        if isinstance(meta, dict):
-                            meta_dict = meta
-                        else:
-                            meta_dict = dict(meta)
-                        products.append(self._metadata_to_product(meta_dict))
-                    except Exception as meta_error:
-                        print(f"⚠️ Error converting metadata: {meta_error}")
-                        continue
-            
-            print(f"✅ Found {len(products)} products for query: '{query}'")
+            print(f"Found {len(products)} products for query: '{query}' using LLM agent")
             return products
+            
         except Exception as e:
-            print(f"⚠️ Error searching products: {e}")
+            print(f"Error searching products with LLM agent: {e}")
             return []
 
     async def get_product(self, product_id: int) -> Optional[Product]:
