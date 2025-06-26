@@ -87,7 +87,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               <div className="flex text-sm">
                 {renderStars(product.rating || 0)}
               </div>
-              <span className="text-sm text-gray-600 ml-2">{product.rating}</span>
+              <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
               <span className="text-xs text-gray-500 ml-1">
                 ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
               </span>
