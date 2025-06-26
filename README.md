@@ -34,6 +34,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+Load the data from server:
+
+```bash
+python -m src.scripts.load_data
+````
+
 # Start FastAPI server
 uvicorn main:app --reload --host localhost --port 8000
 ```
@@ -112,8 +118,3 @@ The backend will be available at `http://localhost:8000`
 ### Health
 - `GET /api/health` - Health check
 
-Load the data from server:
-
-```bash
-python -m src.scripts.load_data
-````
