@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List
-from ..models.chat import ChatMessage, ChatMessageCreate
+from ..models.chat import ChatMessage  #, ChatMessageCreate
 from src.services import user_service
 from src.services.chatbot_logic import chat
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,9 +20,9 @@ def get_chat_message(chat_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Chat message not found")
     return msg
 
-@router.post("/chat/messages", response_model=ChatMessage)
-async def add_chat_message(message_data: ChatMessageCreate):
-    return await user_service.add_chat_message(message_data)
+# @router.post("/chat/messages", response_model=ChatMessage)
+# async def add_chat_message(message_data: ChatMessageCreate):
+#     return await user_service.add_chat_message(message_data)
 
 @router.delete("/chat/messages")
 async def clear_chat_messages():
