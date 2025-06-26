@@ -130,8 +130,6 @@ class ProductBase(BaseModel):
     image: str
     images: list
     deal: Optional[bool]
-    flavors: list
-    sizes: list
     description: str
     inStock: Optional[bool]
     category: str

@@ -9,7 +9,7 @@ from src.services.product_service import ProductService
 router = APIRouter(prefix="/products", tags=["products"])
 product_svc = ProductService()
 
-@router.get("/products/search", response_model=List[Product])
+@router.get("/search", response_model=List[Product])
 async def search_products(
     query: str = Query(..., description="Search query"),
     limit: int = Query(10, description="Maximum number of results to return")
