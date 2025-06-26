@@ -7,8 +7,11 @@ vite.config.ts.*
 /venv
 __pycache__
 .vite
+.env
 
 # product db sources
 scripts/results.jsonl
 scripts/all_chewy_products_with_qanda.csv
 scripts/chroma_db
+
+server/src/seed.db
