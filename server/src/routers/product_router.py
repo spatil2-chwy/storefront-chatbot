@@ -8,14 +8,13 @@ from src.services.product_service import ProductService
 router = APIRouter(prefix="/products", tags=["products"])
 product_svc = ProductService()
 
-@router.get("/", response_model=List[ProductSchema])
-def list_products(
-    category: Optional[str] = Query(None),
-    keywords: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+@router.get("/products/search", response_model=List[Product])
+async def search_products(
+    query: str = Query(..., description="Search query"),
+    limit: int = Query(10, description="Maximum number of results to return")
 ):
-    keyword_list = [k.strip() for k in keywords.split(",")] if keywords else None
-    return product_svc.list_products(db, category, keyword_list)
+    """Search products using semantic search with embeddings"""
+    return await product_service.search_products(query, limit)
 
 @router.get("/{product_id}", response_model=ProductSchema)
 def read_product(product_id: int, db: Session = Depends(get_db)):

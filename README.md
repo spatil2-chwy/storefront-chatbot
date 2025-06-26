@@ -41,7 +41,7 @@ python -m src.scripts.load_data
 ````
 
 # Start FastAPI server
-uvicorn main:app --reload --host localhost --port 8000
+uvicorn src.main:app --reload --host localhost --port 8000
 ```
 The backend will be available at `http://localhost:8000`
 
