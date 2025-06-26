@@ -1,9 +1,17 @@
-from .user_service import UserService
 from .product_service import ProductService
-from .chat_service import ChatService
 from .pet_service import PetService
+from .user_service import UserService
+from .chat_service import ChatService
 
-user_service = UserService()
+# Create singleton instances
 product_service = ProductService()
-chat_service = ChatService()
 pet_service = PetService()
+user_service = UserService()
+chat_service = ChatService()
+
+__all__ = [
+    'product_service',
+    'pet_service', 
+    'user_service',
+    'chat_service'
+]
