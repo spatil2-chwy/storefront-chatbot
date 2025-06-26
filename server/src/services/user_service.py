@@ -1,29 +1,65 @@
-from typing import Dict, Optional
-from src.models.user import User, UserCreate
+from typing import List
+from sqlalchemy.orm import Session, joinedload
+from src.models.user import User
+from src.models.pet import PetProfile
 
 class UserService:
-    def __init__(self):
-        self.users: Dict[int, User] = {}
-        self.current_user_id = 1
-        self._initialize_dummy_data()
+    def get_users(self, db: Session) -> List[User]:
+        return db.query(User).all()
 
-    def _initialize_dummy_data(self):
-        # dummy test user
-        user_data = UserCreate(email="test@example.com", name="Test User")
-        user_id = self.current_user_id
-        self.current_user_id += 1
-        user = User(id=user_id, email=user_data.email, name=user_data.name)
-        self.users[user_id] = user
+    def get_user(self, db: Session, customer_key: int) -> User | None:
+        return (
+            db.query(User)
+              .options(joinedload(User.pets))
+              .filter(User.customer_key == customer_key)
+              .one_or_none()
+        )
 
-    async def get_user(self, user_id: int) -> Optional[User]:
-        return self.users.get(user_id)
+    def create_user(self, db: Session, user_data: User) -> User:
+        db.add(user_data)
+        db.commit()
+        db.refresh(user_data)
+        return user_data
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
-        return next((u for u in self.users.values() if u.email == email), None)
-
-    async def create_user(self, user_data: UserCreate) -> User:
-        user_id = self.current_user_id
-        self.current_user_id += 1
-        user = User(id=user_id, email=user_data.email, name=user_data.name)
-        self.users[user_id] = user
+    def update_user(self, db: Session, customer_key: int, user_data: User) -> User | None:
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return None
+        for attr, value in vars(user_data).items():
+            if attr.startswith('_') or attr == 'customer_key':
+                continue
+            setattr(user, attr, value)
+        db.commit()
+        db.refresh(user)
         return user
+
+    def delete_user(self, db: Session, customer_key: int) -> bool:
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return False
+        db.delete(user)
+        db.commit()
+        return True
+
+    def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
+        # First get the user to find their customer_id
+        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return []
+        
+        # Then find pets using the customer_id
+        return (
+            db.query(PetProfile)
+              .filter(PetProfile.customer_id == user.customer_id)
+              .all()
+        )
+    
+    def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
+        user = db.query(User).filter(User.email == email).one_or_none()
+        # if not user or user.password != password:
+        #     return None
+        # Temporary authentication so we don't need passwords for now
+        if not user:
+            return None
+        return user
+

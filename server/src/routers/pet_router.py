@@ -1,35 +1,46 @@
-from fastapi import APIRouter, HTTPException
-from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from typing import List
+from sqlalchemy.orm import Session
+from src.database import get_db
+from src.schemas import PetProfile as PetSchema, User as UserSchema
+from src.services.pet_service import PetService
 from src.models.pet import PetProfile
-from src.services import pet_service
 
 router = APIRouter(prefix="/pets", tags=["pets"])
+pet_svc = PetService()
 
-@router.get("/", response_model=List[PetProfile])
-async def list_pets(customer_id: Optional[int] = None):
-    return await pet_service.get_pet_profiles(customer_id)
+@router.get("/", response_model=List[PetSchema])
+def list_pets(db: Session = Depends(get_db)):
+    return pet_svc.get_pet_profiles(db)
 
-@router.get("/{pet_profile_id}", response_model=PetProfile)
-async def get_pet(pet_profile_id: int):
-    pet = await pet_service.get_pet_profile(pet_profile_id)
+@router.get("/{pet_profile_id}", response_model=PetSchema)
+def get_pet(pet_profile_id: int, db: Session = Depends(get_db)):
+    pet = pet_svc.get_pet_profile(db, pet_profile_id)
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
-@router.post("/", response_model=PetProfile)
-async def create_pet(profile: PetProfile):
-    return await pet_service.create_pet_profile(profile)
+@router.get("/{pet_profile_id}/owner", response_model=UserSchema)
+def read_pet_owner(pet_profile_id: int, db: Session = Depends(get_db)):
+    owner = pet_svc.get_pet_owner(db, pet_profile_id)
+    if not owner:
+        raise HTTPException(status_code=404, detail="Owner not found")
+    return owner
 
-@router.put("/{pet_profile_id}", response_model=PetProfile)
-async def update_pet(pet_profile_id: int, profile: PetProfile):
-    updated = await pet_service.update_pet_profile(pet_profile_id, profile)
+@router.post("/", response_model=PetSchema)
+def create_pet(profile: PetSchema, db: Session = Depends(get_db)):
+    return pet_svc.create_pet(db, PetProfile(**profile.dict()))
+
+@router.put("/{pet_profile_id}", response_model=PetSchema)
+def update_pet(pet_profile_id: int, profile: PetSchema, db: Session = Depends(get_db)):
+    updated = pet_svc.update_pet(db, pet_profile_id, PetProfile(**profile.dict()))
     if not updated:
         raise HTTPException(status_code=404, detail="Pet not found")
     return updated
 
 @router.delete("/{pet_profile_id}")
-async def delete_pet(pet_profile_id: int):
-    success = await pet_service.delete_pet_profile(pet_profile_id)
+def delete_pet(pet_profile_id: int, db: Session = Depends(get_db)):
+    success = pet_svc.delete_pet(db, pet_profile_id)
     if not success:
         raise HTTPException(status_code=404, detail="Pet not found")
     return {"detail": "Deleted"}
