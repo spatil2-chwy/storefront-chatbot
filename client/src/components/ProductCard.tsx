@@ -73,8 +73,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     e.stopPropagation();
     
     if (isSelected) {
+      console.log('Removing from comparison...');
       removeFromComparison(product.id!);
     } else if (!isMaxReached) {
+      console.log('Adding to comparison...');
       addToComparison(product);
     }
   };

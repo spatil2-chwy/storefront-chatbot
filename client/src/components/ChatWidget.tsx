@@ -7,6 +7,7 @@ import { chatResponses } from '@/lib/mockData';
 import { ChatMessage, ChatContext, Product } from '../types';
 import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { api } from '@/lib/api';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -88,27 +89,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
-  // Handle comparison mode changes
-  useEffect(() => {
-    if (isInComparisonMode && comparingProducts.length >= 2) {
-      // Only add comparison message if we don't already have one
-      const hasComparisonMessage = messages.some(msg => 
-        msg.content.includes('🔍 Comparing:') && msg.sender === 'ai'
-      );
-      
-      if (!hasComparisonMessage) {
-        const productNames = comparingProducts.map(p => p.title).join(', ');
-        const comparisonMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `🔍 Comparing: ${productNames}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        addMessage(comparisonMessage);
-      }
-    }
-  }, [isInComparisonMode, comparingProducts, messages, addMessage]);
-
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
     setIsLiveAgent(liveAgent);
@@ -150,19 +130,48 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       setIsLoading(true);
       
       // Generate AI response
-      setTimeout(() => {
-        const aiResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: generateAIResponse(initialQuery),
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        
-        addMessage(aiResponse);
-        setIsLoading(false);
-      }, 1500);
+      const generateResponse = async () => {
+        try {
+          let aiResponse: ChatMessage;
+
+          // If in comparison mode and we have products to compare, call the backend
+          if (isInComparisonMode && comparingProducts.length >= 2) {
+            const response = await api.compareProducts(initialQuery, comparingProducts);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+          } else {
+            // Use existing dummy response logic for non-comparison messages
+            const response = generateAIResponse(initialQuery);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+          }
+
+          addMessage(aiResponse);
+        } catch (error) {
+          // Handle API errors gracefully
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment.",
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          addMessage(errorMessage);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages]);
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
@@ -271,18 +280,43 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setInputValue(''); // Always clear input after sending
     setIsLoading(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
+    try {
+      let aiResponse: ChatMessage;
+
+      // If in comparison mode and we have products to compare, call the backend
+      if (isInComparisonMode && comparingProducts.length >= 2) {
+        const response = await api.compareProducts(messageToSend, comparingProducts);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else {
+        // Use existing dummy response logic for non-comparison messages
+        const response = generateAIResponse(messageToSend);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      }
+
+      addMessage(aiResponse);
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      // Handle API errors gracefully
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(messageToSend),
+        content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment.",
         sender: 'ai',
         timestamp: new Date(),
       };
-
-      addMessage(aiResponse);
+      addMessage(errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -293,7 +327,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
   // Render comparison products section
   const renderComparisonProducts = () => {
-    if (!isInComparisonMode || comparingProducts.length === 0) return null;
+    if (comparingProducts.length < 2) return null;
 
     const imageWidth = comparingProducts.length === 2 ? 'w-1/2' : 'w-1/3';
 
@@ -458,6 +492,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           </div>
                         </div>
                       )}
+                      
                       {messages.map((message) => (
                         <div
                           key={message.id}
@@ -493,7 +528,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         </div>
                       ))}
                       
-                      {/* Comparison products section - appears at the end */}
+                      {/* Comparison products section - appears after current messages when in comparison mode */}
                       {renderComparisonProducts()}
                       
                       {/* Loading indicator */}
@@ -712,6 +747,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       </div>
                     </div>
                   )}
+                  
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -747,7 +783,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     </div>
                   ))}
 
-                  {/* Comparison products section - appears at the end */}
+                  {/* Comparison products section - appears after current messages when in comparison mode */}
                   {renderComparisonProducts()}
                   
                   {/* Loading indicator */}

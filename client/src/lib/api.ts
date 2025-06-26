@@ -35,5 +35,29 @@ export const api = {
     }
 
     return response.json();
+  },
+
+  async compareProducts(message: string, products: Product[]): Promise<string> {
+    const payload = {
+      message,
+      products,
+    };
+    
+    const response = await fetch(`${API_BASE_URL}/chats/compare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to compare products: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
   }
 }; 
