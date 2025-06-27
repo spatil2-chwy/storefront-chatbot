@@ -37,14 +37,14 @@ class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
 
-@router.post("/chatbot")
-async def chatbot(request: ChatRequest):
-    reply = chat(
-        user_input=request.message,
-        history=request.history,
-    )
+# @router.post("/chatbot")
+# async def chatbot(request: ChatRequest):
+#     reply = chat(
+#         user_input=request.message,
+#         history=request.history,
+#     )
 
-    return {"response": reply}
+#     return {"response": reply}
 
 @router.post("/compare")
 async def compare_products_endpoint(request: ComparisonRequest):

@@ -163,7 +163,7 @@ class ProductService:
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata)
 
-    async def search_products(self, query: str, limit: int = 10) -> List[Product]:
+    async def search_products(self, query: str, limit: int = 10) -> dict:
         """Search products using LLM agent to parse and filter the query, then semantic search"""
         try:
             # Use the LLM agent to parse the query and get filtered results
@@ -172,6 +172,9 @@ class ProductService:
             
             # Extract products from the result
             ranked_products = result.get("products", [])
+
+            # Extract reply from the result
+            reply = result.get("message", "")
             
             if not ranked_products:
                 print(f"No products found for query: '{query}'")
@@ -188,11 +191,17 @@ class ProductService:
                     continue
             
             print(f"Found {len(products)} products for query: '{query}' using LLM agent")
-            return products
+            return {
+                "products": products,
+                "reply": reply
+            }
             
         except Exception as e:
             print(f"Error searching products with LLM agent: {e}")
-            return []
+            return {
+                "products": [],
+                "reply": ""
+            }
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:

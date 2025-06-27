@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  async searchProducts(query: string, limit: number = 10): Promise<Product[]> {
+  async searchProducts(query: string, limit: number = 10): Promise<{products: Product[], reply: string}> {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('limit', limit.toString());
@@ -83,5 +83,29 @@ export const api = {
 
     const data = await response.json();
     return data.response;
-  }
+  },
+
+  // async chatbot(message: string, history: any[] = []): Promise<{message: string, history: any[], products: any[]}> {
+  //   const payload = {
+  //     message,
+  //     history,
+  //   };
+    
+  //   const response = await fetch(`${API_BASE_URL}/chats/chatbot`, {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify(payload),
+  //   });
+
+  //   if (!response.ok) {
+  //     const errorText = await response.text();
+  //     console.error('Response error text:', errorText);
+  //     throw new ApiError(response.status, `Failed to get chatbot response: ${response.statusText}`);
+  //   }
+
+  //   const data = await response.json();
+  //   return data.response;
+  // }
 }; 

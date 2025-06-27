@@ -3,7 +3,6 @@ import { MessageCircle, X, Send, Package, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { chatResponses } from '@/lib/mockData';
 import { ChatMessage, ChatContext, Product } from '../types';
 import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -31,7 +30,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     isInComparisonMode,
     clearComparison,
     shouldAutoOpen,
-    setShouldAutoOpen
+    setShouldAutoOpen,
+    setSearchResults,
+    setCurrentSearchQuery,
+    setHasSearched
   } = useGlobalChat();
   
   const [inputValue, setInputValue] = useState('');
@@ -153,14 +155,21 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
           } else {
-            // Use existing dummy response logic for non-comparison messages
-            const response = generateAIResponse(initialQuery);
+            // Use backend SearchProducts for general chat mode to update products and display
+            const response = await api.searchProducts(initialQuery);
             aiResponse = {
               id: (Date.now() + 1).toString(),
-              content: response,
+              content: response.reply,
               sender: 'ai',
               timestamp: new Date(),
             };
+            
+            // Update global search state with the products from the response
+            if (response.products && response.products.length > 0) {
+              setSearchResults(response.products);
+              setCurrentSearchQuery(initialQuery);
+              setHasSearched(true);
+            }
           }
 
           addMessage(aiResponse);
@@ -180,96 +189,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext]);
-
-  const generateAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Comparison-specific responses
-    if (isInComparisonMode && comparingProducts.length >= 2) {
-      if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-        const productNames = comparingProducts.map(p => p.title).join(' vs ');
-        const priceComparison = comparingProducts.map(p => `${p.title}: $${p.price}`).join(', ');
-        const ratingComparison = comparingProducts.map(p => `${p.title}: ${p.rating}★`).join(', ');
-        
-        return `Here's a comparison of ${productNames}:\n\n💰 Price: ${priceComparison}\n⭐ Ratings: ${ratingComparison}\n\nWould you like me to compare specific aspects like ingredients, reviews, or value for money?`;
-      }
-      
-      if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('cheap')) {
-        const sortedByPrice = [...comparingProducts].sort((a, b) => (a.price || 0) - (b.price || 0));
-        const cheapest = sortedByPrice[0];
-        const mostExpensive = sortedByPrice[sortedByPrice.length - 1];
-        
-        return `Price comparison:\n\n💵 ${cheapest.title} is the most affordable at $${cheapest.price}\n💵 ${mostExpensive.title} is the most expensive at $${mostExpensive.price}\n\nWould you like me to factor in Autoship savings or compare value for money?`;
-      }
-      
-      if (lowerMessage.includes('rating') || lowerMessage.includes('review') || lowerMessage.includes('star')) {
-        const sortedByRating = [...comparingProducts].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        const highestRated = sortedByRating[0];
-        
-        return `Rating comparison:\n\n⭐ ${highestRated.title} has the highest rating at ${highestRated.rating}★ (${highestRated.reviewCount} reviews)\n\nAll products have solid ratings, but ${highestRated.title} seems to be the customer favorite. Would you like me to look into specific review themes?`;
-      }
-      
-      if (lowerMessage.includes('ingredient') || lowerMessage.includes('what') || lowerMessage.includes('made')) {
-        return `I can help you compare ingredients! Here's what I found:\n\n${comparingProducts.map(p => `• ${p.title}: ${p.keywords?.slice(0, 3).join(', ') || 'Ingredients not available'}`).join('\n')}\n\nWould you like me to look for specific ingredients or dietary restrictions?`;
-      }
-      
-      // Default comparison response
-      return `I'm comparing ${comparingProducts.map(p => p.title).join(', ')}. What specific aspect would you like me to compare - price, ratings, ingredients, or something else?`;
-    }
-    
-    // Product-specific responses
-    if (currentContext.type === 'product' && currentContext.product) {
-      const product = currentContext.product;
-      
-      if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('how much')) {
-        const hasAutoship = product.autoshipPrice && product.autoshipPrice > 0;
-        if (hasAutoship) {
-          return `The ${product.title} is priced at $${product.price}. With Autoship, you can save 5% and get it for $${product.autoshipPrice}. Would you like me to help you set up Autoship?`;
-        } else {
-          return `The ${product.title} is priced at $${product.price}. This product is not available for Autoship at the moment.`;
-        }
-      }
-      
-      if (lowerMessage.includes('review') || lowerMessage.includes('rating') || lowerMessage.includes('star')) {
-        return `The ${product.title} has a ${product.rating}-star rating from ${product.reviewCount} customers. It's highly rated for quality and value. Would you like to see more details about what customers are saying?`;
-      }
-      
-      if (lowerMessage.includes('ingredient') || lowerMessage.includes('what') || lowerMessage.includes('made')) {
-        return `I'd be happy to tell you about the ingredients in ${product.title}! This product features high-quality, natural ingredients. For detailed nutritional information, you can check the product page or ask me specific questions about ingredients.`;
-      }
-      
-      if (lowerMessage.includes('size') || lowerMessage.includes('weight') || lowerMessage.includes('amount')) {
-        return `The ${product.title} comes in standard packaging sizes. You can check the product page for specific size options and pricing details.`;
-      }
-      
-      if (lowerMessage.includes('flavor') || lowerMessage.includes('taste')) {
-        return `The ${product.title} comes in delicious flavors that pets love! You can check the product page for specific flavor options and see which ones are most popular with customers.`;
-      }
-      
-      // Default product response
-      return `Great question about ${product.title}! This is a ${product.rating}-star rated product that many pet parents love. Is there anything specific you'd like to know about it?`;
-    }
-    
-    // General responses (existing logic)
-    if (lowerMessage.includes('train') || lowerMessage.includes('puppy') || lowerMessage.includes('biting')) {
-      return "For training puppies, I recommend starting with positive reinforcement and high-value treats. Redirect biting to appropriate chew toys and be consistent with commands. Would you like me to show you some training treat options?";
-    }
-    
-    if (lowerMessage.includes('grain-free') || lowerMessage.includes('grain free')) {
-      return "Grain-free diets can be beneficial for dogs with sensitivities. Let me filter the products to show you our best grain-free options.";
-    }
-    
-    if (lowerMessage.includes('dental') || lowerMessage.includes('teeth') || lowerMessage.includes('chew')) {
-      return "Dental health is so important! I can show you some great dental chews and toys that help maintain oral hygiene.";
-    }
-    
-    if (lowerMessage.includes('senior') || lowerMessage.includes('old') || lowerMessage.includes('elderly')) {
-      return "Senior dogs have special nutritional needs. Would you like me to show you some senior-specific formulas?";
-    }
-    
-    return chatResponses[Math.floor(Math.random() * chatResponses.length)];
-  };
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -311,14 +231,21 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           timestamp: new Date(),
         };
       } else {
-        // Use existing dummy response logic for non-comparison messages
-        const response = generateAIResponse(messageToSend);
+        // Use backend SearchProducts for general chat mode to update products and display
+        const response = await api.searchProducts(messageToSend);
         aiResponse = {
           id: (Date.now() + 1).toString(),
-          content: response,
+          content: response.reply,
           sender: 'ai',
           timestamp: new Date(),
         };
+        
+        // Update global search state with the products from the response
+        if (response.products && response.products.length > 0) {
+          setSearchResults(response.products);
+          setCurrentSearchQuery(messageToSend);
+          setHasSearched(true);
+        }
       }
 
       addMessage(aiResponse);

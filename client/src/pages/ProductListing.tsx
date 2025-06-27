@@ -99,7 +99,7 @@ export default function ProductListing() {
     try {
       // Use semantic search
       const searchResults = await api.searchProducts(trimmedQuery, 10);
-      setSearchResults(searchResults);
+      setSearchResults(searchResults.products);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);
@@ -121,6 +121,8 @@ export default function ProductListing() {
   const handleClearChat = () => {
     setChatQuery('');
     setHasSearched(false);
+    setSearchResults([]);
+    setCurrentSearchQuery('');
   };
 
   const handleFilterChange = (filters: any) => {
