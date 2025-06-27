@@ -74,7 +74,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (chatContext.type === 'product' && chatContext.product && previousContext.type !== 'product') {
         const productMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Now discussing: ${chatContext.product.title}\n\nAsk me anything about this product - pricing, ingredients, reviews, or recommendations!`,
+          content: `🔄 Now discussing: ${chatContext.product.title}`,
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -85,7 +85,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (chatContext.type === 'general' && previousContext.type === 'product') {
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Transitioned to general chat\n\nI'm now ready to help with general questions about pet products!`,
+          content: `🔄 Transitioned to general chat`,
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -105,7 +105,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         // Add comparison transition message at the current position
         const comparisonMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
+          content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
           sender: 'ai',
           timestamp: new Date(),
           // Store product IDs for rendering - this will be static history
@@ -124,7 +124,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         if (comparisonMessageIndex !== -1) {
           newMessages[comparisonMessageIndex] = {
             ...newMessages[comparisonMessageIndex],
-            content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
+            content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
             comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
             comparisonProductCount: comparingProducts.length,
           };
@@ -151,7 +151,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setCurrentContext({ type: 'general' });
     const exitMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: `🔄 Transitioned to general chat\n\nI'm now ready to help with general questions about pet products!`,
+      content: `🔄 Transitioned to general chat`,
       sender: 'ai',
       timestamp: new Date(),
     };
@@ -463,16 +463,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             {message.content.includes('🔄 Now discussing:') ? (
                               <div className="space-y-2">
                                 <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
-                                <div className="text-xs">
-                                  Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
-                                </div>
                               </div>
                             ) : message.content.includes('🔄 Transitioned to general chat') ? (
                               <div className="space-y-2">
-                                <div className="font-semibold">🔄 Transitioned to general chat</div>
-                                <div className="text-xs">
-                                  I'm now ready to help with general questions about pet products!
-                                </div>
+                                <div className="font-semibold">🔄 Transitioned to general chat</div>  
                               </div>
                             ) : message.content.includes('🔄 Now comparing:') ? (
                               <div className="space-y-2">
@@ -487,9 +481,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
-                                </div>
-                                <div className="text-xs">
-                                  Ask me to compare these products on price, ingredients, reviews, or any other criteria!
                                 </div>
                                 {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
                                   <div className="flex space-x-2 mt-3">
@@ -755,7 +746,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
+                        className={`max-w-xs px-6 py-2 rounded-2xl font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
                             : message.content.includes('🔄 Now discussing:') || 
@@ -768,16 +759,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         {message.content.includes('🔄 Now discussing:') ? (
                           <div className="space-y-2">
                             <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
-                            <div className="text-xs">
-                              Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
-                            </div>
                           </div>
                         ) : message.content.includes('🔄 Transitioned to general chat') ? (
                           <div className="space-y-2">
                             <div className="font-semibold">🔄 Transitioned to general chat</div>
-                            <div className="text-xs">
-                              I'm now ready to help with general questions about pet products!
-                            </div>
                           </div>
                         ) : message.content.includes('🔄 Now comparing:') ? (
                           <div className="space-y-2">
@@ -792,9 +777,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                               >
                                 <X className="w-3 h-3" />
                               </button>
-                            </div>
-                            <div className="text-xs">
-                              Ask me to compare these products on price, ingredients, reviews, or any other criteria!
                             </div>
                             {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
                               <div className="flex space-x-2 mt-3">

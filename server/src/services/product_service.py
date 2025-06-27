@@ -178,7 +178,10 @@ class ProductService:
             
             if not ranked_products:
                 print(f"No products found for query: '{query}'")
-                return []
+                return {
+                    "products": [],
+                    "reply": reply
+                }
             
             # Convert ranked results to Product objects
             products = []
