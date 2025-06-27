@@ -47,12 +47,17 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll when messages change and we're not in comparison mode to prevent glitching
+    if (!isInComparisonMode) {
+      scrollToBottom();
+    }
+  }, [messages, isInComparisonMode]);
 
   useEffect(() => {
     if (shouldOpen || shouldAutoOpen) {
@@ -77,6 +82,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           content: `🔄 Now discussing: ${chatContext.product.title}`,
           sender: 'ai',
           timestamp: new Date(),
+          productTitle: chatContext.product.title, // Store product title for history
         };
         addMessage(productMessage);
       }
@@ -112,6 +118,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
           // Store the original product count for static display
           comparisonProductCount: comparingProducts.length,
+          // Store full product data for history retention
+          comparisonProducts: [...comparingProducts],
         };
         insertMessageAt(comparisonMessage, comparisonStartIndexRef.current);
       } else {
@@ -127,6 +135,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
             comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
             comparisonProductCount: comparingProducts.length,
+            comparisonProducts: [...comparingProducts], // Store full product data
           };
           setMessages(newMessages);
         }
@@ -134,6 +143,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
     // When exiting comparison mode (less than 2 products)
     else if (!isInComparisonMode && comparingProducts.length < 2 && comparisonStartIndexRef.current !== -1) {
+      // Add transition message when exiting comparison mode
+      const transitionMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: `🔄 Transitioned to general chat`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(transitionMessage);
+      
       // Reset the comparison start index
       comparisonStartIndexRef.current = -1;
     }
@@ -148,6 +166,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
   const handleExitToGeneralChat = () => {
     clearComparison();
+    comparisonStartIndexRef.current = -1; // Reset comparison start index
     setCurrentContext({ type: 'general' });
     const exitMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -462,7 +481,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           >
                             {message.content.includes('🔄 Now discussing:') ? (
                               <div className="space-y-2">
-                                <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
+                                <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                               </div>
                             ) : message.content.includes('🔄 Transitioned to general chat') ? (
                               <div className="space-y-2">
@@ -476,6 +495,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     onClick={() => {
                                       clearComparison();
                                       comparisonStartIndexRef.current = -1;
+                                      // Add transition message
+                                      const transitionMessage: ChatMessage = {
+                                        id: Date.now().toString(),
+                                        content: `🔄 Transitioned to general chat`,
+                                        sender: 'ai',
+                                        timestamp: new Date(),
+                                      };
+                                      addMessage(transitionMessage);
                                     }}
                                     className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
                                   >
@@ -485,10 +512,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                 {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
                                   <div className="flex space-x-2 mt-3">
                                     {message.comparisonProductIds.map((productId) => {
-                                      // Find product from current comparingProducts or from searchResults if not in current comparison
-                                      let product = comparingProducts.find((p: Product) => p.id === productId);
+                                      // First try to find product from stored comparison products
+                                      let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
                                       if (!product) {
-                                        // Try to find in searchResults as fallback for static history
+                                        // Fallback to current comparingProducts
+                                        product = comparingProducts.find((p: Product) => p.id === productId);
+                                      }
+                                      if (!product) {
+                                        // Final fallback to searchResults
                                         product = searchResults.find((p: Product) => p.id === productId);
                                       }
                                       if (!product) return null;
@@ -758,7 +789,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       >
                         {message.content.includes('🔄 Now discussing:') ? (
                           <div className="space-y-2">
-                            <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
+                            <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                           </div>
                         ) : message.content.includes('🔄 Transitioned to general chat') ? (
                           <div className="space-y-2">
@@ -772,6 +803,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                 onClick={() => {
                                   clearComparison();
                                   comparisonStartIndexRef.current = -1;
+                                  // Add transition message
+                                  const transitionMessage: ChatMessage = {
+                                    id: Date.now().toString(),
+                                    content: `🔄 Transitioned to general chat`,
+                                    sender: 'ai',
+                                    timestamp: new Date(),
+                                  };
+                                  addMessage(transitionMessage);
                                 }}
                                 className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
                               >
@@ -781,10 +820,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
                               <div className="flex space-x-2 mt-3">
                                 {message.comparisonProductIds.map((productId) => {
-                                  // Find product from current comparingProducts or from searchResults if not in current comparison
-                                  let product = comparingProducts.find((p: Product) => p.id === productId);
+                                  // First try to find product from stored comparison products
+                                  let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
                                   if (!product) {
-                                    // Try to find in searchResults as fallback for static history
+                                    // Fallback to current comparingProducts
+                                    product = comparingProducts.find((p: Product) => p.id === productId);
+                                  }
+                                  if (!product) {
+                                    // Final fallback to searchResults
                                     product = searchResults.find((p: Product) => p.id === productId);
                                   }
                                   if (!product) return null;
