@@ -107,7 +107,7 @@ export default function ProductListing() {
     try {
       // Use semantic search and get stats
       const [searchResults, stats] = await Promise.all([
-        api.searchProducts(trimmedQuery, 10),
+        api.searchProducts(trimmedQuery, 30),
         api.getSearchStats(trimmedQuery, 10)
       ]);
       setSearchResults(searchResults);

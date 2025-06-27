@@ -188,7 +188,7 @@ class ProductService:
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
 
-    async def search_products(self, query: str, limit: int = 10) -> List[Product]:
+    async def search_products(self, query: str, limit: int = 30) -> List[Product]:
         """Search products using LLM agent to parse and filter the query, then semantic search"""
         try:
             # Use the LLM agent to parse the query and get filtered results

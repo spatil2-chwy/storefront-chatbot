@@ -3,6 +3,7 @@ from sentence_transformers import SentenceTransformer
 import os
 from functools import lru_cache
 import time
+import math
 
 COLLECTION_NAME = "products"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -131,9 +132,37 @@ def query_products(query: str, required_ingredients: list, excluded_ingredients:
     db_start = time.time()
     results = collection.query(
         query_embeddings=query_embedding,
-        n_results=100,
+        n_results=300,
         where=where_clause,
     )
+    # make sure products do not have excluded ingredients by checking if they are in the metadata
+    if excluded_ingredients:
+        filtered_metadatas = []
+        filtered_documents = []
+        filtered_ids = []
+        filtered_distances = []
+        for i in range(len(results['documents'][0])):
+            metadata = results['metadatas'][0][i]
+            if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
+                filtered_metadatas.append(metadata)
+                filtered_documents.append(results['documents'][0][i])
+                filtered_ids.append(results['ids'][0][i])
+                filtered_distances.append(results['distances'][0][i])
+        results = {
+            'metadatas': [filtered_metadatas],
+            'documents': [filtered_documents],
+            'ids': [filtered_ids],
+            'distances': [filtered_distances],
+        }
+    else:
+        # Ensure results are always lists of lists for compatibility
+        results = {
+            'metadatas': [results['metadatas'][0] if results['metadatas'] else []],
+            'documents': [results['documents'][0] if results['documents'] else []],
+            'ids': [results['ids'][0] if results['ids'] else []],
+            'distances': [results['distances'][0] if results['distances'] else []],
+        }
+
     print(f"Database query completed in {time.time() - db_start:.4f} seconds")
     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
@@ -144,10 +173,89 @@ def rank_products(results):
     # for now we can rank like this:
     sorted_results = sorted(
         zip(results['metadatas'][0], results['documents'][0], results['ids'][0], results['distances'][0]),
-        key=lambda x: (-x[0].get('RATING_AVG', 0), x[0].get('RATING_CNT', 0))
+        key=lambda x: (-x[0].get('RATING_CNT', 0), -x[0].get('RATING_AVG', 0))
     )
     print(f"Products ranked in {time.time() - start_time:.4f} seconds")
     return sorted_results
+
+def rank_products(results):
+    """Advanced ranking with multiple non-linear scoring strategies"""
+    start_time = time.time()
+    
+    def wilson_score(positive_ratings, total_ratings, confidence=0.95):
+        """
+        Wilson Score Interval - a more statistically sound way to rank items
+        by rating that accounts for uncertainty with fewer reviews
+        """
+        if total_ratings == 0:
+            return 0
+        
+        z = 1.96  # 95% confidence interval
+        phat = positive_ratings / total_ratings
+        
+        numerator = phat + z*z/(2*total_ratings) - z * math.sqrt((phat*(1-phat)+z*z/(4*total_ratings))/total_ratings)
+        denominator = 1 + z*z/total_ratings
+        
+        return numerator / denominator
+    
+    def bayesian_rating(rating_avg, rating_count, prior_rating=3.0, prior_count=10):
+        """
+        Bayesian approach that shrinks ratings toward a prior 
+        when there are few reviews
+        """
+        if rating_count == 0:
+            return prior_rating
+        
+        return (prior_rating * prior_count + rating_avg * rating_count) / (prior_count + rating_count)
+    
+    def popularity_decay(rating_count, half_life=50):
+        """
+        Exponential decay function that gives diminishing returns for very popular items
+        """
+        return 1 - math.exp(-rating_count / half_life)
+    
+    scored_results = []
+    for metadata, document, product_id, distance in zip(
+        results['metadatas'][0], 
+        results['documents'][0], 
+        results['ids'][0], 
+        results['distances'][0]
+    ):
+        rating_avg = metadata.get('RATING_AVG', 0) or 2.5
+        rating_count = metadata.get('RATING_CNT', 0) or 0
+        
+        # Method 1: Wilson Score (treating 4+ stars as "positive")
+        positive_ratings = max(0, (rating_avg - 3) * rating_count / 2)  # Approximate
+        wilson = wilson_score(positive_ratings, rating_count)
+        
+        # Method 2: Bayesian Rating
+        bayesian = bayesian_rating(rating_avg, rating_count)
+        
+        # Method 3: Popularity with decay
+        popularity = popularity_decay(rating_count)
+        
+        # Method 4: Semantic relevance
+        relevance = max(0, 1 - distance)
+        
+        # Combine with weights - you can adjust these
+        final_score = (
+            wilson * 0.3 +
+            (bayesian / 5.0) * 0.3 +  # Normalize to 0-1
+            popularity * 0.2 +
+            relevance * 0.2
+        )
+        
+        scored_results.append((metadata, document, product_id, distance, final_score))
+    
+    # Sort by final score
+    sorted_results = sorted(scored_results, key=lambda x: -x[4])
+    
+    # Return without scores for compatibility
+    final_results = [(metadata, document, product_id, distance) 
+                    for metadata, document, product_id, distance, score in sorted_results]
+    
+    print(f"Products ranked with advanced scoring in {time.time() - start_time:.4f} seconds")
+    return final_results
 
 # testing
 if __name__ == "__main__":
