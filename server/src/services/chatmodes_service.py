@@ -2,7 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from typing import List, Dict, Any
-from .prompts import get_comparison_prompt
+from .prompts import get_comparison_prompt, get_ask_about_product_prompt
 
 load_dotenv()
 
@@ -89,3 +89,32 @@ def get_product_comparison_data(products: List[Dict[str, Any]]) -> Dict[str, Any
         comparison_data["products"].append(product_data)
     
     return comparison_data 
+
+
+def ask_about_product(user_question: str, product: Dict[str, Any]) -> str:
+    """
+    Ask about a product based on user question using OpenAI.
+    """
+    product_data = get_product_data(product)
+    prompt = get_ask_about_product_prompt(user_question, product_data)
+    response = get_openai_response(prompt, json_mode=False)
+    return response
+
+
+def get_product_data(product: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get product data for to answer a question about a product.
+    """
+    product_data = {
+        "title": product.get("title"),
+        "brand": product.get("brand"),
+        "price": product.get("price"),
+        "autoshipPrice": product.get("autoshipPrice"),
+        "originalPrice": product.get("originalPrice"),
+        "rating": product.get("rating"),
+        "description": product.get("description"),
+        "keywords": product.get("keywords", []),
+        "category": product.get("category"),
+    }
+    return product_data
+

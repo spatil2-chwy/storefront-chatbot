@@ -143,6 +143,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               sender: 'ai',
               timestamp: new Date(),
             };
+          } else if (currentContext.type === 'product' && currentContext.product) {
+            // If in product context, call the backend for product-specific questions
+            const response = await api.askAboutProduct(initialQuery, currentContext.product);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
           } else {
             // Use existing dummy response logic for non-comparison messages
             const response = generateAIResponse(initialQuery);
@@ -171,7 +180,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext]);
 
   const generateAIResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
@@ -286,6 +295,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // If in comparison mode and we have products to compare, call the backend
       if (isInComparisonMode && comparingProducts.length >= 2) {
         const response = await api.compareProducts(messageToSend, comparingProducts);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else if (currentContext.type === 'product' && currentContext.product) {
+        // If in product context, call the backend for product-specific questions
+        const response = await api.askAboutProduct(messageToSend, currentContext.product);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,

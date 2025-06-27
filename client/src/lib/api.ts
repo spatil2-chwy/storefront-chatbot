@@ -59,5 +59,29 @@ export const api = {
 
     const data = await response.json();
     return data.response;
+  },
+
+  async askAboutProduct(message: string, product: Product): Promise<string> {
+    const payload = {
+      message,
+      product,
+    };
+    
+    const response = await fetch(`${API_BASE_URL}/chats/ask_about_product`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to ask about product: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
   }
 }; 

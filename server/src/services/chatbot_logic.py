@@ -1,13 +1,13 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+import time
 from os import getenv
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY")
+api_key = getenv("OPENAI_API_KEY_3")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-
 client = OpenAI(api_key=api_key)
 # refactor needed, tools, system prompt, model, etc should be in a separate file
 tools = [
@@ -98,28 +98,21 @@ tools = [
             # "strict": True # although openai recommended, this seems to make things worse
         }
     }
-
 ]
-
 system_message = {
     "role": "system",
     "content": """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
-
 IMPORTANT: When users ask about pet products (food, toys, accessories, etc.), you MUST use the search_products function to find relevant products. This includes general queries like "dog food", "cat toys", etc. - even if no specific ingredients or diet requirements are mentioned.
-
 Do not answer questions unrelated to pet products. If you receive a non-product-related question, gently steer the conversation back to product needs.
-
 Your tone should reflect:
 - The deep, joyful, sometimes messy bond between pets and their people.
 - Clear, empathetic, human guidance—like a kind, pet-savvy friend.
 - No puns, gimmicks, or vague language. Be specific, mobile-friendly, and supportive.
-
 Remember: Always search for products when users mention pet items, even if the query is general.
 """,
 }
-
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-4.1-nano"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
@@ -162,7 +155,8 @@ def call_function(name, args):
 
 
 def chat(user_input: str, history: list):
-
+    start_time = time.time()
+    print(f"Searching {user_input}:")
     full_history = (
         [system_message] + history + [{"role": "user", "content": user_input}]
     )
@@ -173,6 +167,8 @@ def chat(user_input: str, history: list):
         input=full_history,
         tools=tools,
     )
+    llm_time = time.time() - start_time
+    print(f"First LLM response after {llm_time:.4f} seconds from start")
     # print(response)
     products = []
 
@@ -180,6 +176,8 @@ def chat(user_input: str, history: list):
         assistant_reply = response.output[0].content[0].text
         full_history.append({"role": "assistant", "content": assistant_reply})
     else:
+        function_start = time.time()
+        print(f"Function call start after {function_start - start_time:.4f} seconds from start")
         tool_call = response.output[0]
         full_history.append(tool_call)
         if tool_call.name != "search_products":
@@ -189,28 +187,20 @@ def chat(user_input: str, history: list):
         print(f"Calling {tool_call.name}(**{args})")
         result = call_function(tool_call.name, args)
         products, message = result
-
+        function_end = time.time()
+        print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
         full_history.append({
             "type": "function_call_output",
             "call_id": tool_call.call_id,
             "output": message,
         })
-
-        # WIP DO SOMETHING WITH PRODUCTS! PREFERABLY BEFORE CALLING LLM AGAIN!
-
-        # Get final reply after tool calls
-        response_2 = client.responses.create(
-            model=MODEL,
-            input=full_history,
-            tools=tools,
-        )
-        assistant_reply = response_2.output_text
+        # Instead of calling LLM again, use a predefined message
+        assistant_reply = "Just found some products! Let me know if you would like to further refine your search."
         full_history.append({"role": "assistant", "content": assistant_reply})
-
+    total_time = time.time() - start_time
+    print(f"Chat message returned in {total_time:.4f} seconds")
     return {
         "message": assistant_reply,
         "history": full_history[1:],  # Exclude system message
         "products": products,
     }
-
- 
