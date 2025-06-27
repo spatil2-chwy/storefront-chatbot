@@ -15,7 +15,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     comparingProducts, 
     addToComparison, 
     removeFromComparison, 
-    isInComparisonMode 
+    isInComparisonMode,
+    setCurrentContext,
+    setIsOpen,
+    setShouldAutoOpen
   } = useGlobalChat();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
@@ -87,6 +90,18 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const handleAIClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set the product context to transition to product discussion mode
+    setCurrentContext({ type: 'product', product });
+    
+    // Open the chat widget
+    setIsOpen(true);
+    setShouldAutoOpen(true);
+  };
+
   return (
     <Link href={`/product/${product.id}`}>
       <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col">
@@ -139,6 +154,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
+            onClick={handleAIClick}
           >
             <Bot className="w-4 h-4 text-gray-400" />
             {product.should_you_buy_it && showTooltip && (
