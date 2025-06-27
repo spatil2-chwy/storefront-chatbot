@@ -138,6 +138,30 @@ class ProductService:
             if k.startswith("specialdiettag:") or k.startswith("ingredienttag:"):
                 keywords.append(k.split(":", 1)[1])
 
+        # Parse review synthesis from JSON
+        review_synthesis = self.safe_json(metadata.get("review_synthesis", "{}"), {})
+        what_customers_love = ""
+        what_to_watch_out_for = ""
+        should_you_buy_it = ""
+        
+        if review_synthesis and isinstance(review_synthesis, dict):
+            # Extract what_customers_love (it's stored as a list, so join it)
+            customers_love_list = review_synthesis.get("what_customers_love", [])
+            if isinstance(customers_love_list, list):
+                what_customers_love = " ".join(customers_love_list)
+            else:
+                what_customers_love = str(customers_love_list)
+            
+            # Extract what_to_watch_out_for (it's stored as a list, so join it)
+            watch_out_list = review_synthesis.get("what_to_watch_out_for", [])
+            if isinstance(watch_out_list, list):
+                what_to_watch_out_for = " ".join(watch_out_list)
+            else:
+                what_to_watch_out_for = str(watch_out_list)
+            
+            # Extract should_you_buy_it (it's stored as a string)
+            should_you_buy_it = review_synthesis.get("should_you_buy_it", "")
+
         return Product(
             id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
             title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
@@ -154,6 +178,9 @@ class ProductService:
             inStock=True,
             category=self.safe_str(metadata.get("CATEGORY_LEVEL1", "")),
             keywords=keywords,
+            what_customers_love=what_customers_love,
+            what_to_watch_out_for=what_to_watch_out_for,
+            should_you_buy_it=should_you_buy_it,
         )
 
     def _ranked_result_to_product(self, ranked_result) -> Product:

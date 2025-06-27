@@ -100,6 +100,32 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
+  // Handle global context changes (for when context is set from ProductCard)
+  useEffect(() => {
+    // Only handle context changes if we're not already processing a chatContext prop change
+    if (!chatContext && currentContext.type === 'product' && currentContext.product) {
+      // Reset comparison start index when transitioning to product mode
+      // This prevents the "Transitioned to general chat" message from appearing
+      comparisonStartIndexRef.current = -1;
+      
+      // Check if we just switched to product context
+      const hasProductMessage = messages.some(msg => 
+        msg.content.includes('🔄 Now discussing:') && msg.productTitle === currentContext.product?.title
+      );
+      
+      if (!hasProductMessage) {
+        const productMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Now discussing: ${currentContext.product.title}`,
+          sender: 'ai',
+          timestamp: new Date(),
+          productTitle: currentContext.product.title,
+        };
+        addMessage(productMessage);
+      }
+    }
+  }, [currentContext.type, currentContext.product?.id, chatContext, messages, addMessage]);
+
   // Handle comparison mode changes
   useEffect(() => {
     // When entering comparison mode (2 or more products)
@@ -143,14 +169,17 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
     // When exiting comparison mode (less than 2 products)
     else if (!isInComparisonMode && comparingProducts.length < 2 && comparisonStartIndexRef.current !== -1) {
-      // Add transition message when exiting comparison mode
-      const transitionMessage: ChatMessage = {
-        id: Date.now().toString(),
-        content: `🔄 Transitioned to general chat`,
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-      addMessage(transitionMessage);
+      // Don't add transition message if we're transitioning to product mode
+      if (currentContext.type !== 'product') {
+        // Add transition message when exiting comparison mode
+        const transitionMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Transitioned to general chat`,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(transitionMessage);
+      }
       
       // Reset the comparison start index
       comparisonStartIndexRef.current = -1;
@@ -424,6 +453,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         Clear chat
                       </button>
                       {isInComparisonMode && (
+                        <button
+                          onClick={handleExitToGeneralChat}
+                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                        >
+                          <ArrowLeft className="w-3 h-3" />
+                          Exit to general chat
+                        </button>
+                      )}
+                      {/* Show exit button for product discussion mode when not on product detail page */}
+                      {currentContext.type === 'product' && !chatContext && (
                         <button
                           onClick={handleExitToGeneralChat}
                           className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
@@ -731,6 +770,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     Clear chat
                   </button>
                   {isInComparisonMode && (
+                    <button
+                      onClick={handleExitToGeneralChat}
+                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Exit to general chat
+                    </button>
+                  )}
+                  {/* Show exit button for product discussion mode when not on product detail page */}
+                  {currentContext.type === 'product' && !chatContext && (
                     <button
                       onClick={handleExitToGeneralChat}
                       className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
