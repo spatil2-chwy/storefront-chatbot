@@ -114,6 +114,22 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           comparisonProductCount: comparingProducts.length,
         };
         insertMessageAt(comparisonMessage, comparisonStartIndexRef.current);
+      } else {
+        // Update existing comparison message when products are added/removed
+        const newMessages = [...messages];
+        const comparisonMessageIndex = newMessages.findIndex(msg => 
+          msg.content.includes('🔄 Now comparing:') && msg.comparisonProductIds
+        );
+        
+        if (comparisonMessageIndex !== -1) {
+          newMessages[comparisonMessageIndex] = {
+            ...newMessages[comparisonMessageIndex],
+            content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
+            comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+            comparisonProductCount: comparingProducts.length,
+          };
+          setMessages(newMessages);
+        }
       }
     }
     // When exiting comparison mode (less than 2 products)
@@ -121,7 +137,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // Reset the comparison start index
       comparisonStartIndexRef.current = -1;
     }
-  }, [isInComparisonMode, comparingProducts.length, messages.length, insertMessageAt]);
+  }, [isInComparisonMode, comparingProducts.length, messages.length, insertMessageAt, setMessages, messages]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
