@@ -4,11 +4,20 @@ from src.services.chatbot_logic import chat
 
 class ProductService:
     def __init__(self):
-
         import chromadb
         self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
         self.collection = self.client.get_collection(name="products")
+        self._search_analyzer = None  # Lazy loading for search matches
         print("✅ ProductService initialized successfully")
+    
+    @property
+    def search_analyzer(self):
+        """Lazy load the search analyzer only when needed"""
+        if self._search_analyzer is None:
+            from src.services.search_analyzer import SearchAnalyzer
+            print("🔄 Initializing SearchAnalyzer...")
+            self._search_analyzer = SearchAnalyzer()
+        return self._search_analyzer
 
     @staticmethod
     def safe_float(val, default=0.0):
@@ -81,7 +90,7 @@ class ProductService:
         
         return "https://via.placeholder.com/400x300?text=Image+Not+Found"
 
-    def _metadata_to_product(self, metadata: dict) -> Product:
+    def _metadata_to_product(self, metadata: dict, search_matches: Optional[List] = None) -> Product:
         # Images: use FULLIMAGE (as list) and THUMBNAIL
         images = []
         if metadata.get("FULLIMAGE"):
@@ -154,14 +163,30 @@ class ProductService:
             inStock=True,
             category=self.safe_str(metadata.get("CATEGORY_LEVEL1", "")),
             keywords=keywords,
+            search_matches=search_matches,  # Add search matches if provided
         )
 
-    def _ranked_result_to_product(self, ranked_result) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
+        # Analyze search matches if query is provided
+        search_matches = None
+        if query:
+            try:
+                # Extract categorized search criteria
+                categorized_criteria = self.search_analyzer.extract_search_criteria(query)
+                
+                # Analyze matches
+                search_matches = self.search_analyzer.analyze_product_matches(
+                    metadata, categorized_criteria, query
+                )
+            except Exception as e:
+                print(f"⚠️ Error analyzing search matches: {e}")
+                search_matches = None
+        
         # Use the existing _metadata_to_product method
-        return self._metadata_to_product(metadata)
+        return self._metadata_to_product(metadata, search_matches)
 
     async def search_products(self, query: str, limit: int = 10) -> List[Product]:
         """Search products using LLM agent to parse and filter the query, then semantic search"""
@@ -177,11 +202,11 @@ class ProductService:
                 print(f"No products found for query: '{query}'")
                 return []
             
-            # Convert ranked results to Product objects
+            # Convert ranked results to Product objects with search match analysis
             products = []
             for ranked_result in ranked_products[:limit]:  # Limit the results
                 try:
-                    product = self._ranked_result_to_product(ranked_result)
+                    product = self._ranked_result_to_product(ranked_result, query)
                     products.append(product)
                 except Exception as e:
                     print(f"⚠️ Error converting ranked result to product: {e}")

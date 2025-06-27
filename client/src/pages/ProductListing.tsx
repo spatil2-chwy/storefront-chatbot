@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2 } from 'lucide-react';
+import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
 import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import ProductFilters from '@/components/ProductFilters';
@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useGlobalChat } from '@/contexts/ChatContext';
 
@@ -17,6 +18,8 @@ export default function ProductListing() {
   const [shouldOpenChat, setShouldOpenChat] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchStats, setSearchStats] = useState<any>(null);
+  const [selectedMatchFilters, setSelectedMatchFilters] = useState<string[]>([]);
   const isMobile = useIsMobile();
 
   // Use global state for search results and query
@@ -33,6 +36,8 @@ export default function ProductListing() {
     // Listen for clear chat events
     const handleClearChat = () => {
       setHasSearched(false);
+      setSearchStats(null);
+      setSelectedMatchFilters([]);
     };
     
     window.addEventListener('clearChat', handleClearChat);
@@ -43,10 +48,20 @@ export default function ProductListing() {
     if (searchResults.length > 0) {
       applyFilters();
     }
-  }, [searchResults, sortBy]);
+  }, [searchResults, sortBy, selectedMatchFilters]);
 
   const applyFilters = () => {
     let filtered = [...searchResults];
+
+    // Apply match field filters
+    if (selectedMatchFilters.length > 0) {
+      filtered = filtered.filter(product => 
+        product.search_matches && 
+        product.search_matches.some(match => 
+          match.matched_terms.some(term => selectedMatchFilters.includes(term))
+        )
+      );
+    }
 
     // Apply sorting
     switch (sortBy) {
@@ -58,6 +73,9 @@ export default function ProductListing() {
         break;
       case 'rating':
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case 'matches':
+        filtered.sort((a, b) => (b.search_matches?.length || 0) - (a.search_matches?.length || 0));
         break;
       default:
         // Keep original order (relevance)
@@ -76,20 +94,28 @@ export default function ProductListing() {
       setSearchResults([]);
       setHasSearched(false);
       setSearchError(null);
+      setSearchStats(null);
+      setSelectedMatchFilters([]);
       return;
     }
 
     setIsSearching(true);
     setSearchError(null);
     setHasSearched(true);
+    setSelectedMatchFilters([]);
 
     try {
-      // Use semantic search
-      const searchResults = await api.searchProducts(trimmedQuery, 10);
+      // Use semantic search and get stats
+      const [searchResults, stats] = await Promise.all([
+        api.searchProducts(trimmedQuery, 10),
+        api.getSearchStats(trimmedQuery, 10)
+      ]);
       setSearchResults(searchResults);
+      setSearchStats(stats);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);
+      setSearchStats(null);
     } finally {
       setIsSearching(false);
     }
@@ -108,6 +134,8 @@ export default function ProductListing() {
   const handleClearChat = () => {
     setChatQuery('');
     setHasSearched(false);
+    setSearchStats(null);
+    setSelectedMatchFilters([]);
   };
 
   const handleFilterChange = (filters: any) => {
@@ -132,6 +160,28 @@ export default function ProductListing() {
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
+  };
+
+  const handleMatchFilterToggle = (field: string) => {
+    setSelectedMatchFilters(prev => 
+      prev.includes(field) 
+        ? prev.filter(f => f !== field)
+        : [...prev, field]
+    );
+  };
+
+  const getFieldDisplayName = (field: string): string => {
+    const fieldMap: { [key: string]: string } = {
+      'CLEAN_NAME': 'Title',
+      'PURCHASE_BRAND': 'Brand',
+      'CATEGORY_LEVEL1': 'Category',
+      'CATEGORY_LEVEL2': 'Subcategory',
+      'CATEGORY_LEVEL3': 'Type',
+      'DESCRIPTION_LONG': 'Description',
+      'tags': 'Tags',
+      'keywords': 'Keywords'
+    };
+    return fieldMap[field] || field;
   };
 
   return (
@@ -176,6 +226,7 @@ export default function ProductListing() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relevance">Relevance</SelectItem>
+                    <SelectItem value="matches">Most Matches</SelectItem>
                     <SelectItem value="price-low">Price: Low to High</SelectItem>
                     <SelectItem value="price-high">Price: High to Low</SelectItem>
                     <SelectItem value="rating">Customer Rating</SelectItem>
@@ -185,6 +236,42 @@ export default function ProductListing() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Search Match Summary */}
+        {searchStats && searchStats.matched_fields && searchStats.matched_fields.length > 0 && (
+          <Card className="bg-blue-50 border-blue-200 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Target className="w-4 h-4 text-blue-600" />
+                <h3 className="font-semibold text-blue-900">Search Criteria Found</h3>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                Found {searchStats.products_with_matches} products matching your search criteria
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(searchStats.term_counts || {}).map(([term, count]: [string, any]) => (
+                  <Badge
+                    key={term}
+                    variant={selectedMatchFilters.includes(term) ? "default" : "outline"}
+                    className={`cursor-pointer text-xs ${
+                      selectedMatchFilters.includes(term) 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-blue-700 border-blue-300 hover:bg-blue-100'
+                    }`}
+                    onClick={() => handleMatchFilterToggle(term)}
+                  >
+                    {term} ({count})
+                  </Badge>
+                ))}
+              </div>
+              {selectedMatchFilters.length > 0 && (
+                <div className="mt-2 text-xs text-blue-600">
+                  Click criteria to filter results • {selectedMatchFilters.length} filter(s) active
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Show landing page content when no search */}

@@ -4,6 +4,7 @@ import { Heart, RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import SearchMatches from './SearchMatches';
 
 interface ProductCardProps {
   product: Product;
@@ -94,7 +95,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
           
-          <div className="space-y-1 mt-auto">
+          <div className="space-y-1 mt-auto mb-3">
             <div className="flex items-center space-x-2">
               <span className="text-lg font-semibold text-gray-900">${product.price}</span>
               {product.originalPrice && product.originalPrice > (product.price || 0) && (
@@ -111,6 +112,14 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             )}
           </div>
+          
+          {/* Search Matches - show which categories/fields matched at the bottom */}
+          <SearchMatches 
+            matches={product.search_matches} 
+            className="border-t pt-2 mt-auto" 
+            showTitle={false}
+            maxMatches={4}
+          />
         </CardContent>
       </Card>
     </Link>

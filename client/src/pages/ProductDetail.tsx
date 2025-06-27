@@ -3,6 +3,7 @@ import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatWidget from '@/components/ChatWidget';
+import SearchMatches from '@/components/SearchMatches';
 import { useProduct } from '@/hooks/useProducts';
 import { Product } from '../types';
 import { Button } from '@/components/ui/button';
@@ -211,6 +212,19 @@ export default function ProductDetail() {
                 )}
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+              
+              {/* Search Matches - show detailed match information */}
+              {product.search_matches && product.search_matches.length > 0 && (
+                <Card className="bg-blue-50 border-blue-200 mb-4">
+                  <CardContent className="p-4">
+                    <SearchMatches 
+                      matches={product.search_matches} 
+                      showTitle={true}
+                      maxMatches={10}
+                    />
+                  </CardContent>
+                </Card>
+              )}
               
               <div className="flex items-center mt-3">
                 <div className="flex items-center">

@@ -24,6 +24,20 @@ export const api = {
     return response.json();
   },
 
+  async getSearchStats(query: string, limit: number = 10): Promise<any> {
+    const params = new URLSearchParams();
+    params.append('query', query);
+    params.append('limit', limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/products/search/stats?${params.toString()}`);
+    
+    if (!response.ok) {
+      throw new ApiError(response.status, `Failed to get search stats: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
   async getProduct(productId: number): Promise<Product> {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`);
     
