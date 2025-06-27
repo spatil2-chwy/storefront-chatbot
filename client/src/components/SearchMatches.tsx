@@ -29,16 +29,16 @@ export default function SearchMatches({
       
       // Map categories to more user-friendly labels
       const categoryLabels: { [key: string]: string } = {
-        'Pet Type': 'Pet Type',
-        'Life Stage': 'Life Stage',
+        // New metadata-driven categories
+        'Brands': 'Brand',
+        'Categories': 'Category',
+        'Ingredients': 'Ingredient',
+        'Diet & Health': 'Diet',
+        'Pet Types': 'Pet Type',
+        'Product Forms': 'Form',
+        'Life Stages': 'Life Stage',
         'Size/Weight': 'Size',
-        'Brand': 'Brand',
-        'Product Type': 'Item',
-        'Health Concern': 'Health',
-        'Form': 'Form',
-        'Diet/Special Needs': 'Diet',
-        'Flavor': 'Flavor'
-      };
+        };
       
       const displayCategory = categoryLabels[cleanCategory] || cleanCategory;
       
@@ -100,15 +100,26 @@ export default function SearchMatches({
   };
 
   const getCategoryIcon = (field: string) => {
+    // New metadata-driven categories
+    if (field.includes('Brands')) return <Award className="w-3 h-3" />;
+    if (field.includes('Categories')) return <Package className="w-3 h-3" />;
+    if (field.includes('Ingredients')) return <Utensils className="w-3 h-3" />;
+    if (field.includes('Diet & Health')) return <Shield className="w-3 h-3" />;
+    if (field.includes('Pet Types')) return <Dog className="w-3 h-3" />;
+    if (field.includes('Product Forms')) return <Pill className="w-3 h-3" />;
+    if (field.includes('Life Stages')) return <Baby className="w-3 h-3" />;
+    if (field.includes('Size/Weight')) return <Scale className="w-3 h-3" />;
+    
+    // Legacy categories (for backward compatibility)
     if (field.includes('Pet Type')) return <Dog className="w-3 h-3" />;
     if (field.includes('Life Stage')) return <Baby className="w-3 h-3" />;
-    if (field.includes('Size/Weight')) return <Scale className="w-3 h-3" />;
     if (field.includes('Brand')) return <Award className="w-3 h-3" />;
     if (field.includes('Product Type')) return <Package className="w-3 h-3" />;
     if (field.includes('Health Concern')) return <Heart className="w-3 h-3" />;
     if (field.includes('Form')) return <Pill className="w-3 h-3" />;
     if (field.includes('Diet/Special Needs')) return <Shield className="w-3 h-3" />;
     if (field.includes('Flavor')) return <Utensils className="w-3 h-3" />;
+    
     return <Target className="w-3 h-3" />;
   };
 
@@ -125,9 +136,19 @@ export default function SearchMatches({
         {Object.values(groupedMatches).map((group, index) => {
           // Map categories to more user-friendly labels
           const categoryLabels: { [key: string]: string } = {
+            // New metadata-driven categories
+            'Brands': 'Brand',
+            'Categories': 'Category',
+            'Ingredients': 'Ingredient',
+            'Diet & Health': 'Diet',
+            'Pet Types': 'Pet Type',
+            'Product Forms': 'Form',
+            'Life Stages': 'Life Stage',
+            'Size/Weight': 'Size',
+            
+            // Legacy categories (for backward compatibility)
             'Pet Type': 'Pet Type',
             'Life Stage': 'Life Stage',
-            'Size/Weight': 'Size',
             'Brand': 'Brand',
             'Product Type': 'Item',
             'Health Concern': 'Health',

@@ -1,85 +1,256 @@
 import re
-from typing import List, Dict
+import json
+import os
+from typing import List, Dict, Set
+from collections import Counter
 from src.models.product import SearchMatch
 
 class SearchAnalyzer:
     def __init__(self):
-        print("Search Analyzer initialized")
+        self.metadata_filters = self._build_metadata_filters()
+        print(f"Search Analyzer initialized with {sum(len(v) for v in self.metadata_filters.values())} discoverable criteria")
+    
+    def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
+        """Build search filters from actual product metadata"""
+        cache_file = "metadata_filters_cache.json"
+        
+        # Try to load from cache first
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cached_data = json.load(f)
+                    # Convert lists back to sets for faster lookups
+                    return {
+                        category: {key: set(values) for key, values in filters.items()}
+                        for category, filters in cached_data.items()
+                    }
+            except:
+                pass
+        
+        # Discover from database
+        filters = self._discover_from_database()
+        
+        # Cache the results
+        try:
+            # Convert sets to lists for JSON serialization
+            cache_data = {
+                category: {key: list(values) for key, values in filters.items()}
+                for category, filters in filters.items()
+            }
+            with open(cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+        except:
+            pass
+        
+        return filters
+    
+    def _discover_from_database(self) -> Dict[str, Dict[str, Set[str]]]:
+        """Discover all searchable criteria from product metadata"""
+        try:
+            import chromadb
+            client = chromadb.PersistentClient(path="../scripts/chroma_db")
+            collection = client.get_collection(name="products")
+            
+            # Sample products for analysis
+            results = collection.get(limit=10000)
+            print(f"Analyzing {len(results['metadatas'])} products for metadata filters...")
+            
+            filters = {
+                'brands': {},
+                'categories': {},
+                'ingredients': {},
+                'diet_tags': {},
+                'pet_attributes': {},
+                'price_ranges': {},
+                'ratings': {}
+            }
+            
+            # Collect all unique values from metadata
+            all_brands = []
+            all_categories = []
+            all_ingredients = []
+            all_diet_tags = []
+            all_pet_types = []
+            all_food_forms = []
+            prices = []
+            ratings = []
+            
+            for metadata in results['metadatas']:
+                if not metadata:
+                    continue
+                
+                # Extract brands - handle multi-value fields separated by ||
+                brand_field = metadata.get('PURCHASE_BRAND', '').strip()
+                if brand_field:
+                    # Split on || and clean each brand
+                    brand_parts = [part.strip() for part in brand_field.split('||')]
+                    for brand in brand_parts:
+                        if brand and len(brand) > 1:
+                            all_brands.append(brand)
+                
+                # Extract categories from all levels
+                for level in ['CATEGORY_LEVEL1', 'CATEGORY_LEVEL2', 'CATEGORY_LEVEL3']:
+                    category = metadata.get(level, '').strip()
+                    if category:
+                        all_categories.append(category)
+                
+                # Extract pet attributes
+                pet_type = metadata.get('ATTR_PET_TYPE', '').strip()
+                if pet_type:
+                    all_pet_types.append(pet_type)
+                
+                food_form = metadata.get('ATTR_FOOD_FORM', '').strip()
+                if food_form:
+                    all_food_forms.append(food_form)
+                
+                # Extract tags from metadata keys
+                for key in metadata:
+                    if key.startswith('ingredienttag:'):
+                        ingredient = key.split(':', 1)[1].strip()
+                        if ingredient:
+                            all_ingredients.append(ingredient)
+                    elif key.startswith('specialdiettag:'):
+                        diet_tag = key.split(':', 1)[1].strip()
+                        if diet_tag:
+                            all_diet_tags.append(diet_tag)
+                
+                # Collect numeric data
+                price = metadata.get('PRICE', 0)
+                if price and price > 0:
+                    prices.append(float(price))
+                
+                rating = metadata.get('RATING_AVG', 0)
+                if rating and rating > 0:
+                    ratings.append(float(rating))
+            
+            # Build brand filters (keep most common brands)
+            brand_counts = Counter(all_brands)
+            filters['brands']['all'] = set([brand for brand, count in brand_counts.most_common(200)])
+            
+            # Build category filters
+            category_counts = Counter(all_categories)
+            filters['categories']['all'] = set([cat for cat, count in category_counts.most_common(100)])
+            
+            # Build ingredient filters (keep most common ingredients)
+            ingredient_counts = Counter(all_ingredients)
+            filters['ingredients']['all'] = set([ing for ing, count in ingredient_counts.most_common(300)])
+            
+            # Build diet tag filters
+            diet_counts = Counter(all_diet_tags)
+            filters['diet_tags']['all'] = set([diet for diet, count in diet_counts.most_common(50)])
+            
+            # Build pet attribute filters
+            pet_type_counts = Counter(all_pet_types)
+            filters['pet_attributes']['types'] = set([pet for pet, count in pet_type_counts.most_common(20)])
+            
+            food_form_counts = Counter(all_food_forms)
+            filters['pet_attributes']['food_forms'] = set([form for form, count in food_form_counts.most_common(20)])
+            
+            # Build price range filters
+            if prices:
+                prices.sort()
+                filters['price_ranges']['low'] = set([f"Under ${int(p)}" for p in [10, 25, 50]])
+                filters['price_ranges']['high'] = set([f"Over ${int(p)}" for p in [50, 100, 200]])
+            
+            # Build rating filters
+            if ratings:
+                filters['ratings']['all'] = set(["4+ Stars", "3+ Stars", "5 Stars"])
+            
+            print(f"Discovered metadata filters:")
+            print(f"  • {len(filters['brands']['all'])} brands")
+            print(f"  • {len(filters['categories']['all'])} categories")
+            print(f"  • {len(filters['ingredients']['all'])} ingredients")
+            print(f"  • {len(filters['diet_tags']['all'])} diet tags")
+            print(f"  • {len(filters['pet_attributes']['types'])} pet types")
+            
+            return filters
+            
+        except Exception as e:
+            print(f"⚠️ Error discovering metadata filters: {e}")
+            return self._get_fallback_filters()
+    
+    def _get_fallback_filters(self) -> Dict[str, Dict[str, Set[str]]]:
+        """Fallback filters if database discovery fails"""
+        return {
+            'brands': {'all': set(['Purina', 'Hill\'s', 'Royal Canin', 'Blue Buffalo'])},
+            'categories': {'all': set(['Dog Food', 'Cat Food', 'Treats', 'Toys'])},
+            'ingredients': {'all': set(['Chicken', 'Beef', 'Salmon', 'Rice'])},
+            'diet_tags': {'all': set(['Grain-Free', 'Limited Ingredient', 'Organic'])},
+            'pet_attributes': {'types': set(['Dog', 'Cat', 'Bird'])}
+        }
     
     def extract_search_criteria(self, query: str) -> Dict[str, List[str]]:
-        """Extract and categorize search criteria from query"""
+        """Extract search criteria by matching query against discovered metadata"""
         query_lower = query.lower().strip()
+        query_words = set(query_lower.split())
         
-        # Initialize result categories
-        categorized_criteria = {
-            'Pet Type': [],
-            'Life Stage': [],
-            'Size/Weight': [],
-            'Brand': [],
-            'Product Type': [],
-            'Health Concern': [],
-            'Form': [],
-            'Diet/Special Needs': [],
-            'Flavor': []
+        found_criteria = {
+            'Brands': [],
+            'Categories': [],
+            'Ingredients': [],
+            'Diet & Health': [],
+            'Pet Types': [],
+            'Product Forms': []
         }
         
-        # Extract criteria using pattern matching
-        self._extract_pet_types(query_lower, categorized_criteria)
-        self._extract_life_stages(query_lower, categorized_criteria)
-        self._extract_sizes(query_lower, categorized_criteria)
-        self._extract_brands(query_lower, categorized_criteria)
-        self._extract_product_types(query_lower, categorized_criteria)
-        self._extract_health_concerns(query_lower, categorized_criteria)
-        self._extract_forms(query_lower, categorized_criteria)
-        self._extract_diets(query_lower, categorized_criteria)
-        self._extract_flavors(query_lower, categorized_criteria)
+        # Match against discovered brands
+        for brand in self.metadata_filters['brands']['all']:
+            if self._matches_query(brand, query_lower, query_words):
+                found_criteria['Brands'].append(brand)
+        
+        # Match against discovered categories
+        for category in self.metadata_filters['categories']['all']:
+            if self._matches_query(category, query_lower, query_words):
+                found_criteria['Categories'].append(category)
+        
+        # Match against discovered ingredients
+        for ingredient in self.metadata_filters['ingredients']['all']:
+            if self._matches_query(ingredient, query_lower, query_words):
+                found_criteria['Ingredients'].append(ingredient)
+        
+        # Match against discovered diet tags
+        for diet_tag in self.metadata_filters['diet_tags']['all']:
+            if self._matches_query(diet_tag, query_lower, query_words):
+                found_criteria['Diet & Health'].append(diet_tag)
+        
+        # Match against discovered pet types
+        for pet_type in self.metadata_filters['pet_attributes']['types']:
+            if self._matches_query(pet_type, query_lower, query_words):
+                found_criteria['Pet Types'].append(pet_type)
+        
+        # Match against discovered food forms
+        for food_form in self.metadata_filters['pet_attributes'].get('food_forms', []):
+            if self._matches_query(food_form, query_lower, query_words):
+                found_criteria['Product Forms'].append(food_form)
+        
+        # Add universal patterns for life stages and sizes
+        self._add_universal_patterns(query_lower, query_words, found_criteria)
         
         # Remove empty categories
-        return {k: v for k, v in categorized_criteria.items() if v}
+        return {k: v for k, v in found_criteria.items() if v}
     
-    def _extract_pet_types(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract pet types and breed-specific size info"""
-        # Pet type patterns
-        pet_patterns = {
-            'Dog': ['dog', 'canine', 'puppy', 'pup', 'k9'],
-            'Cat': ['cat', 'feline', 'kitten', 'kitty'],
-            'Bird': ['bird', 'avian', 'parrot'],
-            'Fish': ['fish', 'aquatic', 'aquarium'],
-            'Small Pet': ['rabbit', 'hamster', 'guinea pig', 'ferret'],
-            'Horse': ['horse', 'equine'],
-            'Reptile': ['reptile', 'snake', 'lizard', 'turtle']
-        }
+    def _matches_query(self, term: str, query_lower: str, query_words: Set[str]) -> bool:
+        """Check if a metadata term matches the user's query"""
+        term_lower = term.lower()
         
-        # Dog breed size patterns
-        breed_sizes = {
-            'Small Breeds (5-25 lbs)': [
-                'pomeranian', 'chihuahua', 'yorkie', 'yorkshire terrier', 'maltese', 'pug',
-                'french bulldog', 'boston terrier', 'cavalier king charles', 'shih tzu',
-                'jack russell', 'beagle', 'cocker spaniel', 'dachshund'
-            ],
-            'Medium Breeds (25-60 lbs)': [
-                'border collie', 'australian shepherd', 'bulldog', 'boxer', 'siberian husky',
-                'golden retriever', 'labrador', 'lab', 'german shepherd'
-            ],
-            'Large Breeds (60-100 lbs)': [
-                'great dane', 'mastiff', 'saint bernard', 'newfoundland', 'bernese mountain dog'
-            ]
-        }
+        # Direct substring match
+        if term_lower in query_lower:
+            return True
         
-        # Check pet types
-        for pet_type, patterns in pet_patterns.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Pet Type'].append(pet_type)
+        # Word-based matching for multi-word terms
+        term_words = set(term_lower.split())
         
-        # Check breed sizes (auto-adds Dog)
-        for size, breeds in breed_sizes.items():
-            if any(breed in query for breed in breeds):
-                if 'Dog' not in criteria['Pet Type']:
-                    criteria['Pet Type'].append('Dog')
-                criteria['Size/Weight'].append(size)
+        # For single words, require exact word match
+        if len(term_words) == 1:
+            return term_lower in query_words
+        
+        # For multi-word terms, require all words to be present
+        return term_words.issubset(query_words)
     
-    def _extract_life_stages(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract life stage information"""
+    def _add_universal_patterns(self, query_lower: str, query_words: Set[str], criteria: Dict[str, List[str]]):
+        """Add universal patterns that don't depend on metadata discovery"""
+        
+        # Life stages (universal across all pet products)
         life_stages = {
             'Puppy': ['puppy', 'pup'],
             'Kitten': ['kitten'],
@@ -88,197 +259,114 @@ class SearchAnalyzer:
         }
         
         for stage, patterns in life_stages.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Life Stage'].append(stage)
-    
-    def _extract_sizes(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract size and weight information"""
-        # Weight patterns
-        weight_match = re.search(r'(\d+)\s*(?:lb|lbs|pound|pounds)', query)
+            if any(pattern in query_words for pattern in patterns):
+                if 'Life Stages' not in criteria:
+                    criteria['Life Stages'] = []
+                criteria['Life Stages'].append(stage)
+        
+        # Size/weight parsing
+        weight_match = re.search(r'(\d+)\s*(?:lb|lbs|pound|pounds)', query_lower)
         if weight_match:
             weight = int(weight_match.group(1))
-            if weight <= 5:
-                criteria['Size/Weight'].append('Toy/Extra Small (< 5 lbs)')
-            elif weight <= 25:
-                criteria['Size/Weight'].append('Small Breeds (5-25 lbs)')
-            elif weight <= 60:
-                criteria['Size/Weight'].append('Medium Breeds (25-60 lbs)')
-            elif weight <= 100:
-                criteria['Size/Weight'].append('Large Breeds (60-100 lbs)')
-            else:
-                criteria['Size/Weight'].append('Giant Breeds (100+ lbs)')
-        
-        # Size descriptors
-        size_patterns = {
-            'Toy/Extra Small (< 5 lbs)': ['toy', 'teacup', 'micro'],
-            'Small Breeds (5-25 lbs)': ['small'],
-            'Medium Breeds (25-60 lbs)': ['medium'],
-            'Large Breeds (60-100 lbs)': ['large', 'big'],
-            'Giant Breeds (100+ lbs)': ['giant', 'extra large', 'xl']
-        }
-        
-        for size, patterns in size_patterns.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Size/Weight'].append(size)
+            size_category = self._weight_to_size(weight)
+            if 'Size/Weight' not in criteria:
+                criteria['Size/Weight'] = []
+            criteria['Size/Weight'].append(size_category)
     
-    def _extract_brands(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract common brand names"""
-        brands = {
-            'Purina': ['purina'],
-            'Hill\'s': ['hills', 'hill\'s'],
-            'Royal Canin': ['royal canin'],
-            'Blue Buffalo': ['blue buffalo'],
-            'Wellness': ['wellness'],
-            'Nutro': ['nutro'],
-            'Iams': ['iams'],
-            'Eukanuba': ['eukanuba'],
-            'Science Diet': ['science diet'],
-            'Pro Plan': ['pro plan']
-        }
-        
-        for brand, patterns in brands.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Brand'].append(brand)
-    
-    def _extract_product_types(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract product type information"""
-        product_types = {
-            'Food': ['food', 'nutrition', 'diet', 'kibble'],
-            'Dry Food': ['dry food', 'dry kibble'],
-            'Wet Food': ['wet food', 'canned food', 'pate'],
-            'Treats & Chews': ['treats', 'treat', 'chews', 'chew', 'snacks', 'biscuits'],
-            'Toys': ['toys', 'toy', 'play'],
-            'Healthcare': ['supplements', 'vitamins', 'medicine'],
-            'Grooming': ['grooming', 'shampoo', 'brush']
-        }
-        
-        for product_type, patterns in product_types.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Product Type'].append(product_type)
-    
-    def _extract_health_concerns(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract health-related concerns"""
-        health_concerns = {
-            'Dental Health': ['dental', 'teeth', 'oral', 'breath'],
-            'Joint Health': ['joint', 'hip', 'arthritis', 'mobility'],
-            'Digestive Health': ['digestive', 'stomach', 'probiotic', 'sensitive'],
-            'Skin & Coat': ['skin', 'coat', 'fur', 'omega'],
-            'Weight Management': ['weight', 'low fat', 'lean']
-        }
-        
-        for concern, patterns in health_concerns.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Health Concern'].append(concern)
-    
-    def _extract_forms(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract product form information"""
-        forms = {
-            'Tablet': ['tablet', 'tablets', 'pill', 'pills'],
-            'Soft Chews': ['soft chew', 'soft chews', 'chewy'],
-            'Hard Chews': ['hard chew', 'hard chews'],
-            'Powder': ['powder'],
-            'Liquid': ['liquid', 'drops', 'oil']
-        }
-        
-        for form, patterns in forms.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Form'].append(form)
-    
-    def _extract_diets(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract special diet information"""
-        diets = {
-            'Grain-Free': ['grain free', 'grain-free'],
-            'Limited Ingredient': ['limited ingredient'],
-            'High Protein': ['high protein'],
-            'Low Fat': ['low fat'],
-            'Organic': ['organic'],
-            'Natural': ['natural'],
-            'Gluten Free': ['gluten free']
-        }
-        
-        for diet, patterns in diets.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Diet/Special Needs'].append(diet)
-    
-    def _extract_flavors(self, query: str, criteria: Dict[str, List[str]]):
-        """Extract flavor information"""
-        flavors = {
-            'Chicken': ['chicken'],
-            'Beef': ['beef'],
-            'Fish': ['fish', 'salmon', 'tuna'],
-            'Lamb': ['lamb'],
-            'Turkey': ['turkey'],
-            'Duck': ['duck'],
-            'Pork': ['pork']
-        }
-        
-        for flavor, patterns in flavors.items():
-            if any(pattern in query for pattern in patterns):
-                criteria['Flavor'].append(flavor)
+    def _weight_to_size(self, weight: int) -> str:
+        """Convert weight to size category"""
+        if weight <= 5:
+            return 'Toy/Extra Small (< 5 lbs)'
+        elif weight <= 25:
+            return 'Small (5-25 lbs)'
+        elif weight <= 60:
+            return 'Medium (25-60 lbs)'
+        elif weight <= 100:
+            return 'Large (60-100 lbs)'
+        else:
+            return 'Giant (100+ lbs)'
     
     def analyze_product_matches(self, product_metadata: dict, categorized_criteria: Dict[str, List[str]], query: str) -> List[SearchMatch]:
-        """Analyze which criteria matched this product"""
+        """Analyze which criteria matched this product using metadata"""
         if not categorized_criteria:
             return []
         
         matches = []
         
-        # Get searchable text from product
-        searchable_text = self._get_searchable_text(product_metadata)
-        
         for category, criteria_list in categorized_criteria.items():
             for criterion in criteria_list:
-                if self._criterion_matches_product(criterion, searchable_text, product_metadata, category):
+                if self._criterion_matches_product_metadata(criterion, product_metadata, category):
                     matches.append(SearchMatch(
                         field=f"{category}: {criterion}",
                         matched_terms=[criterion],
-                        confidence=0.8,  # Fixed confidence - no complex calculation needed
-                        field_value=self._get_matched_field_value(criterion, product_metadata)
+                        confidence=0.8,
+                        field_value=self._get_matched_metadata_value(criterion, product_metadata, category)
                     ))
         
         return matches
     
-    def _get_searchable_text(self, metadata: dict) -> str:
-        """Get all searchable text from product"""
-        text_parts = [
-            str(metadata.get('CLEAN_NAME', '')),
-            str(metadata.get('PURCHASE_BRAND', '')),
-            str(metadata.get('CATEGORY_LEVEL1', '')),
-            str(metadata.get('DESCRIPTION_LONG', ''))
-        ]
-        
-        # Add tag fields
-        for key in metadata:
-            if key.startswith(('specialdiettag:', 'ingredienttag:')):
-                text_parts.append(key.split(':', 1)[1])
-        
-        return ' '.join(text_parts).lower()
-    
-    def _criterion_matches_product(self, criterion: str, searchable_text: str, metadata: dict, category: str) -> bool:
-        """Check if criterion matches the product"""
+    def _criterion_matches_product_metadata(self, criterion: str, metadata: dict, category: str) -> bool:
+        """Check if criterion matches product using metadata fields"""
         criterion_lower = criterion.lower()
         
-        # Category-specific matching
-        if category == 'Brand':
-            return criterion_lower in str(metadata.get('PURCHASE_BRAND', '')).lower()
-        elif category == 'Product Type':
-            return criterion_lower in searchable_text
-        elif category == 'Diet/Special Needs':
-            # Check special diet tags
-            for key in metadata:
-                if key.startswith('specialdiettag:') and criterion_lower.replace(' ', '-') in key.lower():
-                    return True
-            return criterion_lower in searchable_text
-        elif category == 'Flavor':
-            # Check ingredient tags
-            for key in metadata:
-                if key.startswith('ingredienttag:') and criterion_lower in key.lower():
-                    return True
-            return criterion_lower in searchable_text
+        # Brand matching - handle multi-value fields
+        if category == 'Brands':
+            brand_field = str(metadata.get('PURCHASE_BRAND', ''))
+            # Split on || and check each brand
+            brand_parts = [part.strip().lower() for part in brand_field.split('||')]
+            return any(criterion_lower in brand for brand in brand_parts)
         
-        # General text match
-        return criterion_lower in searchable_text
+        # Category matching
+        elif category == 'Categories':
+            categories = [
+                str(metadata.get('CATEGORY_LEVEL1', '')).lower(),
+                str(metadata.get('CATEGORY_LEVEL2', '')).lower(),
+                str(metadata.get('CATEGORY_LEVEL3', '')).lower()
+            ]
+            return any(criterion_lower in cat for cat in categories)
+        
+        # Ingredient matching
+        elif category == 'Ingredients':
+            for key in metadata:
+                if key.startswith('ingredienttag:'):
+                    ingredient = key.split(':', 1)[1].lower()
+                    if criterion_lower in ingredient or ingredient in criterion_lower:
+                        return True
+            return False
+        
+        # Diet & health matching
+        elif category == 'Diet & Health':
+            for key in metadata:
+                if key.startswith('specialdiettag:'):
+                    diet_tag = key.split(':', 1)[1].lower()
+                    if criterion_lower in diet_tag or diet_tag in criterion_lower:
+                        return True
+            return False
+        
+        # Pet type matching
+        elif category == 'Pet Types':
+            pet_type = str(metadata.get('ATTR_PET_TYPE', '')).lower()
+            return criterion_lower in pet_type
+        
+        # Product form matching
+        elif category == 'Product Forms':
+            food_form = str(metadata.get('ATTR_FOOD_FORM', '')).lower()
+            return criterion_lower in food_form
+        
+        # Default: search in product name and description
+        else:
+            searchable_text = ' '.join([
+                str(metadata.get('CLEAN_NAME', '')),
+                str(metadata.get('NAME', '')),
+                str(metadata.get('DESCRIPTION_LONG', ''))
+            ]).lower()
+            return criterion_lower in searchable_text
     
-    def _get_matched_field_value(self, criterion: str, metadata: dict) -> str:
-        """Get the field value that was matched"""
-        return metadata.get('CLEAN_NAME', '')[:50] + '...' 
+    def _get_matched_metadata_value(self, criterion: str, metadata: dict, category: str) -> str:
+        """Get the actual metadata value that was matched"""
+        if category == 'Brands':
+            return metadata.get('PURCHASE_BRAND', '')
+        elif category == 'Categories':
+            return metadata.get('CATEGORY_LEVEL1', '')
+        else:
+            return metadata.get('CLEAN_NAME', '')[:50] + '...' 
