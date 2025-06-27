@@ -172,7 +172,6 @@ class ProductService:
             
             # Extract products from the result
             ranked_products = result.get("products", [])
-
             # Extract reply from the result
             reply = result.get("message", "")
             
