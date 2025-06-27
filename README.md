@@ -119,3 +119,23 @@ The backend will be available at `http://localhost:8000`
 ### Health
 - `GET /api/health` - Health check
 
+
+# Product Comparison Feature
+
+The comparison feature allows users to select up to 3 products and ask the AI to compare them based on various criteria like price, quality, ingredients, ratings, etc. The AI uses detailed product metadata to provide comprehensive comparisons.
+
+## Architecture
+
+### Backend Components
+
+1. **`src/services/prompts.py`** - Contains the comparison prompt template
+2. **`src/services/comparison_service.py`** - Handles comparison logic and OpenAI API calls
+3. **`src/routers/chat_router.py`** - Contains the `/chats/compare` endpoint
+
+### Frontend Components
+
+1. **`client/src/components/ProductCard.tsx`** - Updated with compare checkboxes
+2. **`client/src/components/ChatWidget.tsx`** - Updated to handle comparison mode
+3. **`client/src/contexts/ChatContext.tsx`** - Added comparison state management
+4. **`client/src/lib/api.ts`** - Added comparison API call
+

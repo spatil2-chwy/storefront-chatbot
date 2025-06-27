@@ -1,14 +1,14 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+import time
 from os import getenv
 import time
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY")
+api_key = getenv("OPENAI_API_KEY_3")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-
 client = OpenAI(api_key=api_key)
 # refactor needed, tools, system prompt, model, etc should be in a separate file
 tools = [
@@ -99,28 +99,21 @@ tools = [
             # "strict": True # although openai recommended, this seems to make things worse
         }
     }
-
 ]
-
 system_message = {
     "role": "system",
     "content": """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
-
 IMPORTANT: When users ask about pet products (food, toys, accessories, etc.), you MUST use the search_products function to find relevant products. This includes general queries like "dog food", "cat toys", etc. - even if no specific ingredients or diet requirements are mentioned.
-
 Do not answer questions unrelated to pet products. If you receive a non-product-related question, gently steer the conversation back to product needs.
-
 Your tone should reflect:
 - The deep, joyful, sometimes messy bond between pets and their people.
 - Clear, empathetic, human guidance—like a kind, pet-savvy friend.
 - No puns, gimmicks, or vague language. Be specific, mobile-friendly, and supportive.
-
 Remember: Always search for products when users mention pet items, even if the query is general.
 """,
 }
-
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-4.1-nano"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
@@ -188,6 +181,8 @@ def chat(user_input: str, history: list):
         assistant_reply = response.output[0].content[0].text
         full_history.append({"role": "assistant", "content": assistant_reply})
     else:
+        function_start = time.time()
+        print(f"Function call start after {function_start - start_time:.4f} seconds from start")
         tool_call = response.output[0]
         full_history.append(tool_call)
         if tool_call.name != "search_products":
@@ -198,7 +193,8 @@ def chat(user_input: str, history: list):
         result = call_function(tool_call.name, args)
         print(f"Function call returned in {time.time() - start_time:.4f} seconds")
         products, message = result
-
+        function_end = time.time()
+        print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
         full_history.append({
             "type": "function_call_output",
             "call_id": tool_call.call_id,
@@ -222,5 +218,3 @@ def chat(user_input: str, history: list):
         "history": full_history[1:],  # Exclude system message
         "products": products,
     }
-
- 

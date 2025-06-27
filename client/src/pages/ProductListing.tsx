@@ -26,8 +26,21 @@ export default function ProductListing() {
     currentSearchQuery, 
     setCurrentSearchQuery, 
     hasSearched, 
-    setHasSearched 
+    setHasSearched,
+    setShouldAutoOpen,
+    comparingProducts,
+    isInComparisonMode
   } = useGlobalChat();
+
+  // Auto-open chatbot when navigating to this page
+  useEffect(() => {
+    // Check if user had closed the chatbot before
+    const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
+    if (wasChatClosed) {
+      setShouldAutoOpen(true);
+      localStorage.removeItem('chatClosed'); // Reset the flag
+    }
+  }, [setShouldAutoOpen]);
 
   useEffect(() => {
     // Listen for clear chat events
@@ -85,8 +98,8 @@ export default function ProductListing() {
 
     try {
       // Use semantic search
-      const searchResults = await api.searchProducts(trimmedQuery, 30);
-      setSearchResults(searchResults);
+      const searchResults = await api.searchProducts(trimmedQuery, 10);
+      setSearchResults(searchResults.products);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);
@@ -108,6 +121,8 @@ export default function ProductListing() {
   const handleClearChat = () => {
     setChatQuery('');
     setHasSearched(false);
+    setSearchResults([]);
+    setCurrentSearchQuery('');
   };
 
   const handleFilterChange = (filters: any) => {

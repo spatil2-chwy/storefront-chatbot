@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Package } from 'lucide-react';
+import { MessageCircle, X, Send, Package, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { chatResponses } from '@/lib/mockData';
 import { ChatMessage, ChatContext, Product } from '../types';
 import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { api } from '@/lib/api';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -21,11 +21,21 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     messages, 
     setMessages, 
     addMessage, 
+    insertMessageAt,
     clearMessages, 
     currentContext, 
     setCurrentContext, 
     isOpen, 
-    setIsOpen 
+    setIsOpen,
+    comparingProducts,
+    isInComparisonMode,
+    clearComparison,
+    shouldAutoOpen,
+    setShouldAutoOpen,
+    searchResults,
+    setSearchResults,
+    setCurrentSearchQuery,
+    setHasSearched
   } = useGlobalChat();
   
   const [inputValue, setInputValue] = useState('');
@@ -33,21 +43,28 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   const [isLiveAgent, setIsLiveAgent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
+  const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
   const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll when messages change and we're not in comparison mode to prevent glitching
+    if (!isInComparisonMode) {
+      scrollToBottom();
+    }
+  }, [messages, isInComparisonMode]);
 
   useEffect(() => {
-    if (shouldOpen) {
+    if (shouldOpen || shouldAutoOpen) {
       setIsOpen(true);
+      setShouldAutoOpen(false); // Reset auto-open trigger
     }
-  }, [shouldOpen, setIsOpen]);
+  }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
 
   // Handle chat context changes
   useEffect(() => {
@@ -62,9 +79,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (chatContext.type === 'product' && chatContext.product && previousContext.type !== 'product') {
         const productMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Now discussing: ${chatContext.product.title}\n\nAsk me anything about this product - pricing, ingredients, reviews, or recommendations!`,
+          content: `🔄 Now discussing: ${chatContext.product.title}`,
           sender: 'ai',
           timestamp: new Date(),
+          productTitle: chatContext.product.title, // Store product title for history
         };
         addMessage(productMessage);
       }
@@ -73,7 +91,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (chatContext.type === 'general' && previousContext.type === 'product') {
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Transitioned to general chat\n\nI'm now ready to help with general questions about pet products!`,
+          content: `🔄 Transitioned to general chat`,
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -82,11 +100,81 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
+  // Handle comparison mode changes
+  useEffect(() => {
+    // When entering comparison mode (2 or more products)
+    if (isInComparisonMode && comparingProducts.length >= 2) {
+      // If we don't have a comparison start index yet, set it to current message count
+      if (comparisonStartIndexRef.current === -1) {
+        comparisonStartIndexRef.current = messages.length;
+        
+        // Add comparison transition message at the current position
+        const comparisonMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
+          sender: 'ai',
+          timestamp: new Date(),
+          // Store product IDs for rendering - this will be static history
+          comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+          // Store the original product count for static display
+          comparisonProductCount: comparingProducts.length,
+          // Store full product data for history retention
+          comparisonProducts: [...comparingProducts],
+        };
+        insertMessageAt(comparisonMessage, comparisonStartIndexRef.current);
+      } else {
+        // Update existing comparison message when products are added/removed
+        const newMessages = [...messages];
+        const comparisonMessageIndex = newMessages.findIndex(msg => 
+          msg.content.includes('🔄 Now comparing:') && msg.comparisonProductIds
+        );
+        
+        if (comparisonMessageIndex !== -1) {
+          newMessages[comparisonMessageIndex] = {
+            ...newMessages[comparisonMessageIndex],
+            content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
+            comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+            comparisonProductCount: comparingProducts.length,
+            comparisonProducts: [...comparingProducts], // Store full product data
+          };
+          setMessages(newMessages);
+        }
+      }
+    }
+    // When exiting comparison mode (less than 2 products)
+    else if (!isInComparisonMode && comparingProducts.length < 2 && comparisonStartIndexRef.current !== -1) {
+      // Add transition message when exiting comparison mode
+      const transitionMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: `🔄 Transitioned to general chat`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(transitionMessage);
+      
+      // Reset the comparison start index
+      comparisonStartIndexRef.current = -1;
+    }
+  }, [isInComparisonMode, comparingProducts.length, messages.length, insertMessageAt, setMessages, messages]);
+
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
     setIsLiveAgent(liveAgent);
     // Clear input when switching modes
     setInputValue('');
+  };
+
+  const handleExitToGeneralChat = () => {
+    clearComparison();
+    comparisonStartIndexRef.current = -1; // Reset comparison start index
+    setCurrentContext({ type: 'general' });
+    const exitMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: `🔄 Transitioned to general chat`,
+      sender: 'ai',
+      timestamp: new Date(),
+    };
+    addMessage(exitMessage);
   };
 
   useEffect(() => {
@@ -111,75 +199,64 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       setIsLoading(true);
       
       // Generate AI response
-      setTimeout(() => {
-        const aiResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: generateAIResponse(initialQuery),
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        
-        addMessage(aiResponse);
-        setIsLoading(false);
-      }, 1500);
-    }
-  }, [initialQuery, shouldClearChat, isLiveAgent]);
+      const generateResponse = async () => {
+        try {
+          let aiResponse: ChatMessage;
 
-  const generateAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Product-specific responses
-    if (currentContext.type === 'product' && currentContext.product) {
-      const product = currentContext.product;
-      
-      if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('how much')) {
-        const hasAutoship = product.autoshipPrice && product.autoshipPrice > 0;
-        if (hasAutoship) {
-          return `The ${product.title} is priced at $${product.price}. With Autoship, you can save 5% and get it for $${product.autoshipPrice}. Would you like me to help you set up Autoship?`;
-        } else {
-          return `The ${product.title} is priced at $${product.price}. This product is not available for Autoship at the moment.`;
+          // If in comparison mode and we have products to compare, call the backend
+          if (isInComparisonMode && comparingProducts.length >= 2) {
+            const response = await api.compareProducts(initialQuery, comparingProducts);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+          } else if (currentContext.type === 'product' && currentContext.product) {
+            // If in product context, call the backend for product-specific questions
+            const response = await api.askAboutProduct(initialQuery, currentContext.product);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+          } else {
+            // Use backend SearchProducts for general chat mode to update products and display
+            const response = await api.searchProducts(initialQuery);
+            aiResponse = {
+              id: (Date.now() + 1).toString(),
+              content: response.reply,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+            
+            // Update global search state with the products from the response
+            if (response.products && response.products.length > 0) {
+              setSearchResults(response.products);
+              setCurrentSearchQuery(initialQuery);
+              setHasSearched(true);
+            }
+          }
+
+          addMessage(aiResponse);
+        } catch (error) {
+          // Handle API errors gracefully
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment.",
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          addMessage(errorMessage);
+        } finally {
+          setIsLoading(false);
         }
-      }
-      
-      if (lowerMessage.includes('review') || lowerMessage.includes('rating') || lowerMessage.includes('star')) {
-        return `The ${product.title} has a ${product.rating}-star rating from ${product.reviewCount} customers. It's highly rated for quality and value. Would you like to see more details about what customers are saying?`;
-      }
-      
-      if (lowerMessage.includes('ingredient') || lowerMessage.includes('what') || lowerMessage.includes('made')) {
-        return `I'd be happy to tell you about the ingredients in ${product.title}! This product features high-quality, natural ingredients. For detailed nutritional information, you can check the product page or ask me specific questions about ingredients.`;
-      }
-      
-      if (lowerMessage.includes('size') || lowerMessage.includes('weight') || lowerMessage.includes('amount')) {
-        return `The ${product.title} comes in standard packaging sizes. You can check the product page for specific size options and pricing details.`;
-      }
-      
-      if (lowerMessage.includes('flavor') || lowerMessage.includes('taste')) {
-        return `The ${product.title} comes in delicious flavors that pets love! You can check the product page for specific flavor options and see which ones are most popular with customers.`;
-      }
-      
-      // Default product response
-      return `Great question about ${product.title}! This is a ${product.rating}-star rated product that many pet parents love. Is there anything specific you'd like to know about it?`;
+      };
+
+      generateResponse();
     }
-    
-    // General responses (existing logic)
-    if (lowerMessage.includes('train') || lowerMessage.includes('puppy') || lowerMessage.includes('biting')) {
-      return "For training puppies, I recommend starting with positive reinforcement and high-value treats. Redirect biting to appropriate chew toys and be consistent with commands. Would you like me to show you some training treat options?";
-    }
-    
-    if (lowerMessage.includes('grain-free') || lowerMessage.includes('grain free')) {
-      return "Grain-free diets can be beneficial for dogs with sensitivities. Let me filter the products to show you our best grain-free options.";
-    }
-    
-    if (lowerMessage.includes('dental') || lowerMessage.includes('teeth') || lowerMessage.includes('chew')) {
-      return "Dental health is so important! I can show you some great dental chews and toys that help maintain oral hygiene.";
-    }
-    
-    if (lowerMessage.includes('senior') || lowerMessage.includes('old') || lowerMessage.includes('elderly')) {
-      return "Senior dogs have special nutritional needs. Would you like me to show you some senior-specific formulas?";
-    }
-    
-    return chatResponses[Math.floor(Math.random() * chatResponses.length)];
-  };
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -199,24 +276,71 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setInputValue(''); // Always clear input after sending
     setIsLoading(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
+    try {
+      let aiResponse: ChatMessage;
+
+      // If in comparison mode and we have products to compare, call the backend
+      if (isInComparisonMode && comparingProducts.length >= 2) {
+        const response = await api.compareProducts(messageToSend, comparingProducts);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else if (currentContext.type === 'product' && currentContext.product) {
+        // If in product context, call the backend for product-specific questions
+        const response = await api.askAboutProduct(messageToSend, currentContext.product);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else {
+        // Use backend SearchProducts for general chat mode to update products and display
+        const response = await api.searchProducts(messageToSend);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response.reply,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        
+        // Update global search state with the products from the response
+        if (response.products && response.products.length > 0) {
+          setSearchResults(response.products);
+          setCurrentSearchQuery(messageToSend);
+          setHasSearched(true);
+        }
+      }
+
+      addMessage(aiResponse);
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      // Handle API errors gracefully
+      const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(messageToSend),
+        content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment.",
         sender: 'ai',
         timestamp: new Date(),
       };
-
-      addMessage(aiResponse);
+      addMessage(errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       sendMessage();
     }
+  };
+
+  const handleCloseChat = () => {
+    setIsOpen(false);
+    // Store that user closed the chat so we can auto-open on page transitions
+    localStorage.setItem('chatClosed', 'true');
   };
 
   // Desktop: floating window, Mobile: bottom drawer/modal
@@ -254,7 +378,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setIsOpen(false)}
+                    onClick={handleCloseChat}
                     className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-7 h-7"
                   >
                     <X className="w-4 h-4" />
@@ -286,17 +410,29 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   </div>
                   {/* Clear Chat Button - Only show in AI mode */}
                   {!isLiveAgent && messages.length > 0 && (
-                    <button
-                      onClick={() => {
-                        clearMessages();
-                        setInputValue('');
-                        processedQueryRef.current = '';
-                        onClearChat?.();
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-                    >
-                      Clear chat
-                    </button>
+                    <div className="flex flex-col items-end space-y-1">
+                      <button
+                        onClick={() => {
+                          clearMessages();
+                          setInputValue('');
+                          processedQueryRef.current = '';
+                          comparisonStartIndexRef.current = -1; // Reset comparison start index
+                          onClearChat?.();
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                      >
+                        Clear chat
+                      </button>
+                      {isInComparisonMode && (
+                        <button
+                          onClick={handleExitToGeneralChat}
+                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                        >
+                          <ArrowLeft className="w-3 h-3" />
+                          Exit to general chat
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -326,6 +462,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           </div>
                         </div>
                       )}
+                      
                       {messages.map((message) => (
                         <div
                           key={message.id}
@@ -335,24 +472,81 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                               message.sender === 'user'
                                 ? 'bg-chewy-blue text-white'
-                                : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                                : message.content.includes('🔄 Now discussing:') || 
+                                  message.content.includes('🔄 Transitioned to general chat') ||
+                                  message.content.includes('🔄 Now comparing:')
                                 ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                                 : 'bg-gray-100 text-gray-900'
                             }`}
                           >
                             {message.content.includes('🔄 Now discussing:') ? (
                               <div className="space-y-2">
-                                <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
-                                <div className="text-xs">
-                                  Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
-                                </div>
+                                <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                               </div>
                             ) : message.content.includes('🔄 Transitioned to general chat') ? (
                               <div className="space-y-2">
-                                <div className="font-semibold">🔄 Transitioned to general chat</div>
-                                <div className="text-xs">
-                                  I'm now ready to help with general questions about pet products!
+                                <div className="font-semibold">🔄 Transitioned to general chat</div>  
+                              </div>
+                            ) : message.content.includes('🔄 Now comparing:') ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                                  <button
+                                    onClick={() => {
+                                      clearComparison();
+                                      comparisonStartIndexRef.current = -1;
+                                      // Add transition message
+                                      const transitionMessage: ChatMessage = {
+                                        id: Date.now().toString(),
+                                        content: `🔄 Transitioned to general chat`,
+                                        sender: 'ai',
+                                        timestamp: new Date(),
+                                      };
+                                      addMessage(transitionMessage);
+                                    }}
+                                    className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </div>
+                                {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
+                                  <div className="flex space-x-2 mt-3">
+                                    {message.comparisonProductIds.map((productId) => {
+                                      // First try to find product from stored comparison products
+                                      let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
+                                      if (!product) {
+                                        // Fallback to current comparingProducts
+                                        product = comparingProducts.find((p: Product) => p.id === productId);
+                                      }
+                                      if (!product) {
+                                        // Final fallback to searchResults
+                                        product = searchResults.find((p: Product) => p.id === productId);
+                                      }
+                                      if (!product) return null;
+                                      
+                                      const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
+                                      
+                                      return (
+                                        <div key={productId} className={`${imageWidth} flex-shrink-0`}>
+                                          <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
+                                            {product.image ? (
+                                              <img 
+                                                src={product.image} 
+                                                alt={product.title}
+                                                className="w-12 h-12 object-cover rounded"
+                                              />
+                                            ) : (
+                                              <Package className="w-6 h-6 text-gray-400" />
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-chewy-blue text-center truncate">
+                                            {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               message.content
@@ -360,6 +554,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           </div>
                         </div>
                       ))}
+                      
                       {/* Loading indicator */}
                       {isLoading && (
                         <div className="flex justify-start">
@@ -488,7 +683,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseChat}
                 className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-7 h-7"
               >
                 <X className="w-4 h-4" />
@@ -522,19 +717,29 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               
               {/* Clear Chat Button - Only show in AI mode */}
               {!isLiveAgent && messages.length > 0 && (
-                <button
-                  onClick={() => {
-                    clearMessages();
-                    setInputValue('');
-                    processedQueryRef.current = ''; // Reset processed query ref
-                    
-                    // Reset search state when clearing chat
-                    onClearChat?.();
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-                >
-                  Clear chat
-                </button>
+                <div className="flex flex-col items-end space-y-1">
+                  <button
+                    onClick={() => {
+                      clearMessages();
+                      setInputValue('');
+                      processedQueryRef.current = '';
+                      comparisonStartIndexRef.current = -1; // Reset comparison start index
+                      onClearChat?.();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+                  >
+                    Clear chat
+                  </button>
+                  {isInComparisonMode && (
+                    <button
+                      onClick={handleExitToGeneralChat}
+                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Exit to general chat
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </CardHeader>
@@ -565,33 +770,91 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       </div>
                     </div>
                   )}
+                  
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
+                        className={`max-w-xs px-6 py-2 rounded-2xl font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
-                            : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                            : message.content.includes('🔄 Now discussing:') || 
+                              message.content.includes('🔄 Transitioned to general chat') ||
+                              message.content.includes('🔄 Now comparing:')
                             ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
                         {message.content.includes('🔄 Now discussing:') ? (
                           <div className="space-y-2">
-                            <div className="font-semibold">🔄 Now discussing: {currentContext.product?.title}</div>
-                            <div className="text-xs">
-                              Ask me anything about this product - pricing, ingredients, reviews, or recommendations!
-                            </div>
+                            <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                           </div>
                         ) : message.content.includes('🔄 Transitioned to general chat') ? (
                           <div className="space-y-2">
                             <div className="font-semibold">🔄 Transitioned to general chat</div>
-                            <div className="text-xs">
-                              I'm now ready to help with general questions about pet products!
+                          </div>
+                        ) : message.content.includes('🔄 Now comparing:') ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                              <button
+                                onClick={() => {
+                                  clearComparison();
+                                  comparisonStartIndexRef.current = -1;
+                                  // Add transition message
+                                  const transitionMessage: ChatMessage = {
+                                    id: Date.now().toString(),
+                                    content: `🔄 Transitioned to general chat`,
+                                    sender: 'ai',
+                                    timestamp: new Date(),
+                                  };
+                                  addMessage(transitionMessage);
+                                }}
+                                className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
                             </div>
+                            {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
+                              <div className="flex space-x-2 mt-3">
+                                {message.comparisonProductIds.map((productId) => {
+                                  // First try to find product from stored comparison products
+                                  let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
+                                  if (!product) {
+                                    // Fallback to current comparingProducts
+                                    product = comparingProducts.find((p: Product) => p.id === productId);
+                                  }
+                                  if (!product) {
+                                    // Final fallback to searchResults
+                                    product = searchResults.find((p: Product) => p.id === productId);
+                                  }
+                                  if (!product) return null;
+                                  
+                                  const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
+                                  
+                                  return (
+                                    <div key={productId} className={`${imageWidth} flex-shrink-0`}>
+                                      <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
+                                        {product.image ? (
+                                          <img 
+                                            src={product.image} 
+                                            alt={product.title}
+                                            className="w-12 h-12 object-cover rounded"
+                                          />
+                                        ) : (
+                                          <Package className="w-6 h-6 text-gray-400" />
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-chewy-blue text-center truncate">
+                                        {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           message.content
@@ -599,7 +862,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       </div>
                     </div>
                   ))}
-
+                  
                   {/* Loading indicator */}
                   {isLoading && (
                     <div className="flex justify-start">

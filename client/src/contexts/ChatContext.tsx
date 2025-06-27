@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { ChatMessage, ChatContext as ChatContextType, Product } from '../types';
 
 interface GlobalChatContextType {
   messages: ChatMessage[];
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
+  insertMessageAt: (message: ChatMessage, index: number) => void;
   clearMessages: () => void;
   currentContext: ChatContextType;
   setCurrentContext: (context: ChatContextType) => void;
@@ -17,6 +18,15 @@ interface GlobalChatContextType {
   setCurrentSearchQuery: (query: string) => void;
   hasSearched: boolean;
   setHasSearched: (searched: boolean) => void;
+  // Comparison state management
+  comparingProducts: Product[];
+  addToComparison: (product: Product) => void;
+  removeFromComparison: (productId: number) => void;
+  clearComparison: () => void;
+  isInComparisonMode: boolean;
+  // Auto-open management
+  shouldAutoOpen: boolean;
+  setShouldAutoOpen: (should: boolean) => void;
 }
 
 const GlobalChatContext = createContext<GlobalChatContextType | undefined>(undefined);
@@ -43,12 +53,52 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
+  // Comparison state management
+  const [comparingProducts, setComparingProducts] = useState<Product[]>([]);
+  
+  // Auto-open management
+  const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
+
+  // Compute comparison mode based on number of products
+  const isInComparisonMode = useMemo(() => {
+    return comparingProducts.length >= 2;
+  }, [comparingProducts.length]);
+
   const addMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => [...prev, message]);
   }, []);
 
+  const insertMessageAt = useCallback((message: ChatMessage, index: number) => {
+    setMessages(prev => {
+      const newMessages = [...prev];
+      newMessages.splice(index, 0, message);
+      return newMessages;
+    });
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
+  }, []);
+
+  const addToComparison = useCallback((product: Product) => {
+    setComparingProducts(prev => {
+      if (prev.length >= 3) return prev; // Max 3 products
+      
+      const exists = prev.find(p => p.id === product.id);
+      if (exists) return prev; // Already in comparison
+      
+      return [...prev, product];
+    });
+  }, []);
+
+  const removeFromComparison = useCallback((productId: number) => {
+    setComparingProducts(prev => {
+      return prev.filter(p => p.id !== productId);
+    });
+  }, []);
+
+  const clearComparison = useCallback(() => {
+    setComparingProducts([]);
   }, []);
 
   return (
@@ -57,6 +107,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         messages,
         setMessages,
         addMessage,
+        insertMessageAt,
         clearMessages,
         currentContext,
         setCurrentContext,
@@ -68,6 +119,13 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         setCurrentSearchQuery,
         hasSearched,
         setHasSearched,
+        comparingProducts,
+        addToComparison,
+        removeFromComparison,
+        clearComparison,
+        isInComparisonMode,
+        shouldAutoOpen,
+        setShouldAutoOpen,
       }}
     >
       {children}

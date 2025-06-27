@@ -33,6 +33,10 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  comparisonProductIds?: number[]; // For comparison messages to store product IDs
+  comparisonProductCount?: number; // For comparison messages to store original product count
+  productTitle?: string; // For product discussion messages to store product title
+  comparisonProducts?: Product[]; // For comparison messages to store full product data
 }
 
 export interface ChatContext {

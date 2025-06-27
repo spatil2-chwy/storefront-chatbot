@@ -138,3 +138,7 @@ class ProductBase(BaseModel):
 class Product(ProductBase):
     class Config:
         from_attributes = True
+
+class SearchResponse(BaseModel):
+    products: List[Product]
+    reply: str
