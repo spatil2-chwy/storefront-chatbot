@@ -12,7 +12,7 @@ product_svc = ProductService()
 @router.get("/search", response_model=List[Product])
 async def search_products(
     query: str = Query(..., description="Search query"),
-    limit: int = Query(10, description="Maximum number of results to return")
+    limit: int = Query(30, description="Maximum number of results to return")
 ):
     """Search products using semantic search with embeddings"""
     return await product_svc.search_products(query, limit)

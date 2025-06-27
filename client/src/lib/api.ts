@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  async searchProducts(query: string, limit: number = 10): Promise<Product[]> {
+  async searchProducts(query: string, limit: number = 30): Promise<Product[]> {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('limit', limit.toString());

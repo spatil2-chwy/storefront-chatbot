@@ -85,7 +85,7 @@ export default function ProductListing() {
 
     try {
       // Use semantic search
-      const searchResults = await api.searchProducts(trimmedQuery, 10);
+      const searchResults = await api.searchProducts(trimmedQuery, 30);
       setSearchResults(searchResults);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
