@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Heart, RotateCcw, Image as ImageIcon, Check } from 'lucide-react';
+import { Bot, RotateCcw, Image as ImageIcon, Check } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,12 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
   const isMaxReached = comparingProducts.length >= 3 && !isSelected;
+  const [showTooltip, setShowTooltip] = React.useState(false);
+
+  // Debug: Log the should_you_buy_it field
+  React.useEffect(() => {
+    console.log('Product should_you_buy_it:', product.should_you_buy_it);
+  }, [product.should_you_buy_it]);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -83,8 +89,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/product/${product.id}`}>
-      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer h-full flex flex-col">
-        <div className="relative">
+      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col">
+        <div className="relative w-full h-48">
           {renderImage()}
           {/* Fallback image (hidden by default) */}
           <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
@@ -128,8 +134,21 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
           
-          <button className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50">
-            <Heart className="w-4 h-4 text-gray-400" />
+          {/* AI insights button - always top right of image */}
+          <button 
+            className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <Bot className="w-4 h-4 text-gray-400" />
+            {product.should_you_buy_it && showTooltip && (
+              <div className="absolute right-1/2 translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50 flex flex-col items-center">
+                <div className="whitespace-pre-line text-center">{product.should_you_buy_it}</div>
+                <div className="mt-2 pt-2 border-t border-gray-700 font-medium text-center">Click to discuss</div>
+                {/* Arrow */}
+                <div className="w-3 h-3 bg-gray-900 rotate-45 absolute left-1/2 -bottom-1.5 -translate-x-1/2 z-50"></div>
+              </div>
+            )}
           </button>
         </div>
         

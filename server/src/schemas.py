@@ -134,6 +134,9 @@ class ProductBase(BaseModel):
     inStock: Optional[bool]
     category: str
     keywords: list
+    what_customers_love: Optional[str]
+    what_to_watch_out_for: Optional[str]
+    should_you_buy_it: Optional[str]
 
 class Product(ProductBase):
     class Config:

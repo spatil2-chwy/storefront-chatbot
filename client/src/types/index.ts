@@ -26,6 +26,9 @@ export interface Product {
   inStock?: boolean; // Not available, can be true
   category?: string; // CATEGORY_LEVEL1
   keywords?: string[]; // specialdiettag/ingredienttag
+  what_customers_love?: string; // what_customers_love
+  what_to_watch_out_for?: string; // what_to_watch_out_for
+  should_you_buy_it?: string; // should_you_buy_it
 }
 
 export interface ChatMessage {
