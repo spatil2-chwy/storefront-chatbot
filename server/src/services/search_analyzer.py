@@ -229,11 +229,10 @@ class SearchAnalyzer:
         for category, criteria_list in categorized_criteria.items():
             for criterion in criteria_list:
                 if self._criterion_matches_product(criterion, searchable_text, product_metadata, category):
-                    confidence = self._calculate_confidence(criterion, category, product_metadata)
                     matches.append(SearchMatch(
                         field=f"{category}: {criterion}",
                         matched_terms=[criterion],
-                        confidence=confidence,
+                        confidence=0.8,  # Fixed confidence - no complex calculation needed
                         field_value=self._get_matched_field_value(criterion, product_metadata)
                     ))
         
@@ -279,21 +278,6 @@ class SearchAnalyzer:
         
         # General text match
         return criterion_lower in searchable_text
-    
-    def _calculate_confidence(self, criterion: str, category: str, metadata: dict) -> float:
-        """Calculate match confidence"""
-        base_confidence = {
-            'Pet Type': 0.95,
-            'Brand': 0.90,
-            'Size/Weight': 0.85,
-            'Product Type': 0.80,
-            'Health Concern': 0.85,
-            'Life Stage': 0.90,
-            'Form': 0.75,
-            'Diet/Special Needs': 0.85,
-            'Flavor': 0.75
-        }
-        return base_confidence.get(category, 0.70)
     
     def _get_matched_field_value(self, criterion: str, metadata: dict) -> str:
         """Get the field value that was matched"""
