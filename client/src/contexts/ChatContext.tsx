@@ -5,6 +5,7 @@ interface GlobalChatContextType {
   messages: ChatMessage[];
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
+  insertMessageAt: (message: ChatMessage, index: number) => void;
   clearMessages: () => void;
   currentContext: ChatContextType;
   setCurrentContext: (context: ChatContextType) => void;
@@ -67,6 +68,14 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     setMessages(prev => [...prev, message]);
   }, []);
 
+  const insertMessageAt = useCallback((message: ChatMessage, index: number) => {
+    setMessages(prev => {
+      const newMessages = [...prev];
+      newMessages.splice(index, 0, message);
+      return newMessages;
+    });
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
@@ -98,6 +107,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         messages,
         setMessages,
         addMessage,
+        insertMessageAt,
         clearMessages,
         currentContext,
         setCurrentContext,

@@ -21,6 +21,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     messages, 
     setMessages, 
     addMessage, 
+    insertMessageAt,
     clearMessages, 
     currentContext, 
     setCurrentContext, 
@@ -31,6 +32,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     clearComparison,
     shouldAutoOpen,
     setShouldAutoOpen,
+    searchResults,
     setSearchResults,
     setCurrentSearchQuery,
     setHasSearched
@@ -41,6 +43,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   const [isLiveAgent, setIsLiveAgent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
+  const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
   const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
@@ -90,6 +93,35 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       }
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
+
+  // Handle comparison mode changes
+  useEffect(() => {
+    // When entering comparison mode (2 or more products)
+    if (isInComparisonMode && comparingProducts.length >= 2) {
+      // If we don't have a comparison start index yet, set it to current message count
+      if (comparisonStartIndexRef.current === -1) {
+        comparisonStartIndexRef.current = messages.length;
+        
+        // Add comparison transition message at the current position
+        const comparisonMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}\n\nAsk me to compare these products on price, ingredients, reviews, or any other criteria!`,
+          sender: 'ai',
+          timestamp: new Date(),
+          // Store product IDs for rendering - this will be static history
+          comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+          // Store the original product count for static display
+          comparisonProductCount: comparingProducts.length,
+        };
+        insertMessageAt(comparisonMessage, comparisonStartIndexRef.current);
+      }
+    }
+    // When exiting comparison mode (less than 2 products)
+    else if (!isInComparisonMode && comparingProducts.length < 2 && comparisonStartIndexRef.current !== -1) {
+      // Reset the comparison start index
+      comparisonStartIndexRef.current = -1;
+    }
+  }, [isInComparisonMode, comparingProducts.length, messages.length, insertMessageAt]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
@@ -270,49 +302,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   };
 
-  // Render comparison products section
-  const renderComparisonProducts = () => {
-    if (comparingProducts.length < 2) return null;
-
-    const imageWidth = comparingProducts.length === 2 ? 'w-1/2' : 'w-1/3';
-
-    return (
-      <div className="bg-chewy-light-blue border border-chewy-blue rounded-lg p-3 mb-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-chewy-blue">
-            Comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}
-          </span>
-          <button
-            onClick={clearComparison}
-            className="text-chewy-blue hover:text-blue-700 text-sm"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex space-x-2">
-          {comparingProducts.map((product) => (
-            <div key={product.id} className={`${imageWidth} flex-shrink-0`}>
-              <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
-                {product.image ? (
-                  <img 
-                    src={product.image} 
-                    alt={product.title}
-                    className="w-12 h-12 object-cover rounded"
-                  />
-                ) : (
-                  <Package className="w-6 h-6 text-gray-400" />
-                )}
-              </div>
-              <p className="text-xs text-chewy-blue text-center truncate">
-                {product.title?.split(' ').slice(0, 2).join(' ')}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   const handleCloseChat = () => {
     setIsOpen(false);
     // Store that user closed the chat so we can auto-open on page transitions
@@ -392,6 +381,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           clearMessages();
                           setInputValue('');
                           processedQueryRef.current = '';
+                          comparisonStartIndexRef.current = -1; // Reset comparison start index
                           onClearChat?.();
                         }}
                         className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
@@ -447,7 +437,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                               message.sender === 'user'
                                 ? 'bg-chewy-blue text-white'
-                                : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                                : message.content.includes('🔄 Now discussing:') || 
+                                  message.content.includes('🔄 Transitioned to general chat') ||
+                                  message.content.includes('🔄 Now comparing:')
                                 ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                                 : 'bg-gray-100 text-gray-900'
                             }`}
@@ -466,15 +458,64 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                   I'm now ready to help with general questions about pet products!
                                 </div>
                               </div>
+                            ) : message.content.includes('🔄 Now comparing:') ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                                  <button
+                                    onClick={() => {
+                                      clearComparison();
+                                      comparisonStartIndexRef.current = -1;
+                                    }}
+                                    className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <div className="text-xs">
+                                  Ask me to compare these products on price, ingredients, reviews, or any other criteria!
+                                </div>
+                                {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
+                                  <div className="flex space-x-2 mt-3">
+                                    {message.comparisonProductIds.map((productId) => {
+                                      // Find product from current comparingProducts or from searchResults if not in current comparison
+                                      let product = comparingProducts.find((p: Product) => p.id === productId);
+                                      if (!product) {
+                                        // Try to find in searchResults as fallback for static history
+                                        product = searchResults.find((p: Product) => p.id === productId);
+                                      }
+                                      if (!product) return null;
+                                      
+                                      const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
+                                      
+                                      return (
+                                        <div key={productId} className={`${imageWidth} flex-shrink-0`}>
+                                          <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
+                                            {product.image ? (
+                                              <img 
+                                                src={product.image} 
+                                                alt={product.title}
+                                                className="w-12 h-12 object-cover rounded"
+                                              />
+                                            ) : (
+                                              <Package className="w-6 h-6 text-gray-400" />
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-chewy-blue text-center truncate">
+                                            {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               message.content
                             )}
                           </div>
                         </div>
                       ))}
-                      
-                      {/* Comparison products section - appears after current messages when in comparison mode */}
-                      {renderComparisonProducts()}
                       
                       {/* Loading indicator */}
                       {isLoading && (
@@ -643,9 +684,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     onClick={() => {
                       clearMessages();
                       setInputValue('');
-                      processedQueryRef.current = ''; // Reset processed query ref
-                      
-                      // Reset search state when clearing chat
+                      processedQueryRef.current = '';
+                      comparisonStartIndexRef.current = -1; // Reset comparison start index
                       onClearChat?.();
                     }}
                     className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
@@ -702,7 +742,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
-                            : message.content.includes('🔄 Now discussing:') || message.content.includes('🔄 Transitioned to general chat')
+                            : message.content.includes('🔄 Now discussing:') || 
+                              message.content.includes('🔄 Transitioned to general chat') ||
+                              message.content.includes('🔄 Now comparing:')
                             ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
                         }`}
@@ -721,15 +763,64 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                               I'm now ready to help with general questions about pet products!
                             </div>
                           </div>
+                        ) : message.content.includes('🔄 Now comparing:') ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                              <button
+                                onClick={() => {
+                                  clearComparison();
+                                  comparisonStartIndexRef.current = -1;
+                                }}
+                                className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <div className="text-xs">
+                              Ask me to compare these products on price, ingredients, reviews, or any other criteria!
+                            </div>
+                            {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
+                              <div className="flex space-x-2 mt-3">
+                                {message.comparisonProductIds.map((productId) => {
+                                  // Find product from current comparingProducts or from searchResults if not in current comparison
+                                  let product = comparingProducts.find((p: Product) => p.id === productId);
+                                  if (!product) {
+                                    // Try to find in searchResults as fallback for static history
+                                    product = searchResults.find((p: Product) => p.id === productId);
+                                  }
+                                  if (!product) return null;
+                                  
+                                  const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
+                                  
+                                  return (
+                                    <div key={productId} className={`${imageWidth} flex-shrink-0`}>
+                                      <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
+                                        {product.image ? (
+                                          <img 
+                                            src={product.image} 
+                                            alt={product.title}
+                                            className="w-12 h-12 object-cover rounded"
+                                          />
+                                        ) : (
+                                          <Package className="w-6 h-6 text-gray-400" />
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-chewy-blue text-center truncate">
+                                        {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           message.content
                         )}
                       </div>
                     </div>
                   ))}
-
-                  {/* Comparison products section - appears after current messages when in comparison mode */}
-                  {renderComparisonProducts()}
                   
                   {/* Loading indicator */}
                   {isLoading && (
