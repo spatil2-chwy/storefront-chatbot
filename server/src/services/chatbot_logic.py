@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import json
 import time
 from os import getenv
+import time
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
 api_key = getenv("OPENAI_API_KEY_3")
@@ -124,13 +125,19 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     Returns:
         tuple: A tuple containing a list of products and a message
     """
+    start = time.time()
     results = query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+    print(f"Query executed in {time.time() - start:.4f} seconds")
+    
+    ranking_start = time.time()
     ranked_products = rank_products(results)
+    print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
     if not ranked_products:
         return [], "No products found matching your criteria."
 
-    message = "Products succesfully retrieved and are being displayed to the user! Ask the user if they want to see more details about products or refine the search."
+    message = "Products successfully retrieved and are being displayed to the user! Ask the user if they want to see more details about products or refine the search."
+    print(f"Total search_products time: {time.time() - start:.4f} seconds")
     return ranked_products, message
 
 
@@ -156,7 +163,6 @@ def call_function(name, args):
 
 def chat(user_input: str, history: list):
     start_time = time.time()
-    print(f"Searching {user_input}:")
     full_history = (
         [system_message] + history + [{"role": "user", "content": user_input}]
     )
@@ -166,9 +172,8 @@ def chat(user_input: str, history: list):
         model=MODEL,
         input=full_history,
         tools=tools,
-    )
-    llm_time = time.time() - start_time
-    print(f"First LLM response after {llm_time:.4f} seconds from start")
+    )   
+    print(f"First response received in {time.time() - start_time:.4f} seconds")
     # print(response)
     products = []
 
@@ -184,8 +189,9 @@ def chat(user_input: str, history: list):
             raise ValueError(f"Unexpected tool call: {tool_call.name}")
         
         args = json.loads(tool_call.arguments)
-        print(f"Calling {tool_call.name}(**{args})")
+        print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
         result = call_function(tool_call.name, args)
+        print(f"Function call returned in {time.time() - start_time:.4f} seconds")
         products, message = result
         function_end = time.time()
         print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
@@ -194,11 +200,19 @@ def chat(user_input: str, history: list):
             "call_id": tool_call.call_id,
             "output": message,
         })
-        # Instead of calling LLM again, use a predefined message
+
+
+        # Get final reply after tool calls
+        # response_2 = client.responses.create(
+        #     model=MODEL,
+        #     input=full_history,
+        #     tools=tools,
+        # )
+        # assistant_reply = response_2.output_text
         assistant_reply = "Just found some products! Let me know if you would like to further refine your search."
         full_history.append({"role": "assistant", "content": assistant_reply})
-    total_time = time.time() - start_time
-    print(f"Chat message returned in {total_time:.4f} seconds")
+
+    print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
     return {
         "message": assistant_reply,
         "history": full_history[1:],  # Exclude system message
