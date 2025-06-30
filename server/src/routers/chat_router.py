@@ -1,18 +1,18 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import List
-from ..models.chat import ChatMessage  #, ChatMessageCreate
-from src.services import user_service
-from src.services.chatbot_logic import chat
-from src.services.chatmodes_service import compare_products, ask_about_product
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import ChatMessage as ChatSchema
+from src.models.chat import ChatMessage
 from src.services.chat_service import ChatService
+from src.services.user_service import UserService
+from src.services.chatbot_logic import chat
+from src.services.chatmodes_service import compare_products, ask_about_product
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 chat_svc = ChatService()
+user_svc = UserService()
 
 @router.get("/{chat_id}", response_model=ChatSchema)
 def get_chat_message(chat_id: str, db: Session = Depends(get_db)):
@@ -21,13 +21,11 @@ def get_chat_message(chat_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Chat message not found")
     return msg
 
-# @router.post("/chat/messages", response_model=ChatMessage)
-# async def add_chat_message(message_data: ChatMessageCreate):
-#     return await user_service.add_chat_message(message_data)
-
 class ChatRequest(BaseModel):
     message: str
     history: list
+    customer_key: Optional[int] = None
+    skip_products: Optional[bool] = False  # Flag to skip product loading for search queries
 
 class ComparisonRequest(BaseModel):
     message: str
@@ -37,14 +35,28 @@ class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
 
-# @router.post("/chatbot")
-# async def chatbot(request: ChatRequest):
-#     reply = chat(
-#         user_input=request.message,
-#         history=request.history,
-#     )
+@router.post("/chatbot")
+async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
+    user_context = ""
+    
+    # Get user context if customer_key is provided
+    if request.customer_key:
+        try:
+            user_context_data = user_svc.get_user_context_for_chat(db, request.customer_key)
+            if user_context_data:
+                user_context = user_svc.format_pet_context_for_ai(user_context_data)
+                print(f"User context for customer {request.customer_key}:\n{user_context}")
+        except Exception as e:
+            print(f"Error getting user context for customer {request.customer_key}: {e}")
+    
+    reply = chat(
+        user_input=request.message,
+        history=request.history,
+        user_context=user_context,
+        skip_products=request.skip_products
+    )
 
-#     return {"response": reply}
+    return {"response": reply}
 
 @router.post("/compare")
 async def compare_products_endpoint(request: ComparisonRequest):
