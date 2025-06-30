@@ -233,19 +233,27 @@ class SearchAnalyzer:
         """Check if a metadata term matches the user's query"""
         term_lower = term.lower()
         
-        # Direct substring match
-        if term_lower in query_lower:
+        # Normalize both term and query for better matching (handle hyphens/spaces)
+        def normalize_text(text):
+            return text.replace('-', ' ').replace('_', ' ')
+        
+        normalized_term = normalize_text(term_lower)
+        normalized_query = normalize_text(query_lower)
+        
+        # Direct substring match on normalized text
+        if normalized_term in normalized_query:
             return True
         
         # Word-based matching for multi-word terms
-        term_words = set(term_lower.split())
+        term_words = set(normalized_term.split())
+        query_words_normalized = set(normalized_query.split())
         
         # For single words, require exact word match
         if len(term_words) == 1:
-            return term_lower in query_words
+            return list(term_words)[0] in query_words_normalized
         
         # For multi-word terms, require all words to be present
-        return term_words.issubset(query_words)
+        return term_words.issubset(query_words_normalized)
     
     def _add_universal_patterns(self, query_lower: str, query_words: Set[str], criteria: Dict[str, List[str]]):
         """Add universal patterns that don't depend on metadata discovery"""
