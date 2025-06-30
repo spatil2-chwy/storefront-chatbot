@@ -105,7 +105,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (chatContext.type === 'general' && (previousContext.type === 'product' || previousContext.type === 'comparison')) {
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Transitioned to general chat`,
+          content: `Transitioned to general chat`,
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -148,7 +148,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       
       const comparisonMessage: ChatMessage = {
         id: Date.now().toString(),
-        content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
+        content: `Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
         sender: 'ai',
         timestamp: new Date(),
         comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
@@ -166,7 +166,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       if (currentContext.type !== 'product') {
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
-          content: `🔄 Transitioned to general chat`,
+          content: `Transitioned to general chat`,
           sender: 'ai',
           timestamp: new Date(),
         };
@@ -188,7 +188,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setCurrentContext({ type: 'general' });
     const exitMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: `🔄 Transitioned to general chat`,
+      content: `Transitioned to general chat`,
       sender: 'ai',
       timestamp: new Date(),
     };
@@ -528,9 +528,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                               message.sender === 'user'
                                 ? 'bg-chewy-blue text-white'
-                                : message.content.includes('🔄 Now discussing:') || 
-                                  message.content.includes('🔄 Transitioned to general chat') ||
-                                  message.content.includes('🔄 Now comparing:')
+                                                            : message.content.includes('🔄 Now discussing:') || 
+                              message.content.includes('Transitioned to general chat') ||
+                              message.content.includes('Now comparing:')
                                 ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                                 : 'bg-gray-100 text-gray-900'
                             }`}
@@ -539,14 +539,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                               <div className="space-y-2">
                                 <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                               </div>
-                            ) : message.content.includes('🔄 Transitioned to general chat') ? (
+                            ) : message.content.includes('Transitioned to general chat') ? (
                               <div className="space-y-2">
-                                <div className="font-semibold">🔄 Transitioned to general chat</div>  
+                                <div className="font-semibold">Transitioned to general chat</div>  
                               </div>
-                            ) : message.content.includes('🔄 Now comparing:') ? (
+                            ) : message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
                                   <button
                                     onClick={() => {
                                       clearComparison();
@@ -554,7 +554,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                       // Add transition message
                                       const transitionMessage: ChatMessage = {
                                         id: Date.now().toString(),
-                                        content: `🔄 Transitioned to general chat`,
+                                        content: `Transitioned to general chat`,
                                         sender: 'ai',
                                         timestamp: new Date(),
                                       };
@@ -565,42 +565,26 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
-                                  <div className="flex space-x-2 mt-3">
-                                    {message.comparisonProductIds.map((productId) => {
-                                      // First try to find product from stored comparison products
-                                      let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
-                                      if (!product) {
-                                        // Fallback to current comparingProducts
-                                        product = comparingProducts.find((p: Product) => p.id === productId);
-                                      }
-                                      if (!product) {
-                                        // Final fallback to searchResults
-                                        product = searchResults.find((p: Product) => p.id === productId);
-                                      }
-                                      if (!product) return null;
-                                      
-                                      const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
-                                      
-                                      return (
-                                        <div key={productId} className={`${imageWidth} flex-shrink-0`}>
-                                          <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
-                                            {product.image ? (
-                                              <img 
-                                                src={product.image} 
-                                                alt={product.title}
-                                                className="w-12 h-12 object-cover rounded"
-                                              />
-                                            ) : (
-                                              <Package className="w-6 h-6 text-gray-400" />
-                                            )}
-                                          </div>
-                                          <p className="text-xs text-chewy-blue text-center truncate">
-                                            {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
-                                          </p>
+                                {comparingProducts.length > 0 && (
+                                  <div className="mt-3 space-y-2">
+                                    {comparingProducts.map((product) => (
+                                      <div key={product.id} className="flex items-center space-x-2">
+                                        <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                          {product.image ? (
+                                            <img 
+                                              src={product.image} 
+                                              alt={product.title}
+                                              className="w-6 h-6 object-cover rounded"
+                                            />
+                                          ) : (
+                                            <Package className="w-4 h-4 text-gray-400" />
+                                          )}
                                         </div>
-                                      );
-                                    })}
+                                        <div className="text-sm font-semibold text-chewy-blue">
+                                          {product.title}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
@@ -857,8 +841,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
                             : message.content.includes('🔄 Now discussing:') || 
-                              message.content.includes('🔄 Transitioned to general chat') ||
-                              message.content.includes('🔄 Now comparing:')
+                              message.content.includes('Transitioned to general chat') ||
+                              message.content.includes('Now comparing:')
                             ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
                         }`}
@@ -867,14 +851,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           <div className="space-y-2">
                             <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
                           </div>
-                        ) : message.content.includes('🔄 Transitioned to general chat') ? (
+                        ) : message.content.includes('Transitioned to general chat') ? (
                           <div className="space-y-2">
-                            <div className="font-semibold">🔄 Transitioned to general chat</div>
+                            <div className="font-semibold">Transitioned to general chat</div>
                           </div>
-                        ) : message.content.includes('🔄 Now comparing:') ? (
+                        ) : message.content.includes('Now comparing:') ? (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <div className="font-semibold">🔄 Now comparing: {message.comparisonProductCount || comparingProducts.length} product{(message.comparisonProductCount || comparingProducts.length) !== 1 ? 's' : ''}</div>
+                              <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
                               <button
                                 onClick={() => {
                                   clearComparison();
@@ -882,7 +866,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                   // Add transition message
                                   const transitionMessage: ChatMessage = {
                                     id: Date.now().toString(),
-                                    content: `🔄 Transitioned to general chat`,
+                                    content: `Transitioned to general chat`,
                                     sender: 'ai',
                                     timestamp: new Date(),
                                   };
@@ -893,42 +877,26 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
-                            {message.comparisonProductIds && message.comparisonProductIds.length > 0 && (
-                              <div className="flex space-x-2 mt-3">
-                                {message.comparisonProductIds.map((productId) => {
-                                  // First try to find product from stored comparison products
-                                  let product = message.comparisonProducts?.find((p: Product) => p.id === productId);
-                                  if (!product) {
-                                    // Fallback to current comparingProducts
-                                    product = comparingProducts.find((p: Product) => p.id === productId);
-                                  }
-                                  if (!product) {
-                                    // Final fallback to searchResults
-                                    product = searchResults.find((p: Product) => p.id === productId);
-                                  }
-                                  if (!product) return null;
-                                  
-                                  const imageWidth = message.comparisonProductIds!.length === 2 ? 'w-1/2' : 'w-1/3';
-                                  
-                                  return (
-                                    <div key={productId} className={`${imageWidth} flex-shrink-0`}>
-                                      <div className="w-full h-16 bg-white rounded-lg border border-chewy-blue flex items-center justify-center mb-1">
-                                        {product.image ? (
-                                          <img 
-                                            src={product.image} 
-                                            alt={product.title}
-                                            className="w-12 h-12 object-cover rounded"
-                                          />
-                                        ) : (
-                                          <Package className="w-6 h-6 text-gray-400" />
-                                        )}
-                                      </div>
-                                      <p className="text-xs text-chewy-blue text-center truncate">
-                                        {product.title?.split(' ').slice(0, 2).join(' ') || 'Product'}
-                                      </p>
+                            {comparingProducts.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {comparingProducts.map((product) => (
+                                  <div key={product.id} className="flex items-center space-x-2">
+                                    <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                      {product.image ? (
+                                        <img 
+                                          src={product.image} 
+                                          alt={product.title}
+                                          className="w-6 h-6 object-cover rounded"
+                                        />
+                                      ) : (
+                                        <Package className="w-4 h-4 text-gray-400" />
+                                      )}
                                     </div>
-                                  );
-                                })}
+                                    <div className="text-sm font-semibold text-chewy-blue">
+                                      {product.title}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
