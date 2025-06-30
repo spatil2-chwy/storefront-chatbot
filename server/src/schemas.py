@@ -118,6 +118,12 @@ class ChatMessage(ChatMessageBase):
     class Config:
         from_attributes = True
 
+class SearchMatch(BaseModel):
+    field: str  # e.g., "title", "description", "category", "brand", "keywords"
+    matched_terms: List[str]  # e.g., ["dental", "dog"]
+    confidence: float  # 0.0 to 1.0, how confident we are in this match
+    field_value: Optional[str] = None  # the actual field value that matched
+
 class ProductBase(BaseModel):
     id: int
     title: str
@@ -134,6 +140,7 @@ class ProductBase(BaseModel):
     inStock: Optional[bool]
     category: str
     keywords: list
+    search_matches: Optional[List[SearchMatch]] = None
     what_customers_love: Optional[str]
     what_to_watch_out_for: Optional[str]
     should_you_buy_it: Optional[str]

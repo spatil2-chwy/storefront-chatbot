@@ -8,6 +8,12 @@ class Size(BaseModel):
     price: Optional[float] = None
     pricePerLb: Optional[str] = None
     
+class SearchMatch(BaseModel):
+    field: str  # e.g., "title", "description", "category", "brand", "keywords"
+    matched_terms: List[str]  # e.g., ["dental", "dog"]
+    confidence: float  # 0.0 to 1.0, how confident we are in this match
+    field_value: Optional[str] = None  # the actual field value that matched
+    
 class Product(BaseModel):
     id: Optional[int] = None  # PRODUCT_ID
     title: Optional[str] = None  # CLEAN_NAME
@@ -24,6 +30,7 @@ class Product(BaseModel):
     inStock: Optional[bool] = None  # Not available, can be True
     category: Optional[str] = None  # CATEGORY_LEVEL1
     keywords: Optional[List[str]] = None  # specialdiettag/ingredienttag
+    search_matches: Optional[List[SearchMatch]] = None  # New field for search match analysis
     what_customers_love: Optional[str] = None  # what_customers_love
     what_to_watch_out_for: Optional[str] = None  # what_to_watch_out_for
     should_you_buy_it: Optional[str] = None  # should_you_buy_it

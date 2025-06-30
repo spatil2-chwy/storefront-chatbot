@@ -1,14 +1,24 @@
 from typing import List, Optional
 from src.models.product import Product
 from src.services.chatbot_logic import chat
+import time
 
 class ProductService:
     def __init__(self):
-
         import chromadb
         self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
         self.collection = self.client.get_collection(name="products")
+        self._search_analyzer = None  # Lazy loading for search matches
         print("✅ ProductService initialized successfully")
+    
+    @property
+    def search_analyzer(self):
+        """Lazy load the search analyzer only when needed"""
+        if self._search_analyzer is None:
+            from src.services.search_analyzer import SearchAnalyzer
+            print("🔄 Initializing SearchAnalyzer...")
+            self._search_analyzer = SearchAnalyzer()
+        return self._search_analyzer
 
     @staticmethod
     def safe_float(val, default=0.0):
@@ -81,7 +91,7 @@ class ProductService:
         
         return "https://via.placeholder.com/400x300?text=Image+Not+Found"
 
-    def _metadata_to_product(self, metadata: dict) -> Product:
+    def _metadata_to_product(self, metadata: dict, search_matches: Optional[List] = None) -> Product:
         # Images: use FULLIMAGE (as list) and THUMBNAIL
         images = []
         if metadata.get("FULLIMAGE"):
@@ -178,24 +188,52 @@ class ProductService:
             inStock=True,
             category=self.safe_str(metadata.get("CATEGORY_LEVEL1", "")),
             keywords=keywords,
+            search_matches=search_matches,  # Add search matches if provided
             what_customers_love=what_customers_love,
             what_to_watch_out_for=what_to_watch_out_for,
             should_you_buy_it=should_you_buy_it,
         )
 
-    def _ranked_result_to_product(self, ranked_result) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
+        # Analyze search matches if query is provided
+        search_matches = None
+        if query:
+            try:
+                analysis_start = time.time()
+                # Extract categorized search criteria
+                categorized_criteria = self.search_analyzer.extract_search_criteria(query)
+                criteria_time = time.time() - analysis_start
+                
+                # Analyze matches
+                match_start = time.time()
+                search_matches = self.search_analyzer.analyze_product_matches(
+                    metadata, categorized_criteria, query
+                )
+                match_time = time.time() - match_start
+                
+                print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
+            except Exception as e:
+                print(f"⚠️ Error analyzing search matches: {e}")
+                search_matches = None
+        
         # Use the existing _metadata_to_product method
-        return self._metadata_to_product(metadata)
+        return self._metadata_to_product(metadata, search_matches)
 
     async def search_products(self, query: str, limit: int = 10) -> dict:
         """Search products using LLM agent to parse and filter the query, then semantic search"""
         try:
+            total_start = time.time()
+            print(f"🔍 Starting search for: '{query}'")
+            
             # Use the LLM agent to parse the query and get filtered results
             # We pass an empty history since we're not in a chat context
+            llm_start = time.time()
             result = chat(query, [])
+            llm_time = time.time() - llm_start
+            print(f"  🤖 LLM processing took: {llm_time:.3f}s")
             
             # Extract products from the result
             ranked_products = result.get("products", [])
@@ -203,30 +241,40 @@ class ProductService:
             reply = result.get("message", "")
             
             if not ranked_products:
-                print(f"No products found for query: '{query}'")
+                print(f"❌ No products found for query: '{query}'")
                 return {
                     "products": [],
                     "reply": reply
                 }
             
-            # Convert ranked results to Product objects
+            # Convert ranked results to Product objects with search match analysis
+            conversion_start = time.time()
             products = []
-            for ranked_result in ranked_products[:limit]:  # Limit the results
+            for i, ranked_result in enumerate(ranked_products[:limit]):  # Limit the results
                 try:
-                    product = self._ranked_result_to_product(ranked_result)
+                    product_start = time.time()
+                    product = self._ranked_result_to_product(ranked_result, query)
+                    product_time = time.time() - product_start
+                    if i < 3:  # Only log first 3 products to avoid spam
+                        print(f"    📦 Product {i+1} conversion: {product_time:.3f}s")
                     products.append(product)
                 except Exception as e:
                     print(f"⚠️ Error converting ranked result to product: {e}")
                     continue
             
-            print(f"Found {len(products)} products for query: '{query}' using LLM agent")
+            conversion_time = time.time() - conversion_start
+            total_time = time.time() - total_start
+            
+            print(f"  🔄 Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
+            print(f"  ✅ Total search time: {total_time:.3f}s")
+            
             return {
                 "products": products,
                 "reply": reply
             }
             
         except Exception as e:
-            print(f"Error searching products with LLM agent: {e}")
+            print(f"❌ Error searching products with LLM agent: {e}")
             return {
                 "products": [],
                 "reply": ""

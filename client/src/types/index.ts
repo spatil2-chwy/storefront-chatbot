@@ -10,6 +10,13 @@ export interface Size {
   pricePerLb?: string;
 }
 
+export interface SearchMatch {
+  field: string; // e.g., "title", "description", "category", "brand", "keywords"
+  matched_terms: string[]; // e.g., ["dental", "dog"]
+  confidence: number; // 0.0 to 1.0, how confident we are in this match
+  field_value?: string; // the actual field value that matched
+}
+
 export interface Product {
   id?: number; // PRODUCT_ID
   title?: string; // CLEAN_NAME
@@ -26,6 +33,7 @@ export interface Product {
   inStock?: boolean; // Not available, can be true
   category?: string; // CATEGORY_LEVEL1
   keywords?: string[]; // specialdiettag/ingredienttag
+  search_matches?: SearchMatch[]; // New field for search match analysis
   what_customers_love?: string; // what_customers_love
   what_to_watch_out_for?: string; // what_to_watch_out_for
   should_you_buy_it?: string; // should_you_buy_it
