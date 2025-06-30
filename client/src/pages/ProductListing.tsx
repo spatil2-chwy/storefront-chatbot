@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useGlobalChat } from '@/contexts/ChatContext';
+import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
   const [sortBy, setSortBy] = useState('relevance');
@@ -23,6 +24,7 @@ export default function ProductListing() {
   const [minMatchCount, setMinMatchCount] = useState<number>(0);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   // Use global state for search results and query
   const { 
@@ -167,13 +169,14 @@ export default function ProductListing() {
     const searchStartTime = performance.now();
 
     try {
-      // Use semantic search
-      const searchData = await api.searchProducts(trimmedQuery, 30);
+      // Use the new searchAndChat method that calls both APIs
+      const customer_key = user?.customer_key;
+      const { searchResults: searchData, chatResponse } = await api.searchAndChat(trimmedQuery, customer_key);
       
       const searchEndTime = performance.now();
       console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);
       
-      // Handle API response format that returns {products, reply}
+      // Handle search results
       if (searchData && typeof searchData === 'object' && 'products' in searchData) {
         setSearchResults(searchData.products);
         console.log(`📊 Received ${searchData.products.length} products`);
@@ -181,6 +184,19 @@ export default function ProductListing() {
         // Handle fallback case
         setSearchResults(Array.isArray(searchData) ? searchData : []);
       }
+
+      // Handle chat response - set it for the chat widget to use
+      if (chatResponse && chatResponse.message) {
+        setChatQuery(trimmedQuery);
+        setShouldOpenChat(true);
+        console.log(`💬 Chat response: ${chatResponse.message}`);
+        
+        // Reset the trigger after a delay
+        setTimeout(() => {
+          setShouldOpenChat(false);
+        }, 1000);
+      }
+      
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);

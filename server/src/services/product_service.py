@@ -225,28 +225,29 @@ class ProductService:
         return self._metadata_to_product(metadata, search_matches)
 
     async def search_products(self, query: str, limit: int = 10) -> dict:
-        """Search products using LLM agent to parse and filter the query, then semantic search"""
+        """Search products using direct semantic search without LLM agent"""
         try:
             total_start = time.time()
-            print(f"🔍 Starting search for: '{query}'")
+            print(f"🔍 Starting direct search for: '{query}'")
             
-            # Use the LLM agent to parse the query and get filtered results
-            # We pass an empty history since we're not in a chat context
-            llm_start = time.time()
-            result = chat(query, [])
-            llm_time = time.time() - llm_start
-            print(f"  🤖 LLM processing took: {llm_time:.3f}s")
+            # Use direct semantic search instead of going through the chat function
+            from src.services.searchengine import query_products, rank_products
             
-            # Extract products from the result
-            ranked_products = result.get("products", [])
-            # Extract reply from the result
-            reply = result.get("message", "")
+            search_start = time.time()
+            results = query_products(query, [], [], [])  # No filters for direct search
+            search_time = time.time() - search_start
+            print(f"  🔍 Database search took: {search_time:.3f}s")
+            
+            ranking_start = time.time()
+            ranked_products = rank_products(results)
+            ranking_time = time.time() - ranking_start
+            print(f"  📊 Ranking took: {ranking_time:.3f}s")
             
             if not ranked_products:
                 print(f"❌ No products found for query: '{query}'")
                 return {
                     "products": [],
-                    "reply": reply
+                    "reply": f"No products found for '{query}'"
                 }
             
             # Convert ranked results to Product objects with search match analysis
@@ -272,14 +273,14 @@ class ProductService:
             
             return {
                 "products": products,
-                "reply": reply
+                "reply": f"Found {len(products)} products for '{query}'"
             }
             
         except Exception as e:
-            print(f"❌ Error searching products with LLM agent: {e}")
+            print(f"❌ Error searching products: {e}")
             return {
                 "products": [],
-                "reply": ""
+                "reply": f"Search failed: {str(e)}"
             }
 
     async def get_product(self, product_id: int) -> Optional[Product]:

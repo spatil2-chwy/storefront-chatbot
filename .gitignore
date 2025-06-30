@@ -16,4 +16,4 @@ scripts/chroma_db
 server/scripts/chroma_db/
 server/src/seed.db
 
-*metadata_filters_cache.json
+server/metadata_filters_cache.json
