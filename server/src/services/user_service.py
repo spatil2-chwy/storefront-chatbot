@@ -63,3 +63,107 @@ class UserService:
             return None
         return user
 
+    def get_user_context_for_chat(self, db: Session, customer_key: int) -> dict | None:
+        """Get user and pet information formatted for chat context"""
+        user = self.get_user(db, customer_key)
+        if not user:
+            return None
+        
+        user_context = {
+            "user_id": user.customer_key,
+            "name": user.name,
+            "email": user.email,
+            "location": {
+                "city": user.customer_address_city,
+                "state": user.customer_address_state,
+                "zip": user.customer_address_zip
+            },
+            "pets": []
+        }
+        
+        # Add pet information
+        pets = self.get_pets_by_user(db, customer_key)
+        for pet in pets:
+            pet_info = {
+                "name": pet.pet_name,
+                "type": pet.pet_type,
+                "breed": pet.pet_breed,
+                "size": pet.pet_breed_size_type or pet.size_type,
+                "weight": pet.weight,
+                "life_stage": pet.life_stage,
+                "gender": pet.gender,
+                "age_months": self._calculate_age_months(pet.birthday) if pet.birthday else None,
+                "allergies": pet.allergy_count > 0 if pet.allergy_count else False,
+                "is_new": pet.pet_new,
+                "status": pet.status
+            }
+            user_context["pets"].append(pet_info)
+        
+        return user_context
+    
+    def _calculate_age_months(self, birthday) -> int:
+        """Calculate pet age in months"""
+        from datetime import date
+        if not birthday:
+            return None
+        
+        today = date.today()
+        months = (today.year - birthday.year) * 12 + (today.month - birthday.month)
+        return max(0, months)
+    
+    def format_pet_context_for_ai(self, user_context: dict) -> str:
+        """Format user and pet information for AI context"""
+        if not user_context or not user_context.get("pets"):
+            return ""
+        
+        context_parts = [f"The user is currently signed in and has these pets. Talk to the user about their pets and ask if they are shopping for them to further enhance and refine their searches."]
+        context_parts.append(f"Customer: {user_context['name']}")
+        
+        if user_context.get("location", {}).get("state"):
+            context_parts.append(f"Location: {user_context['location']['city']}, {user_context['location']['state']}")
+        
+        context_parts.append(f"Pets ({len(user_context['pets'])}):")
+        
+        for i, pet in enumerate(user_context['pets'], 1):
+            pet_desc = [f"Pet {i}:"]
+            
+            # Basic info
+            if pet['name']:
+                pet_desc.append(f"Name: {pet['name']}")
+            
+            # Type and breed
+            if pet['breed'] and pet['breed'] != pet['type']:
+                pet_desc.append(f"Breed: {pet['breed']} {pet['type']}")
+            elif pet['type']:
+                pet_desc.append(f"Type: {pet['type']}")
+            
+            # Age and life stage
+            if pet['age_months']:
+                years = pet['age_months'] // 12
+                months = pet['age_months'] % 12
+                if years > 0 and months > 0:
+                    pet_desc.append(f"Age: {years}yr {months}mo old")
+                elif years > 0:
+                    pet_desc.append(f"Age: {years} years old")
+                else:
+                    pet_desc.append(f"Age: {months} months old")
+            
+            if pet['life_stage'] and pet['life_stage'].lower() != 'unknown':
+                pet_desc.append(f"Life Stage: {pet['life_stage']}")
+            
+            # Size and weight
+            if pet['size'] and pet['size'].lower() != 'unknown':
+                pet_desc.append(f"Size: {pet['size']}")
+            if pet['weight'] and pet['weight'] > 0:
+                pet_desc.append(f"Weight: {pet['weight']}lbs")
+            
+            # Special conditions
+            if pet['allergies']:
+                pet_desc.append("Conditions: Has allergies")
+            if pet['is_new']:
+                pet_desc.append("Status: New pet")
+            
+            context_parts.append("\n".join(pet_desc))
+        
+        return "\n".join(context_parts)
+
