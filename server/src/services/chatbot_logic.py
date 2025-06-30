@@ -6,7 +6,7 @@ from os import getenv
 import time
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY_3")
+api_key = getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 client = OpenAI(api_key=api_key)
@@ -126,6 +126,12 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
         tuple: A tuple containing a list of products and a message
     """
     start = time.time()
+    
+    # Use ProductService to convert raw results to properly formatted Product objects
+    from src.services.product_service import ProductService
+    product_service = ProductService()
+    
+    # Use query_products for all searches (it handles empty filters fine)
     results = query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
@@ -136,9 +142,23 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     if not ranked_products:
         return [], "No products found matching your criteria."
 
+    # Convert raw ranked results to Product objects using ProductService
+    conversion_start = time.time()
+    products = []
+    for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
+        try:
+            product = product_service._ranked_result_to_product(ranked_result, query)
+            products.append(product)
+        except Exception as e:
+            print(f"⚠️ Error converting ranked result to product: {e}")
+            continue
+    
+    conversion_time = time.time() - conversion_start
+    print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
+
     message = "Products successfully retrieved and are being displayed to the user! Ask the user if they want to see more details about products or refine the search."
     print(f"Total search_products time: {time.time() - start:.4f} seconds")
-    return ranked_products, message
+    return products, message
 
 
 function_mapping = {
@@ -161,12 +181,18 @@ def call_function(name, args):
     raise ValueError(f"Unknown function: {name}")
 
 
-def chat(user_input: str, history: list):
+def chat(user_input: str, history: list, user_context: str = "", skip_products: bool = False):
     start_time = time.time()
+    
+    # Create system message with user context if provided
+    system_msg = system_message.copy()
+    if user_context:
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations. Ask if they're shopping for their specific pets to refine searches."
+    
     full_history = (
-        [system_message] + history + [{"role": "user", "content": user_input}]
+        [system_msg] + history + [{"role": "user", "content": user_input}]
     )
-
+    print(full_history)
     # Step 1: Get model response
     response = client.responses.create(
         model=MODEL,
@@ -177,6 +203,7 @@ def chat(user_input: str, history: list):
     # print(response)
     products = []
 
+    print(response.output)
     if len(response.output) == 1 and response.output[0].type == "message":
         assistant_reply = response.output[0].content[0].text
         full_history.append({"role": "assistant", "content": assistant_reply})
@@ -190,9 +217,17 @@ def chat(user_input: str, history: list):
         
         args = json.loads(tool_call.arguments)
         print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
-        result = call_function(tool_call.name, args)
+        
+        if skip_products:
+            # Skip actual product loading for search bar queries
+            print("🚀 Skipping product loading (search bar mode)")
+            products = []
+            message = f"Found products for: {args.get('query', user_input)}"
+        else:
+            result = call_function(tool_call.name, args)
+            products, message = result
+            
         print(f"Function call returned in {time.time() - start_time:.4f} seconds")
-        products, message = result
         function_end = time.time()
         print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
         full_history.append({

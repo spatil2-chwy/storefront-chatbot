@@ -21,7 +21,6 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
     e.preventDefault();
     if (searchQuery.trim()) {
       onSearch?.(searchQuery);
-      onOpenChatWithQuery?.(searchQuery);
       setSearchQuery(''); // Clear search input after submission
     }
   };
