@@ -27,25 +27,29 @@ df = pd.read_csv(
 
 # === Step 2: Build Item Variant Map ===
 df_items = df[df['TYPE'] == 'Item']
-items_grouped = df_items.groupby('PARENT_ID')[['NAME', 'PART_NUMBER', 'PRODUCT_ID']].agg(list).to_dict(orient='index')
 
-items_dict = {
-    parent_id: [
-        {"NAME": n, "PART_NUMBER": p, "PRODUCT_ID": pid}
-        for n, p, pid in zip(vals["NAME"], vals["PART_NUMBER"], vals["PRODUCT_ID"])
-    ]
-    for parent_id, vals in items_grouped.items()
-}
+# Build items_dict using iterrows to avoid type checking issues
+items_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    items_dict[parent_id] = []
+    for _, row in group.iterrows():
+        items_dict[parent_id].append({
+            "NAME": row["NAME"],
+            "PART_NUMBER": row["PART_NUMBER"], 
+            "PRODUCT_ID": row["PRODUCT_ID"]
+        })
 
 # Get first available images for each parent product from items
-images_grouped = df_items.groupby('PARENT_ID')[['THUMBNAIL', 'FULLIMAGE']].agg(lambda x: x.dropna().iloc[0] if x.dropna().size > 0 else None).to_dict(orient='index')
-images_dict = {
-    parent_id: {
-        "THUMBNAIL": vals["THUMBNAIL"],
-        "FULLIMAGE": vals["FULLIMAGE"]
+images_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    # Get first non-null thumbnail and fullimage
+    thumbnail = group['THUMBNAIL'].dropna().iloc[0] if group['THUMBNAIL'].dropna().size > 0 else None
+    fullimage = group['FULLIMAGE'].dropna().iloc[0] if group['FULLIMAGE'].dropna().size > 0 else None
+    
+    images_dict[parent_id] = {
+        "THUMBNAIL": thumbnail,
+        "FULLIMAGE": fullimage
     }
-    for parent_id, vals in images_grouped.items()
-}
 
 # === Step 3: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
@@ -66,6 +70,8 @@ product_df = df[df['TYPE'] == 'Product'].fillna({
     "THUMBNAIL": "",
     "FULLIMAGE": "",
     "PURCHASE_BRAND": "",
+    "Unanswered FAQs": "",
+    "Answered FAQs": "",
 })
 
 # === Step 3.5: Fill Missing Thumbnails and Print Stats ===
@@ -87,13 +93,14 @@ nan_after = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '
 print(f"🖼️ THUMBNAILs missing before fill: {nan_before}")
 print(f"🖼️ THUMBNAILs missing after fill: {nan_after}")
 
-
 # === Step 4: Load Review Synthesis JSONL ===
 with open(REVIEW_SYNTH_PATH, "r") as f:
     review_map = {
         entry["product_id"]: entry
         for entry in map(json.loads, f)
     }
+
+print(f"📊 Review synthesis data loaded: {len(review_map)} entries")
 
 # === Step 5: Build Documents & Metadata ===
 default_synth = {
@@ -102,14 +109,23 @@ default_synth = {
     "should_you_buy_it": "Insufficient reviews! No review synthesis"
 }
 
-product_rows = product_df.to_dict(orient="records")
+product_rows = product_df.to_dict(orient='records')
 documents = []
 metadatas = []
 ids = []
 
+# Track review synthesis statistics
+products_with_reviews = 0
+total_products = len(product_rows)
+
 for row in product_rows:
     part_number = row["PART_NUMBER"]
     product_id = row["PRODUCT_ID"]
+    
+    # Check if this product has review synthesis
+    has_review_synthesis = part_number in review_map
+    if has_review_synthesis:
+        products_with_reviews += 1
     
     # Ensure we have valid text for embedding
     clean_name = row["CLEAN_NAME"] or row["NAME"] or f"Product {product_id}"
@@ -136,7 +152,9 @@ for row in product_rows:
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
         "items": json.dumps(items_dict.get(product_id, [])),
         "review_synthesis": json.dumps(review_map.get(part_number, default_synth)),
-        "review_synthesis_flag": part_number in review_map,
+        "review_synthesis_flag": has_review_synthesis,
+        "unanswered_faqs": row["Unanswered FAQs"] or "",
+        "answered_faqs": row["Answered FAQs"] or "",
     }
 
     # Add special diet tags
@@ -154,6 +172,13 @@ for row in product_rows:
     documents.append(clean_name)
     metadatas.append(metadata)
     ids.append(product_id)
+
+# Print review synthesis statistics
+review_coverage = (products_with_reviews / total_products) * 100
+print(f"📊 Review Synthesis Statistics:")
+print(f"   Total products: {total_products}")
+print(f"   Products with review synthesis: {products_with_reviews}")
+print(f"   Coverage: {review_coverage:.1f}%")
 
 print(f"✅ Prepared {len(documents)} documents for embedding")
 
