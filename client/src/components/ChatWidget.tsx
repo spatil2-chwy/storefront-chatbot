@@ -140,52 +140,30 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [currentContext.type, currentContext.product?.id, chatContext, messages, addMessage]);
 
-  // Handle comparison mode changes
+  // Handle comparison mode changes - simplified to avoid infinite loops
   useEffect(() => {
-    // When entering comparison mode (1 or more products for chat purposes)
-    if (isInComparisonMode && comparingProducts.length >= 1) {
-      // If we don't have a comparison start index yet, set it to current message count
-      if (comparisonStartIndexRef.current === -1) {
-        comparisonStartIndexRef.current = messages.length;
-        
-        // Add comparison transition message at the current position
-        const comparisonMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
-          sender: 'ai',
-          timestamp: new Date(),
-          // Store product IDs for rendering - this will be static history
-          comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
-          // Store the original product count for static display
-          comparisonProductCount: comparingProducts.length,
-          // Store full product data for history retention
-          comparisonProducts: [...comparingProducts],
-        };
-        insertMessageAt(comparisonMessage, comparisonStartIndexRef.current);
-      } else {
-        // Update existing comparison message when products are added/removed
-        const newMessages = [...messages];
-        const comparisonMessageIndex = newMessages.findIndex(msg => 
-          msg.content.includes('🔄 Now comparing:') && msg.comparisonProductIds
-        );
-        
-        if (comparisonMessageIndex !== -1) {
-          newMessages[comparisonMessageIndex] = {
-            ...newMessages[comparisonMessageIndex],
-            content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
-            comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
-            comparisonProductCount: comparingProducts.length,
-            comparisonProducts: [...comparingProducts], // Store full product data
-          };
-          setMessages(newMessages);
-        }
-      }
+    // Only add comparison message when first entering comparison mode
+    if (isInComparisonMode && comparingProducts.length >= 1 && comparisonStartIndexRef.current === -1) {
+      comparisonStartIndexRef.current = 1; // Mark that we've added the comparison message
+      
+      const comparisonMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: `🔄 Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
+        sender: 'ai',
+        timestamp: new Date(),
+        comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+        comparisonProductCount: comparingProducts.length,
+        comparisonProducts: [...comparingProducts],
+      };
+      addMessage(comparisonMessage);
     }
-    // When exiting comparison mode (less than 1 product)
-    else if (!isInComparisonMode && comparingProducts.length < 1 && comparisonStartIndexRef.current !== -1) {
-      // Don't add transition message if we're transitioning to product mode
+    // When exiting comparison mode (no products left)
+    else if (!isInComparisonMode && comparingProducts.length === 0 && comparisonStartIndexRef.current !== -1) {
+      // Reset the comparison start index
+      comparisonStartIndexRef.current = -1;
+      
+      // Add transition message when exiting comparison mode (unless transitioning to product mode)
       if (currentContext.type !== 'product') {
-        // Add transition message when exiting comparison mode
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
           content: `🔄 Transitioned to general chat`,
@@ -194,11 +172,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
         addMessage(transitionMessage);
       }
-      
-      // Reset the comparison start index
-      comparisonStartIndexRef.current = -1;
     }
-  }, [isInComparisonMode, comparingProducts.length, messages.length, insertMessageAt, setMessages, messages]);
+  }, [isInComparisonMode, comparingProducts.length, addMessage, currentContext.type]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
