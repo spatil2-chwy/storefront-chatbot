@@ -14,7 +14,7 @@ export default function SearchMatches({
   matches, 
   className = "", 
   showTitle = true,
-  maxMatches = 5
+  maxMatches = 50
 }: SearchMatchesProps) {
   if (!matches || matches.length === 0) {
     return null;
@@ -57,10 +57,9 @@ export default function SearchMatches({
     };
   };
 
-  // Sort matches by confidence (highest first) and limit
+  // Sort matches by confidence (highest first) - show all matches
   const sortedMatches = matches
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, maxMatches);
+    .sort((a, b) => b.confidence - a.confidence);
 
   // Group matches by category
   const groupedMatches = sortedMatches.reduce((acc, match) => {
@@ -178,12 +177,6 @@ export default function SearchMatches({
           );
         })}
       </div>
-      
-      {matches.length > maxMatches && (
-        <div className="text-xs text-gray-500">
-          +{matches.length - maxMatches} more criteria matched
-        </div>
-      )}
     </div>
   );
 } 

@@ -1,16 +1,36 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Heart, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Bot, RotateCcw, Image as ImageIcon, Check } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import SearchMatches from './SearchMatches';
+import { useGlobalChat } from '../contexts/ChatContext';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const { 
+    comparingProducts, 
+    addToComparison, 
+    removeFromComparison, 
+    isInComparisonMode,
+    setCurrentContext,
+    setIsOpen,
+    setShouldAutoOpen
+  } = useGlobalChat();
+
+  const isSelected = comparingProducts.some(p => p.id === product.id);
+  const isMaxReached = comparingProducts.length >= 3 && !isSelected;
+  const [showTooltip, setShowTooltip] = React.useState(false);
+
+  // Debug: Log the should_you_buy_it field
+  React.useEffect(() => {
+    console.log('Product should_you_buy_it:', product.should_you_buy_it);
+  }, [product.should_you_buy_it]);
+
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -58,10 +78,35 @@ export default function ProductCard({ product }: ProductCardProps) {
     );
   };
 
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isSelected) {
+      console.log('Removing from comparison...');
+      removeFromComparison(product.id!);
+    } else if (!isMaxReached) {
+      console.log('Adding to comparison...');
+      addToComparison(product);
+    }
+  };
+
+  const handleAIClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set the product context to transition to product discussion mode
+    setCurrentContext({ type: 'product', product });
+    
+    // Open the chat widget
+    setIsOpen(true);
+    setShouldAutoOpen(true);
+  };
+
   return (
     <Link href={`/product/${product.id}`}>
-      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer h-full flex flex-col">
-        <div className="relative">
+      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col">
+        <div className="relative w-full h-48">
           {renderImage()}
           {/* Fallback image (hidden by default) */}
           <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
@@ -70,8 +115,57 @@ export default function ProductCard({ product }: ProductCardProps) {
               <p className="text-sm text-gray-500">Image not available</p>
             </div>
           </div>
-          <button className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50">
-            <Heart className="w-4 h-4 text-gray-400" />
+          
+          {/* Compare checkbox */}
+          <div className="absolute top-2 left-2">
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={handleCompareClick}
+                disabled={isMaxReached}
+                className={`p-5.5 rounded transition-all duration-200 ${
+                  isSelected 
+                    ? 'bg-chewy-blue text-white shadow-md' 
+                    : isMaxReached
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-transparent text-white hover:bg-white/20 shadow-md hover:shadow-lg'
+                }`}
+              >
+                {isSelected ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <div className="w-3 h-3 border-2 border-current rounded-sm" />
+                )}
+              </button>
+              <Badge 
+                className={`text-[9px] px-1.5 py-0.5 ${
+                  isSelected 
+                    ? 'bg-chewy-blue text-white' 
+                    : isMaxReached
+                    ? 'bg-gray-300 text-gray-500'
+                    : 'bg-black/50 text-white border border-white/30'
+                }`}
+              >
+                Compare
+              </Badge>
+            </div>
+          </div>
+          
+          {/* AI insights button - always top right of image */}
+          <button 
+            className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            onClick={handleAIClick}
+          >
+            <Bot className="w-4 h-4 text-gray-400" />
+            {product.should_you_buy_it && showTooltip && (
+              <div className="absolute right-1/2 translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50 flex flex-col items-center">
+                <div className="whitespace-pre-line text-center">{product.should_you_buy_it}</div>
+                <div className="mt-2 pt-2 border-t border-gray-700 font-medium text-center">Click to discuss</div>
+                {/* Arrow */}
+                <div className="w-3 h-3 bg-gray-900 rotate-45 absolute left-1/2 -bottom-1.5 -translate-x-1/2 z-50"></div>
+              </div>
+            )}
           </button>
         </div>
         
@@ -118,7 +212,6 @@ export default function ProductCard({ product }: ProductCardProps) {
             matches={product.search_matches} 
             className="border-t pt-2 mt-auto" 
             showTitle={false}
-            maxMatches={4}
           />
         </CardContent>
       </Card>

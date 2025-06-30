@@ -1,6 +1,7 @@
 import re
 import json
 import os
+import time
 from typing import List, Dict, Set
 from collections import Counter
 from src.models.product import SearchMatch
@@ -181,6 +182,8 @@ class SearchAnalyzer:
     
     def extract_search_criteria(self, query: str) -> Dict[str, List[str]]:
         """Extract search criteria by matching query against discovered metadata"""
+        start_time = time.time()
+        
         query_lower = query.lower().strip()
         query_words = set(query_lower.split())
         
@@ -227,7 +230,12 @@ class SearchAnalyzer:
         self._add_universal_patterns(query_lower, query_words, found_criteria)
         
         # Remove empty categories
-        return {k: v for k, v in found_criteria.items() if v}
+        result = {k: v for k, v in found_criteria.items() if v}
+        
+        extraction_time = time.time() - start_time
+        print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
+        
+        return result
     
     def _matches_query(self, term: str, query_lower: str, query_words: Set[str]) -> bool:
         """Check if a metadata term matches the user's query"""
@@ -299,6 +307,7 @@ class SearchAnalyzer:
         if not categorized_criteria:
             return []
         
+        start_time = time.time()
         matches = []
         
         for category, criteria_list in categorized_criteria.items():
@@ -310,6 +319,10 @@ class SearchAnalyzer:
                         confidence=0.8,
                         field_value=self._get_matched_metadata_value(criterion, product_metadata, category)
                     ))
+        
+        analysis_time = time.time() - start_time
+        if analysis_time > 0.01:  # Only log if it takes more than 10ms
+            print(f"      🎯 Product match analysis took: {analysis_time:.3f}s (found {len(matches)} matches)")
         
         return matches
     

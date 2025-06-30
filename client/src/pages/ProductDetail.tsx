@@ -24,11 +24,21 @@ export default function ProductDetail() {
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
   
   // Get search query from global state
-  const { currentSearchQuery } = useGlobalChat();
+  const { currentSearchQuery, setShouldAutoOpen } = useGlobalChat();
 
   const currentPrice = product?.price || 0;
   const autoshipPrice = product?.autoshipPrice || 0;
   const hasAutoship = autoshipPrice > 0;
+
+  // Auto-open chatbot when navigating to this page
+  useEffect(() => {
+    // Check if user had closed the chatbot before
+    const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
+    if (wasChatClosed) {
+      setShouldAutoOpen(true);
+      localStorage.removeItem('chatClosed'); // Reset the flag
+    }
+  }, [setShouldAutoOpen]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {

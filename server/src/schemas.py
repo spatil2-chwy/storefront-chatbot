@@ -141,7 +141,14 @@ class ProductBase(BaseModel):
     category: str
     keywords: list
     search_matches: Optional[List[SearchMatch]] = None
+    what_customers_love: Optional[str]
+    what_to_watch_out_for: Optional[str]
+    should_you_buy_it: Optional[str]
 
 class Product(ProductBase):
     class Config:
         from_attributes = True
+
+class SearchResponse(BaseModel):
+    products: List[Product]
+    reply: str

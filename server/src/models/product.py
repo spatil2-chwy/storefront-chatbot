@@ -31,3 +31,6 @@ class Product(BaseModel):
     category: Optional[str] = None  # CATEGORY_LEVEL1
     keywords: Optional[List[str]] = None  # specialdiettag/ingredienttag
     search_matches: Optional[List[SearchMatch]] = None  # New field for search match analysis
+    what_customers_love: Optional[str] = None  # what_customers_love
+    what_to_watch_out_for: Optional[str] = None  # what_to_watch_out_for
+    should_you_buy_it: Optional[str] = None  # should_you_buy_it

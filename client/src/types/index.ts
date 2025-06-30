@@ -34,6 +34,9 @@ export interface Product {
   category?: string; // CATEGORY_LEVEL1
   keywords?: string[]; // specialdiettag/ingredienttag
   search_matches?: SearchMatch[]; // New field for search match analysis
+  what_customers_love?: string; // what_customers_love
+  what_to_watch_out_for?: string; // what_to_watch_out_for
+  should_you_buy_it?: string; // should_you_buy_it
 }
 
 export interface ChatMessage {
@@ -41,6 +44,10 @@ export interface ChatMessage {
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  comparisonProductIds?: number[]; // For comparison messages to store product IDs
+  comparisonProductCount?: number; // For comparison messages to store original product count
+  productTitle?: string; // For product discussion messages to store product title
+  comparisonProducts?: Product[]; // For comparison messages to store full product data
 }
 
 export interface ChatContext {

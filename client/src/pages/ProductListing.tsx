@@ -31,20 +31,33 @@ export default function ProductListing() {
     currentSearchQuery, 
     setCurrentSearchQuery, 
     hasSearched, 
-    setHasSearched 
+    setHasSearched,
+    setShouldAutoOpen,
+    comparingProducts,
+    isInComparisonMode
   } = useGlobalChat();
+
+  // Auto-open chatbot when navigating to this page
+  useEffect(() => {
+    // Check if user had closed the chatbot before
+    const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
+    if (wasChatClosed) {
+      setShouldAutoOpen(true);
+      localStorage.removeItem('chatClosed'); // Reset the flag
+    }
+  }, [setShouldAutoOpen]);
 
   useEffect(() => {
     // Listen for clear chat events
-    const handleClearChat = () => {
+    const handleClearChatEvent = () => {
       setHasSearched(false);
       setSearchStats(null);
       setSelectedMatchFilters([]);
       setMinMatchCount(0);
     };
     
-    window.addEventListener('clearChat', handleClearChat);
-    return () => window.removeEventListener('clearChat', handleClearChat);
+    window.addEventListener('clearChat', handleClearChatEvent);
+    return () => window.removeEventListener('clearChat', handleClearChatEvent);
   }, [setHasSearched]);
 
   useEffect(() => {
@@ -58,11 +71,22 @@ export default function ProductListing() {
   const applyFilters = () => {
     let filtered = [...searchResults];
 
-    // Apply minimum match count filter
+    // Apply minimum match count filter - count by category types, not individual matches
     if (minMatchCount > 0) {
-      filtered = filtered.filter(product => 
-        product.search_matches && product.search_matches.length >= minMatchCount
-      );
+      filtered = filtered.filter(product => {
+        if (!product.search_matches) return false;
+        
+        // Count unique category types (the part before the colon)
+        const uniqueCategories = new Set();
+        product.search_matches.forEach(match => {
+          if (match.field.includes(':')) {
+            const [category] = match.field.split(':', 1);
+            uniqueCategories.add(category.trim());
+          }
+        });
+        
+        return uniqueCategories.size >= minMatchCount;
+      });
     }
 
     // Apply match field filters
@@ -87,7 +111,27 @@ export default function ProductListing() {
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case 'matches':
-        filtered.sort((a, b) => (b.search_matches?.length || 0) - (a.search_matches?.length || 0));
+        // Sort by number of unique category types, not individual matches
+        filtered.sort((a, b) => {
+          const aCategories = new Set();
+          const bCategories = new Set();
+          
+          a.search_matches?.forEach(match => {
+            if (match.field.includes(':')) {
+              const [category] = match.field.split(':', 1);
+              aCategories.add(category.trim());
+            }
+          });
+          
+          b.search_matches?.forEach(match => {
+            if (match.field.includes(':')) {
+              const [category] = match.field.split(':', 1);
+              bCategories.add(category.trim());
+            }
+          });
+          
+          return bCategories.size - aCategories.size;
+        });
         break;
       default:
         // Keep original order (relevance)
@@ -109,6 +153,7 @@ export default function ProductListing() {
       setSearchStats(null);
       setSelectedMatchFilters([]);
       setMinMatchCount(0);
+      setCurrentSearchQuery('');
       return;
     }
 
@@ -118,14 +163,24 @@ export default function ProductListing() {
     setSelectedMatchFilters([]);
     setMinMatchCount(0);
 
+    // Add timing for performance analysis
+    const searchStartTime = performance.now();
+
     try {
-      // Use semantic search and get stats
-      const [searchResults, stats] = await Promise.all([
-        api.searchProducts(trimmedQuery, 30),
-        api.getSearchStats(trimmedQuery, 10)
-      ]);
-      setSearchResults(searchResults);
-      setSearchStats(stats);
+      // Use semantic search
+      const searchData = await api.searchProducts(trimmedQuery, 30);
+      
+      const searchEndTime = performance.now();
+      console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);
+      
+      // Handle API response format that returns {products, reply}
+      if (searchData && typeof searchData === 'object' && 'products' in searchData) {
+        setSearchResults(searchData.products);
+        console.log(`📊 Received ${searchData.products.length} products`);
+      } else {
+        // Handle fallback case
+        setSearchResults(Array.isArray(searchData) ? searchData : []);
+      }
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);
@@ -148,6 +203,8 @@ export default function ProductListing() {
   const handleClearChat = () => {
     setChatQuery('');
     setHasSearched(false);
+    setSearchResults([]);
+    setCurrentSearchQuery('');
     setSearchStats(null);
     setSelectedMatchFilters([]);
     setMinMatchCount(0);
@@ -370,7 +427,6 @@ export default function ProductListing() {
         shouldOpen={shouldOpenChat}
         shouldClearChat={hasSearched}
         onClearChat={handleClearChat}
-        chatContext={{ type: 'general' }}
       />
     </div>
   );

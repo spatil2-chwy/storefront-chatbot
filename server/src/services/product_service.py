@@ -1,6 +1,7 @@
 from typing import List, Optional
 from src.models.product import Product
 from src.services.chatbot_logic import chat
+import time
 
 class ProductService:
     def __init__(self):
@@ -147,6 +148,30 @@ class ProductService:
             if k.startswith("specialdiettag:") or k.startswith("ingredienttag:"):
                 keywords.append(k.split(":", 1)[1])
 
+        # Parse review synthesis from JSON
+        review_synthesis = self.safe_json(metadata.get("review_synthesis", "{}"), {})
+        what_customers_love = ""
+        what_to_watch_out_for = ""
+        should_you_buy_it = ""
+        
+        if review_synthesis and isinstance(review_synthesis, dict):
+            # Extract what_customers_love (it's stored as a list, so join it)
+            customers_love_list = review_synthesis.get("what_customers_love", [])
+            if isinstance(customers_love_list, list):
+                what_customers_love = " ".join(customers_love_list)
+            else:
+                what_customers_love = str(customers_love_list)
+            
+            # Extract what_to_watch_out_for (it's stored as a list, so join it)
+            watch_out_list = review_synthesis.get("what_to_watch_out_for", [])
+            if isinstance(watch_out_list, list):
+                what_to_watch_out_for = " ".join(watch_out_list)
+            else:
+                what_to_watch_out_for = str(watch_out_list)
+            
+            # Extract should_you_buy_it (it's stored as a string)
+            should_you_buy_it = review_synthesis.get("should_you_buy_it", "")
+
         return Product(
             id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
             title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
@@ -164,6 +189,9 @@ class ProductService:
             category=self.safe_str(metadata.get("CATEGORY_LEVEL1", "")),
             keywords=keywords,
             search_matches=search_matches,  # Add search matches if provided
+            what_customers_love=what_customers_love,
+            what_to_watch_out_for=what_to_watch_out_for,
+            should_you_buy_it=should_you_buy_it,
         )
 
     def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
@@ -174,13 +202,19 @@ class ProductService:
         search_matches = None
         if query:
             try:
+                analysis_start = time.time()
                 # Extract categorized search criteria
                 categorized_criteria = self.search_analyzer.extract_search_criteria(query)
+                criteria_time = time.time() - analysis_start
                 
                 # Analyze matches
+                match_start = time.time()
                 search_matches = self.search_analyzer.analyze_product_matches(
                     metadata, categorized_criteria, query
                 )
+                match_time = time.time() - match_start
+                
+                print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
             except Exception as e:
                 print(f"⚠️ Error analyzing search matches: {e}")
                 search_matches = None
@@ -188,36 +222,63 @@ class ProductService:
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
 
-    async def search_products(self, query: str, limit: int = 30) -> List[Product]:
+    async def search_products(self, query: str, limit: int = 10) -> dict:
         """Search products using LLM agent to parse and filter the query, then semantic search"""
         try:
+            total_start = time.time()
+            print(f"🔍 Starting search for: '{query}'")
+            
             # Use the LLM agent to parse the query and get filtered results
             # We pass an empty history since we're not in a chat context
+            llm_start = time.time()
             result = chat(query, [])
+            llm_time = time.time() - llm_start
+            print(f"  🤖 LLM processing took: {llm_time:.3f}s")
             
             # Extract products from the result
             ranked_products = result.get("products", [])
+            # Extract reply from the result
+            reply = result.get("message", "")
             
             if not ranked_products:
-                print(f"No products found for query: '{query}'")
-                return []
+                print(f"❌ No products found for query: '{query}'")
+                return {
+                    "products": [],
+                    "reply": reply
+                }
             
             # Convert ranked results to Product objects with search match analysis
+            conversion_start = time.time()
             products = []
-            for ranked_result in ranked_products[:limit]:  # Limit the results
+            for i, ranked_result in enumerate(ranked_products[:limit]):  # Limit the results
                 try:
+                    product_start = time.time()
                     product = self._ranked_result_to_product(ranked_result, query)
+                    product_time = time.time() - product_start
+                    if i < 3:  # Only log first 3 products to avoid spam
+                        print(f"    📦 Product {i+1} conversion: {product_time:.3f}s")
                     products.append(product)
                 except Exception as e:
                     print(f"⚠️ Error converting ranked result to product: {e}")
                     continue
             
-            print(f"Found {len(products)} products for query: '{query}' using LLM agent")
-            return products
+            conversion_time = time.time() - conversion_start
+            total_time = time.time() - total_start
+            
+            print(f"  🔄 Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
+            print(f"  ✅ Total search time: {total_time:.3f}s")
+            
+            return {
+                "products": products,
+                "reply": reply
+            }
             
         except Exception as e:
-            print(f"Error searching products with LLM agent: {e}")
-            return []
+            print(f"❌ Error searching products with LLM agent: {e}")
+            return {
+                "products": [],
+                "reply": ""
+            }
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:
