@@ -3,6 +3,7 @@ import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatWidget from '@/components/ChatWidget';
+import ComparisonFooter from '@/components/ComparisonFooter';
 import SearchMatches from '@/components/SearchMatches';
 import { useProduct } from '@/hooks/useProducts';
 import { Product } from '../types';
@@ -369,6 +370,8 @@ export default function ProductDetail() {
         onClearChat={() => {}} 
         chatContext={{ type: 'product', product: product }}
       />
+
+      <ComparisonFooter />
     </div>
   );
 }

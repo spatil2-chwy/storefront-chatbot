@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import ProductFilters from '@/components/ProductFilters';
 import ChatWidget from '@/components/ChatWidget';
+import ComparisonFooter from '@/components/ComparisonFooter';
 import { api } from '@/lib/api';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -428,6 +429,8 @@ export default function ProductListing() {
         shouldClearChat={hasSearched}
         onClearChat={handleClearChat}
       />
+
+      <ComparisonFooter />
     </div>
   );
 }

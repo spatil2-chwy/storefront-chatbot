@@ -87,8 +87,22 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         addMessage(productMessage);
       }
       
+      // If switching to comparison context, add a comparison message
+      if (chatContext.type === 'comparison' && chatContext.products && chatContext.products.length >= 1) {
+        const comparisonMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `🔄 Now comparing: ${chatContext.products.length} products`,
+          sender: 'ai',
+          timestamp: new Date(),
+          comparisonProductIds: chatContext.products.map(p => p.id).filter((id): id is number => id !== undefined),
+          comparisonProductCount: chatContext.products.length,
+          comparisonProducts: [...chatContext.products],
+        };
+        addMessage(comparisonMessage);
+      }
+      
       // If switching back to general context, add a transition message
-      if (chatContext.type === 'general' && previousContext.type === 'product') {
+      if (chatContext.type === 'general' && (previousContext.type === 'product' || previousContext.type === 'comparison')) {
         const transitionMessage: ChatMessage = {
           id: Date.now().toString(),
           content: `🔄 Transitioned to general chat`,
@@ -128,8 +142,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
   // Handle comparison mode changes
   useEffect(() => {
-    // When entering comparison mode (2 or more products)
-    if (isInComparisonMode && comparingProducts.length >= 2) {
+    // When entering comparison mode (1 or more products for chat purposes)
+    if (isInComparisonMode && comparingProducts.length >= 1) {
       // If we don't have a comparison start index yet, set it to current message count
       if (comparisonStartIndexRef.current === -1) {
         comparisonStartIndexRef.current = messages.length;
@@ -167,8 +181,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         }
       }
     }
-    // When exiting comparison mode (less than 2 products)
-    else if (!isInComparisonMode && comparingProducts.length < 2 && comparisonStartIndexRef.current !== -1) {
+    // When exiting comparison mode (less than 1 product)
+    else if (!isInComparisonMode && comparingProducts.length < 1 && comparisonStartIndexRef.current !== -1) {
       // Don't add transition message if we're transitioning to product mode
       if (currentContext.type !== 'product') {
         // Add transition message when exiting comparison mode
@@ -233,7 +247,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           let aiResponse: ChatMessage;
 
           // If in comparison mode and we have products to compare, call the backend
-          if (isInComparisonMode && comparingProducts.length >= 2) {
+          if (isInComparisonMode && comparingProducts.length >= 1) {
             const response = await api.compareProducts(initialQuery, comparingProducts);
             aiResponse = {
               id: (Date.now() + 1).toString(),
@@ -241,16 +255,25 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               sender: 'ai',
               timestamp: new Date(),
             };
-          } else if (currentContext.type === 'product' && currentContext.product) {
-            // If in product context, call the backend for product-specific questions
-            const response = await api.askAboutProduct(initialQuery, currentContext.product);
-            aiResponse = {
-              id: (Date.now() + 1).toString(),
-              content: response,
-              sender: 'ai',
-              timestamp: new Date(),
-            };
-          } else {
+                } else if (currentContext.type === 'product' && currentContext.product) {
+        // If in product context, call the backend for product-specific questions
+        const response = await api.askAboutProduct(initialQuery, currentContext.product);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else if (currentContext.type === 'comparison' && currentContext.products) {
+        // If in comparison context, call the backend for product comparison
+        const response = await api.compareProducts(initialQuery, currentContext.products);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else {
             // Use backend SearchProducts for general chat mode to update products and display
             const response = await api.searchProducts(initialQuery);
             aiResponse = {
@@ -309,7 +332,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       let aiResponse: ChatMessage;
 
       // If in comparison mode and we have products to compare, call the backend
-      if (isInComparisonMode && comparingProducts.length >= 2) {
+      if (isInComparisonMode && comparingProducts.length >= 1) {
         const response = await api.compareProducts(messageToSend, comparingProducts);
         aiResponse = {
           id: (Date.now() + 1).toString(),
@@ -320,6 +343,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
         const response = await api.askAboutProduct(messageToSend, currentContext.product);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+      } else if (currentContext.type === 'comparison' && currentContext.products) {
+        // If in comparison context, call the backend for product comparison
+        const response = await api.compareProducts(messageToSend, currentContext.products);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -463,6 +495,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       )}
                       {/* Show exit button for product discussion mode when not on product detail page */}
                       {currentContext.type === 'product' && !chatContext && (
+                        <button
+                          onClick={handleExitToGeneralChat}
+                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                        >
+                          <ArrowLeft className="w-3 h-3" />
+                          Exit to general chat
+                        </button>
+                      )}
+                      {/* Show exit button for comparison mode */}
+                      {currentContext.type === 'comparison' && (
                         <button
                           onClick={handleExitToGeneralChat}
                           className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
@@ -780,6 +822,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   )}
                   {/* Show exit button for product discussion mode when not on product detail page */}
                   {currentContext.type === 'product' && !chatContext && (
+                    <button
+                      onClick={handleExitToGeneralChat}
+                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Exit to general chat
+                    </button>
+                  )}
+                  {/* Show exit button for comparison mode */}
+                  {currentContext.type === 'comparison' && (
                     <button
                       onClick={handleExitToGeneralChat}
                       className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"

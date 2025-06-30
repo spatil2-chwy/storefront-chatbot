@@ -61,7 +61,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
 
   // Compute comparison mode based on number of products
   const isInComparisonMode = useMemo(() => {
-    return comparingProducts.length >= 2;
+    return comparingProducts.length >= 1;
   }, [comparingProducts.length]);
 
   const addMessage = useCallback((message: ChatMessage) => {
@@ -82,8 +82,6 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
 
   const addToComparison = useCallback((product: Product) => {
     setComparingProducts(prev => {
-      if (prev.length >= 3) return prev; // Max 3 products
-      
       const exists = prev.find(p => p.id === product.id);
       if (exists) return prev; // Already in comparison
       

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Bot, RotateCcw, Image as ImageIcon, Check } from 'lucide-react';
+import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageCircle } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import SearchMatches from './SearchMatches';
 import { useGlobalChat } from '../contexts/ChatContext';
 
@@ -23,13 +25,6 @@ export default function ProductCard({ product }: ProductCardProps) {
   } = useGlobalChat();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
-  const isMaxReached = comparingProducts.length >= 3 && !isSelected;
-  const [showTooltip, setShowTooltip] = React.useState(false);
-
-  // Debug: Log the should_you_buy_it field
-  React.useEffect(() => {
-    console.log('Product should_you_buy_it:', product.should_you_buy_it);
-  }, [product.should_you_buy_it]);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -78,34 +73,50 @@ export default function ProductCard({ product }: ProductCardProps) {
     );
   };
 
-  const handleCompareClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (isSelected) {
-      console.log('Removing from comparison...');
-      removeFromComparison(product.id!);
-    } else if (!isMaxReached) {
-      console.log('Adding to comparison...');
+  const handleCompareChange = (checked: boolean) => {
+    if (checked) {
       addToComparison(product);
+    } else {
+      removeFromComparison(product.id!);
     }
   };
 
-  const handleAIClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Set the product context to transition to product discussion mode
+  const handleChatClick = () => {
     setCurrentContext({ type: 'product', product });
-    
-    // Open the chat widget
     setIsOpen(true);
     setShouldAutoOpen(true);
   };
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Add to cart functionality would go here
+    console.log('Add to cart:', product.title);
+  };
+
+  // Extract categories from search matches for the new section
+  const getMatchedCategories = () => {
+    if (!product.search_matches) return [];
+    
+    const categories = new Set<string>();
+    product.search_matches.forEach(match => {
+      if (match.field.includes(':')) {
+        const [category, value] = match.field.split(':', 2);
+        categories.add(value.trim());
+      } else {
+        match.matched_terms.forEach(term => categories.add(term));
+      }
+    });
+    
+    return Array.from(categories);
+  };
+
+  const matchedCategories = getMatchedCategories();
+
   return (
-    <Link href={`/product/${product.id}`}>
-      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col">
+    <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+      <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
+        {/* Product Image */}
         <div className="relative w-full h-48">
           {renderImage()}
           {/* Fallback image (hidden by default) */}
@@ -115,66 +126,15 @@ export default function ProductCard({ product }: ProductCardProps) {
               <p className="text-sm text-gray-500">Image not available</p>
             </div>
           </div>
-          
-          {/* Compare checkbox */}
-          <div className="absolute top-2 left-2">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={handleCompareClick}
-                disabled={isMaxReached}
-                className={`p-5.5 rounded transition-all duration-200 ${
-                  isSelected 
-                    ? 'bg-chewy-blue text-white shadow-md' 
-                    : isMaxReached
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-transparent text-white hover:bg-white/20 shadow-md hover:shadow-lg'
-                }`}
-              >
-                {isSelected ? (
-                  <Check className="w-3 h-3" />
-                ) : (
-                  <div className="w-3 h-3 border-2 border-current rounded-sm" />
-                )}
-              </button>
-              <Badge 
-                className={`text-[9px] px-1.5 py-0.5 ${
-                  isSelected 
-                    ? 'bg-chewy-blue text-white' 
-                    : isMaxReached
-                    ? 'bg-gray-300 text-gray-500'
-                    : 'bg-black/50 text-white border border-white/30'
-                }`}
-              >
-                Compare
-              </Badge>
-            </div>
-          </div>
-          
-          {/* AI insights button - always top right of image */}
-          <button 
-            className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-            onClick={handleAIClick}
-          >
-            <Bot className="w-4 h-4 text-gray-400" />
-            {product.should_you_buy_it && showTooltip && (
-              <div className="absolute right-1/2 translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50 flex flex-col items-center">
-                <div className="whitespace-pre-line text-center">{product.should_you_buy_it}</div>
-                <div className="mt-2 pt-2 border-t border-gray-700 font-medium text-center">Click to discuss</div>
-                {/* Arrow */}
-                <div className="w-3 h-3 bg-gray-900 rotate-45 absolute left-1/2 -bottom-1.5 -translate-x-1/2 z-50"></div>
-              </div>
-            )}
-          </button>
         </div>
         
         <CardContent className="p-4 flex-1 flex flex-col">
-          <div className="mb-2">
-          <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
-            <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
-            <span className="text-[13px] align-middle">{product.title}</span>
-          </h4>
+          {/* Original Product Information */}
+          <div className="mb-3">
+            <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
+              <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
+              <span className="text-[13px] align-middle">{product.title}</span>
+            </h4>
           </div>
           
           <div className="flex items-center mb-2">
@@ -189,7 +149,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
           
-          <div className="space-y-1 mt-auto mb-3">
+          <div className="space-y-1 mb-3">
             <div className="flex items-center space-x-2">
               <span className="text-lg font-semibold text-gray-900">${product.price}</span>
               {product.originalPrice && product.originalPrice > (product.price || 0) && (
@@ -206,15 +166,71 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             )}
           </div>
-          
-          {/* Search Matches - show which categories/fields matched at the bottom */}
-          <SearchMatches 
-            matches={product.search_matches} 
-            className="border-t pt-2 mt-auto" 
-            showTitle={false}
-          />
+
+          {/* Categories Matched Section */}
+          {matchedCategories.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
+              <div className="flex flex-wrap gap-1">
+                {matchedCategories.slice(0, 3).map((category, index) => (
+                  <Badge
+                    key={index}
+                    className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
+                  >
+                    {category}
+                  </Badge>
+                ))}
+                {matchedCategories.length > 3 && (
+                  <Badge className="text-xs px-2 py-1 bg-gray-50 text-gray-600 border border-gray-200 rounded-md">
+                    +{matchedCategories.length - 3} more
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+
+      {/* Add to Cart Button */}
+      <div className="px-4 pb-3">
+        <Button
+          onClick={handleAddToCart}
+          className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>Add to Cart</span>
+        </Button>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="px-4 pb-4 flex items-center justify-between">
+        {/* Compare Checkbox */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={`compare-${product.id}`}
+            checked={isSelected}
+            onCheckedChange={handleCompareChange}
+            className="border-gray-300"
+          />
+          <label
+            htmlFor={`compare-${product.id}`}
+            className="text-sm cursor-pointer text-gray-700"
+          >
+            Compare
+          </label>
+        </div>
+
+        {/* Chat Button */}
+        <Button
+          onClick={handleChatClick}
+          variant="ghost"
+          size="sm"
+          className="text-gray-600 hover:text-chewy-blue hover:bg-blue-50 p-2 h-auto"
+        >
+          <MessageCircle className="w-4 h-4 mr-1" />
+          <span className="text-sm">Chat</span>
+        </Button>
+      </div>
+    </Card>
   );
 }
