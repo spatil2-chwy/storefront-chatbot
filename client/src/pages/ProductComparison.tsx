@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatWidget from '@/components/ChatWidget';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { useGlobalChat } from '@/contexts/ChatContext';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
+  const [showAIOverview, setShowAIOverview] = useState<{show: boolean, product: any, position?: { top: number; left: number }}>({show: false, product: null});
   const { 
     comparingProducts, 
     currentSearchQuery,
@@ -120,6 +121,35 @@ export default function ProductComparison() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
+      {/* Should You Buy It AI Overview Tooltip */}
+      {showAIOverview.show && showAIOverview.product && showAIOverview.product.should_you_buy_it && (
+        <div className="fixed z-50" style={{
+          top: `${showAIOverview.position?.top || 0}px`,
+          left: `${showAIOverview.position?.left || 0}px`
+        }}>
+          <div 
+            className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4"
+            onMouseEnter={() => setShowAIOverview({show: true, product: showAIOverview.product})}
+            onMouseLeave={() => setShowAIOverview({show: false, product: null})}
+          >
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
+            </div>
+            <div className="text-gray-700 text-xs leading-relaxed mb-2">
+              <div className="font-medium text-gray-900 mb-1 text-xs">
+                {showAIOverview.product.brand} {showAIOverview.product.title}
+              </div>
+              {showAIOverview.product.should_you_buy_it}
+            </div>
+            {/* Arrow pointing down to the button */}
+            <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+          </div>
+        </div>
+      )}
+      
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Exit Button */}
         <div className="flex items-center justify-between mb-6">
@@ -151,7 +181,7 @@ export default function ProductComparison() {
             const matchedCategories = getMatchedCategories(product);
             
             return (
-              <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+              <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
                 <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
                   {/* Product Image */}
                   <div className="relative w-full h-32">
@@ -209,7 +239,7 @@ export default function ProductComparison() {
                       <div className="mb-3">
                         <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
                         <div className="flex flex-wrap gap-1">
-                          {matchedCategories.slice(0, 3).map((category, index) => (
+                          {matchedCategories.map((category, index) => (
                             <Badge
                               key={index}
                               className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
@@ -217,16 +247,32 @@ export default function ProductComparison() {
                               {category}
                             </Badge>
                           ))}
-                          {matchedCategories.length > 3 && (
-                            <Badge className="text-xs px-2 py-1 bg-gray-50 text-gray-600 border border-gray-200 rounded-md">
-                              +{matchedCategories.length - 3} more
-                            </Badge>
-                          )}
                         </div>
                       </div>
                     )}
                   </CardContent>
                 </Link>
+
+                {/* Should You Buy It Button - Top right corner */}
+                {product.should_you_buy_it && (
+                  <div className="absolute top-2 right-2">
+                    <button
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setShowAIOverview({
+                          show: true, 
+                          product,
+                          position: { top: rect.top, left: rect.left }
+                        });
+                      }}
+                      onMouseLeave={() => setShowAIOverview({show: false, product: null})}
+                      className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
+                      title="Should You Buy It?"
+                    >
+                      <Bot className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Add to Cart Button */}
                 <div className="px-4 pb-3">
