@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageCircle } from 'lucide-react';
+import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -210,7 +210,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             id={`compare-${product.id}`}
             checked={isSelected}
             onCheckedChange={handleCompareChange}
-            className="border-gray-300"
+            className="border-gray-300 w-5 h-5"
           />
           <label
             htmlFor={`compare-${product.id}`}
@@ -227,7 +227,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           size="sm"
           className="text-gray-600 hover:text-chewy-blue hover:bg-blue-50 p-2 h-auto"
         >
-          <MessageCircle className="w-4 h-4 mr-1" />
+          <MessageSquare className="!w-8 !h-8 stroke-gray-300 stroke-1" />
           <span className="text-sm">Chat</span>
         </Button>
       </div>
