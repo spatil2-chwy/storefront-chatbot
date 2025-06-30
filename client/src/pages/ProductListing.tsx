@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import ProductFilters from '@/components/ProductFilters';
 import ChatWidget from '@/components/ChatWidget';
+import ComparisonFooter from '@/components/ComparisonFooter';
 import { api } from '@/lib/api';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,18 +37,29 @@ export default function ProductListing() {
     setHasSearched,
     setShouldAutoOpen,
     comparingProducts,
-    isInComparisonMode
+    isInComparisonMode,
+    clearMessages,
+    setCurrentContext
   } = useGlobalChat();
 
-  // Auto-open chatbot when navigating to this page
+  // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
+    // Clear chat messages and set context to general
+    clearMessages();
+    setCurrentContext({ type: 'general' });
+    
     // Check if user had closed the chatbot before
     const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
     if (wasChatClosed) {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-  }, [setShouldAutoOpen]);
+
+    // Cleanup when leaving the page
+    return () => {
+      clearMessages();
+    };
+  }, [setShouldAutoOpen, clearMessages, setCurrentContext]);
 
   useEffect(() => {
     // Listen for clear chat events
@@ -217,13 +229,15 @@ export default function ProductListing() {
   };
 
   const handleClearChat = () => {
+    // Only clear chat-related state, preserve product listings
     setChatQuery('');
-    setHasSearched(false);
-    setSearchResults([]);
-    setCurrentSearchQuery('');
-    setSearchStats(null);
-    setSelectedMatchFilters([]);
-    setMinMatchCount(0);
+    // Keep search results, search query, and filters intact
+    // setHasSearched(false);  // Keep this true to maintain product display
+    // setSearchResults([]);   // Keep search results visible
+    // setCurrentSearchQuery(''); // Keep search query for reference
+    // setSearchStats(null);   // Keep search stats for filtering
+    // setSelectedMatchFilters([]); // Keep applied filters
+    // setMinMatchCount(0);    // Keep match count filter
   };
 
   const handleFilterChange = (filters: any) => {
@@ -444,6 +458,8 @@ export default function ProductListing() {
         shouldClearChat={hasSearched}
         onClearChat={handleClearChat}
       />
+
+      <ComparisonFooter />
     </div>
   );
 }

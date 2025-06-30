@@ -51,6 +51,7 @@ export interface ChatMessage {
 }
 
 export interface ChatContext {
-  type: 'general' | 'product';
+  type: 'general' | 'product' | 'comparison';
   product?: Product;
+  products?: Product[];
 } 
