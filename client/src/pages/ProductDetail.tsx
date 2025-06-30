@@ -25,21 +25,34 @@ export default function ProductDetail() {
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
   
   // Get search query from global state
-  const { currentSearchQuery, setShouldAutoOpen } = useGlobalChat();
+  const { currentSearchQuery, setShouldAutoOpen, setCurrentContext, clearMessages } = useGlobalChat();
 
   const currentPrice = product?.price || 0;
   const autoshipPrice = product?.autoshipPrice || 0;
   const hasAutoship = autoshipPrice > 0;
 
-  // Auto-open chatbot when navigating to this page
+  // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    // Check if user had closed the chatbot before
-    const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
-    if (wasChatClosed) {
-      setShouldAutoOpen(true);
-      localStorage.removeItem('chatClosed'); // Reset the flag
+    if (product) {
+      // Clear chat messages when entering product page
+      clearMessages();
+      
+      // Set the global chat context to this product
+      setCurrentContext({ type: 'product', product: product });
+      
+      // Check if user had closed the chatbot before
+      const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
+      if (wasChatClosed) {
+        setShouldAutoOpen(true);
+        localStorage.removeItem('chatClosed'); // Reset the flag
+      }
     }
-  }, [setShouldAutoOpen]);
+
+    // Cleanup when leaving the page
+    return () => {
+      clearMessages();
+    };
+  }, [product, setCurrentContext, setShouldAutoOpen, clearMessages]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {

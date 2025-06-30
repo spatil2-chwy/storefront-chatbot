@@ -16,6 +16,66 @@ interface ChatWidgetProps {
   chatContext?: ChatContext;
 }
 
+// Simple markdown to HTML converter for chat messages
+const formatMessageContent = (content: string): string => {
+  let formattedContent = content;
+  
+  // Convert **bold** to <strong>
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Convert *italic* to <em>
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Convert numbered lists (1. item) to proper HTML lists
+  if (/^\d+\.\s/m.test(formattedContent)) {
+    const lines = formattedContent.split('\n');
+    let inList = false;
+    const processedLines: string[] = [];
+    
+    lines.forEach(line => {
+      const trimmedLine = line.trim();
+      const numberListMatch = trimmedLine.match(/^(\d+)\.\s(.+)$/);
+      
+      if (numberListMatch) {
+        if (!inList) {
+          processedLines.push('<ol>');
+          inList = true;
+        }
+        processedLines.push(`<li>${numberListMatch[2]}</li>`);
+      } else if (trimmedLine.startsWith('- ')) {
+        if (!inList) {
+          processedLines.push('<ul>');
+          inList = true;
+        }
+        processedLines.push(`<li>${trimmedLine.substring(2)}</li>`);
+      } else {
+        if (inList) {
+          processedLines.push('</ol>');
+          inList = false;
+        }
+        if (trimmedLine) {
+          processedLines.push(`<p>${trimmedLine}</p>`);
+        }
+      }
+    });
+    
+    if (inList) {
+      processedLines.push('</ol>');
+    }
+    
+    formattedContent = processedLines.join('');
+  } else {
+    // Just wrap paragraphs if no lists
+    const paragraphs = formattedContent.split('\n\n');
+    formattedContent = paragraphs
+      .filter(p => p.trim())
+      .map(p => `<p>${p.trim()}</p>`)
+      .join('');
+  }
+  
+  return formattedContent;
+};
+
 export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
   const { 
     messages, 
@@ -98,9 +158,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // This prevents the "Transitioned to general chat" message from appearing
       comparisonStartIndexRef.current = -1;
       
-      // Product context handled by modal - no automatic message needed
+      // Add a message indicating we're now discussing this specific product
+      const productMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: `Now discussing: ${currentContext.product.brand} ${currentContext.product.title}`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(productMessage);
     }
-  }, [currentContext.type, currentContext.product?.id, chatContext, messages, addMessage]);
+  }, [currentContext.type, currentContext.product?.id, chatContext, addMessage]);
 
   // Handle comparison mode changes - simplified to avoid infinite loops
   useEffect(() => {
@@ -340,20 +407,20 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   // If chatContext is provided (for embedded chat like comparison page), render inline
   if (chatContext) {
     return (
-      <div className="h-full flex flex-col bg-white">
+      <div className="h-full flex flex-col bg-white border border-gray-200">
         {/* Header */}
-        <div className="bg-white border-b border-gray-100 p-4 flex-shrink-0">
+        <div className="bg-white border-b border-gray-200 p-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 bg-chewy-blue flex items-center justify-center">
                 <img 
                   src="/chewy-c-white.png" 
                   alt="Chewy C" 
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                 />
               </div>
-              <div className="text-gray-900 font-work-sans text-base font-semibold">
-                AI Beta - Product Comparison
+              <div className="text-gray-900 font-work-sans text-sm font-semibold">
+                {chatContext?.type === 'product' ? 'AI Beta - Product Questions' : 'AI Beta - Product Comparison'}
               </div>
             </div>
             
@@ -376,30 +443,64 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         </div>
 
         {/* Messages */}
-        <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+        <div className="flex-1 p-3 overflow-y-auto bg-gray-50">
           {/* Initial suggestions if no messages */}
           {messages.length === 0 && (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600 font-work-sans mb-4">Compare these products or ask questions:</p>
+            <div>
+              <div className="text-center text-gray-500 mb-4">
+                <p className="text-sm">
+                  {chatContext?.type === 'product' 
+                    ? 'Ask a question about this product to get started'
+                    : 'Ask a question about these products to get started'
+                  }
+                </p>
+              </div>
               <div className="space-y-2">
-                <button
-                  onClick={() => setInputValue("What are the main differences between these products?")}
-                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
-                >
-                  "What are the main differences between these products?"
-                </button>
-                <button
-                  onClick={() => setInputValue("Which product is best for my large breed dog?")}
-                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
-                >
-                  "Which product is best for my large breed dog?"
-                </button>
-                <button
-                  onClick={() => setInputValue("Compare the nutritional value of these products")}
-                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
-                >
-                  "Compare the nutritional value of these products"
-                </button>
+                {chatContext?.type === 'product' ? (
+                  // Individual product questions
+                  <>
+                    <button
+                      onClick={() => setInputValue("What are the key ingredients in this product?")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      What are the key ingredients in this product?
+                    </button>
+                    <button
+                      onClick={() => setInputValue("Is this suitable for my dog's age and size?")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      Is this suitable for my dog's age and size?
+                    </button>
+                    <button
+                      onClick={() => setInputValue("What do customers love about this product?")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      What do customers love about this product?
+                    </button>
+                  </>
+                ) : (
+                  // Comparison questions
+                  <>
+                    <button
+                      onClick={() => setInputValue("What are the main differences between these products?")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      What are the main differences between these products?
+                    </button>
+                    <button
+                      onClick={() => setInputValue("Which product is best for my large breed dog?")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      Which product is best for my large breed dog?
+                    </button>
+                    <button
+                      onClick={() => setInputValue("Compare the nutritional value of these products")}
+                      className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-2 transition-colors hover:bg-blue-100 font-work-sans"
+                    >
+                      Compare the nutritional value of these products
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -418,13 +519,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
             >
               <div
-                className={`max-w-lg px-4 py-3 text-sm ${
+                className={`max-w-[75%] px-3 py-2 text-sm rounded-lg ${
                   message.sender === 'user'
-                    ? 'bg-chewy-blue text-white rounded-2xl'
+                    ? 'bg-chewy-blue text-white'
                     : message.content.includes('Now comparing:')
-                    ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue rounded-2xl'
-                    : 'bg-white text-gray-900 border border-gray-200 rounded-2xl'
-                }`}
+                    ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                    : 'bg-white text-gray-900 border border-gray-200'
+                } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
               >
                 {message.content.includes('Now comparing:') ? (
                   <div className="space-y-2">
@@ -464,7 +565,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     )}
                   </div>
                 ) : (
-                  message.content
+                  <div 
+                    dangerouslySetInnerHTML={{ 
+                      __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                    }} 
+                  />
                 )}
               </div>
             </div>
@@ -472,8 +577,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex justify-start mb-4">
-              <div className="bg-white px-4 py-3 rounded-2xl border border-gray-200">
+            <div className="flex justify-start mb-3">
+              <div className="bg-white px-3 py-2 border border-gray-200">
                 <div className="flex items-center space-x-2">
                   <div className="flex space-x-1">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
@@ -488,20 +593,20 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         </div>
 
         {/* Input */}
-        <div className="border-t border-gray-100 p-4 bg-white flex-shrink-0">
+        <div className="border-t border-gray-200 p-3 bg-white flex-shrink-0">
           <div className="flex space-x-2">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask about these products..."
-              className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-4 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+              placeholder="Ask your question here"
+              className="flex-1 border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
             />
             <Button 
               onClick={() => sendMessage()} 
               size="icon" 
               disabled={!inputValue.trim() || isLoading}
-              className="bg-chewy-blue hover:bg-blue-700 rounded-full w-10 h-10 flex items-center justify-center disabled:bg-gray-300"
+              className="bg-chewy-blue hover:bg-blue-700 w-9 h-9 flex items-center justify-center disabled:bg-gray-300"
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -526,10 +631,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         
         {/* Chat Modal - 1/3 screen overlay */}
         {isOpen && (
-          <div className="fixed left-0 bottom-0 w-full h-1/3 z-50 bg-white shadow-2xl border-t border-gray-200 rounded-t-3xl flex flex-col" style={{minHeight: 320, maxHeight: 500}}>
+          <div className="fixed left-0 bottom-0 w-full h-1/3 z-50 bg-white shadow-2xl border-t border-gray-200 rounded-t-lg flex flex-col" style={{minHeight: 320, maxHeight: 500}}>
             {/* Chat Content */}
             <div className="flex flex-col h-full">
-              <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-3xl flex-shrink-0">
+                              <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -655,14 +760,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           key={message.id}
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div
-                            className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
-                              message.sender === 'user'
-                                ? 'bg-chewy-blue text-white'
-                                : message.content.includes('Now comparing:')
-                                ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
-                                : 'bg-gray-100 text-gray-900'
-                            }`}
+                                                  <div
+                          className={`max-w-[80%] px-3 py-2 rounded-lg font-work-sans text-sm ${
+                            message.sender === 'user'
+                              ? 'bg-chewy-blue text-white'
+                              : message.content.includes('Now comparing:')
+                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                              : 'bg-gray-100 text-gray-900'
+                          } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
@@ -703,7 +808,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                 )}
                               </div>
                             ) : (
-                              message.content
+                              <div 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                                }} 
+                              />
                             )}
                           </div>
                         </div>
@@ -712,7 +821,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       {/* Loading indicator */}
                       {isLoading && (
                         <div className="flex justify-start">
-                          <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                          <div className="bg-gray-100 px-3 py-2 rounded-lg">
                             <div className="flex items-center space-x-2">
                               <div className="flex space-x-1">
                                 <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
@@ -727,20 +836,20 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       <div ref={messagesEndRef} />
                     </div>
                     {/* Input - Fixed at bottom */}
-                    <div className="border-t border-gray-100 p-3 bg-white rounded-b-3xl flex-shrink-0">
+                    <div className="border-t border-gray-100 p-3 bg-white rounded-b-lg flex-shrink-0">
                       <div className="flex space-x-2">
-                        <Input
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          placeholder="What do you want to learn?"
-                          className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
-                        />
-                        <Button 
-                          onClick={() => sendMessage()} 
-                          size="icon" 
-                          className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
-                        >
+                                              <Input
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="What do you want to learn?"
+                        className="flex-1 rounded-md border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+                      />
+                                              <Button 
+                        onClick={() => sendMessage()} 
+                        size="icon" 
+                        className="bg-chewy-blue hover:bg-blue-700 rounded-md w-9 h-9 flex items-center justify-center"
+                      >
                           <Send className="w-4 h-4" />
                         </Button>
                       </div>
@@ -819,8 +928,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       {/* Chat Modal */}
       {isOpen && (
-        <Card className="absolute bottom-16 right-0 w-80 h-[450px] shadow-2xl rounded-3xl border-0">
-          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-3xl">
+        <Card className="absolute bottom-16 right-0 w-80 h-[450px] shadow-2xl rounded-lg border-0">
+          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -950,13 +1059,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-xs px-6 py-2 rounded-2xl font-work-sans text-sm ${
+                        className={`max-w-[75%] px-3 py-2 rounded-lg font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
                             : message.content.includes('Now comparing:')
                             ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
-                        }`}
+                        } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
                       >
                         {message.content.includes('Now comparing:') ? (
                           <div className="space-y-2">
@@ -997,7 +1106,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             )}
                           </div>
                         ) : (
-                          message.content
+                          <div 
+                            dangerouslySetInnerHTML={{ 
+                              __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                            }} 
+                          />
                         )}
                       </div>
                     </div>
@@ -1006,7 +1119,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   {/* Loading indicator */}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-gray-100 px-3 py-2 rounded-2xl">
+                      <div className="bg-gray-100 px-3 py-2 rounded-md">
                         <div className="flex items-center space-x-2">
                           <div className="flex space-x-1">
                             <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
@@ -1023,19 +1136,19 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 </div>
 
                 {/* Input */}
-                <div className="border-t border-gray-100 p-3 bg-white rounded-b-3xl">
+                <div className="border-t border-gray-100 p-3 bg-white rounded-b-lg">
                   <div className="flex space-x-2">
                     <Input
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="What do you want to learn?"
-                      className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+                      className="flex-1 rounded-md border-gray-200 font-work-sans py-2 px-3 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
                     />
                     <Button 
                       onClick={() => sendMessage()} 
                       size="icon" 
-                      className="bg-chewy-blue hover:bg-blue-700 rounded-full w-9 h-9 flex items-center justify-center"
+                      className="bg-chewy-blue hover:bg-blue-700 rounded-md w-9 h-9 flex items-center justify-center"
                     >
                       <Send className="w-4 h-4" />
                     </Button>

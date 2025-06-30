@@ -16,16 +16,24 @@ export default function ProductComparison() {
     setCurrentContext,
     setIsOpen,
     setShouldAutoOpen,
-    clearComparison
+    clearComparison,
+    clearMessages
   } = useGlobalChat();
 
   // Auto-open chat when component mounts (context is set via ChatWidget chatContext prop)
   useEffect(() => {
     if (comparingProducts.length > 0) {
+      // Clear messages when entering comparison page
+      clearMessages();
       setIsOpen(true);
       setShouldAutoOpen(true);
     }
-  }, [comparingProducts, setIsOpen, setShouldAutoOpen]);
+
+    // Cleanup when leaving the page
+    return () => {
+      clearMessages();
+    };
+  }, [comparingProducts, setIsOpen, setShouldAutoOpen, clearMessages]);
 
   // Redirect back if no products to compare
   useEffect(() => {
@@ -64,7 +72,7 @@ export default function ProductComparison() {
   const renderImage = (product: any) => {
     if (!product.image || product.image === '') {
       return (
-        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+        <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
           <div className="text-center">
             <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500">Image not available</p>
@@ -77,7 +85,7 @@ export default function ProductComparison() {
       <img 
         src={product.image} 
         alt={product.title}
-        className="w-full h-48 object-cover"
+        className="w-full h-32 object-cover"
         onError={(e) => {
           const target = e.target as HTMLImageElement;
           target.style.display = 'none';
@@ -112,7 +120,7 @@ export default function ProductComparison() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
-      <main className="flex-1 max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Exit Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -138,7 +146,7 @@ export default function ProductComparison() {
         </div>
 
         {/* Product Comparison Grid */}
-        <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(comparingProducts.length, 4)}, 1fr)` }}>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
           {comparingProducts.map((product) => {
             const matchedCategories = getMatchedCategories(product);
             
@@ -146,10 +154,10 @@ export default function ProductComparison() {
               <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
                 <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
                   {/* Product Image */}
-                  <div className="relative w-full h-48">
+                  <div className="relative w-full h-32">
                     {renderImage(product)}
                     {/* Fallback image (hidden by default) */}
-                    <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
+                    <div className="w-full h-32 bg-gray-100 flex items-center justify-center hidden">
                       <div className="text-center">
                         <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Image not available</p>
@@ -196,12 +204,12 @@ export default function ProductComparison() {
                       )}
                     </div>
 
-                    {/* Categories Matched Section - Show ALL categories */}
+                    {/* Categories Matched Section - Show limited categories */}
                     {matchedCategories.length > 0 && (
                       <div className="mb-3">
                         <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
                         <div className="flex flex-wrap gap-1">
-                          {matchedCategories.map((category, index) => (
+                          {matchedCategories.slice(0, 3).map((category, index) => (
                             <Badge
                               key={index}
                               className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
@@ -209,6 +217,11 @@ export default function ProductComparison() {
                               {category}
                             </Badge>
                           ))}
+                          {matchedCategories.length > 3 && (
+                            <Badge className="text-xs px-2 py-1 bg-gray-50 text-gray-600 border border-gray-200 rounded-md">
+                              +{matchedCategories.length - 3} more
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     )}
@@ -239,17 +252,14 @@ export default function ProductComparison() {
           })}
         </div>
 
-      </main>
-
-      {/* Chat Widget - fills bottom of screen */}
-      <div className="h-96 border-t border-gray-200 bg-white">
-        <div className="h-full">
+        {/* Chat Widget - positioned higher up */}
+        <div className="h-72 border border-gray-200 bg-white">
           <ChatWidget 
             chatContext={{ type: 'comparison', products: comparingProducts }}
             onClearChat={() => {}}
           />
         </div>
-      </div>
+      </main>
     </div>
   );
 } 

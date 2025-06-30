@@ -5,6 +5,66 @@ import { Input } from '@/components/ui/input';
 import { Product, ChatMessage } from '../types';
 import { api } from '@/lib/api';
 
+// Simple markdown to HTML converter for chat messages
+const formatMessageContent = (content: string): string => {
+  let formattedContent = content;
+  
+  // Convert **bold** to <strong>
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Convert *italic* to <em>
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Convert numbered lists (1. item) to proper HTML lists
+  if (/^\d+\.\s/m.test(formattedContent)) {
+    const lines = formattedContent.split('\n');
+    let inList = false;
+    const processedLines: string[] = [];
+    
+    lines.forEach(line => {
+      const trimmedLine = line.trim();
+      const numberListMatch = trimmedLine.match(/^(\d+)\.\s(.+)$/);
+      
+      if (numberListMatch) {
+        if (!inList) {
+          processedLines.push('<ol>');
+          inList = true;
+        }
+        processedLines.push(`<li>${numberListMatch[2]}</li>`);
+      } else if (trimmedLine.startsWith('- ')) {
+        if (!inList) {
+          processedLines.push('<ul>');
+          inList = true;
+        }
+        processedLines.push(`<li>${trimmedLine.substring(2)}</li>`);
+      } else {
+        if (inList) {
+          processedLines.push('</ol>');
+          inList = false;
+        }
+        if (trimmedLine) {
+          processedLines.push(`<p>${trimmedLine}</p>`);
+        }
+      }
+    });
+    
+    if (inList) {
+      processedLines.push('</ol>');
+    }
+    
+    formattedContent = processedLines.join('');
+  } else {
+    // Just wrap paragraphs if no lists
+    const paragraphs = formattedContent.split('\n\n');
+    formattedContent = paragraphs
+      .filter(p => p.trim())
+      .map(p => `<p>${p.trim()}</p>`)
+      .join('');
+  }
+  
+  return formattedContent;
+};
+
 interface ProductChatModalProps {
   product: Product;
   isOpen: boolean;
@@ -173,10 +233,14 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
                       message.sender === 'user'
                         ? 'bg-chewy-blue text-white'
                         : 'bg-white text-gray-900 border border-gray-200'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
+                    } ${message.sender === 'ai' ? 'prose prose-sm prose-gray' : ''}`}
+                                      >
+                      <div 
+                        dangerouslySetInnerHTML={{ 
+                          __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                        }} 
+                      />
+                    </div>
                 </div>
               ))}
               

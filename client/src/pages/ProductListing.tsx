@@ -35,18 +35,29 @@ export default function ProductListing() {
     setHasSearched,
     setShouldAutoOpen,
     comparingProducts,
-    isInComparisonMode
+    isInComparisonMode,
+    clearMessages,
+    setCurrentContext
   } = useGlobalChat();
 
-  // Auto-open chatbot when navigating to this page
+  // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
+    // Clear chat messages and set context to general
+    clearMessages();
+    setCurrentContext({ type: 'general' });
+    
     // Check if user had closed the chatbot before
     const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
     if (wasChatClosed) {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-  }, [setShouldAutoOpen]);
+
+    // Cleanup when leaving the page
+    return () => {
+      clearMessages();
+    };
+  }, [setShouldAutoOpen, clearMessages, setCurrentContext]);
 
   useEffect(() => {
     // Listen for clear chat events
