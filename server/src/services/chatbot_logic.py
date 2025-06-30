@@ -113,7 +113,7 @@ Your tone should reflect:
 Remember: Always search for products when users mention pet items, even if the query is general.
 """,
 }
-MODEL = "gpt-4.1-nano"
+MODEL = "gpt-4.1-mini"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.

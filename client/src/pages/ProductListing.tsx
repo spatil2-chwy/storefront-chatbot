@@ -202,13 +202,15 @@ export default function ProductListing() {
   };
 
   const handleClearChat = () => {
+    // Only clear chat-related state, preserve product listings
     setChatQuery('');
-    setHasSearched(false);
-    setSearchResults([]);
-    setCurrentSearchQuery('');
-    setSearchStats(null);
-    setSelectedMatchFilters([]);
-    setMinMatchCount(0);
+    // Keep search results, search query, and filters intact
+    // setHasSearched(false);  // Keep this true to maintain product display
+    // setSearchResults([]);   // Keep search results visible
+    // setCurrentSearchQuery(''); // Keep search query for reference
+    // setSearchStats(null);   // Keep search stats for filtering
+    // setSelectedMatchFilters([]); // Keep applied filters
+    // setMinMatchCount(0);    // Keep match count filter
   };
 
   const handleFilterChange = (filters: any) => {
