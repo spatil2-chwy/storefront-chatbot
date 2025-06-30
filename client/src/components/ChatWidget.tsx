@@ -337,6 +337,180 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     return null;
   }
 
+  // If chatContext is provided (for embedded chat like comparison page), render inline
+  if (chatContext) {
+    return (
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-100 p-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
+                <img 
+                  src="/chewy-c-white.png" 
+                  alt="Chewy C" 
+                  className="w-5 h-5"
+                />
+              </div>
+              <div className="text-gray-900 font-work-sans text-base font-semibold">
+                AI Beta - Product Comparison
+              </div>
+            </div>
+            
+            {/* Clear Chat Button */}
+            {messages.length > 0 && (
+              <button
+                onClick={() => {
+                  clearMessages();
+                  setInputValue('');
+                  processedQueryRef.current = '';
+                  comparisonStartIndexRef.current = -1;
+                  onClearChat?.();
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
+              >
+                Clear chat
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+          {/* Initial suggestions if no messages */}
+          {messages.length === 0 && (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 font-work-sans mb-4">Compare these products or ask questions:</p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setInputValue("What are the main differences between these products?")}
+                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
+                >
+                  "What are the main differences between these products?"
+                </button>
+                <button
+                  onClick={() => setInputValue("Which product is best for my large breed dog?")}
+                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
+                >
+                  "Which product is best for my large breed dog?"
+                </button>
+                <button
+                  onClick={() => setInputValue("Compare the nutritional value of these products")}
+                  className="block w-full text-left text-sm text-gray-700 hover:text-chewy-blue hover:bg-blue-50 p-3 rounded-lg border border-gray-200 font-work-sans"
+                >
+                  "Compare the nutritional value of these products"
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {messages
+            .filter(message => {
+              // Filter out comparison messages when there are 0 products
+              if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
+                return false;
+              }
+              return true;
+            })
+            .map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+            >
+              <div
+                className={`max-w-lg px-4 py-3 text-sm ${
+                  message.sender === 'user'
+                    ? 'bg-chewy-blue text-white rounded-2xl'
+                    : message.content.includes('Now comparing:')
+                    ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue rounded-2xl'
+                    : 'bg-white text-gray-900 border border-gray-200 rounded-2xl'
+                }`}
+              >
+                {message.content.includes('Now comparing:') ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                      <button
+                        onClick={() => {
+                          clearComparison();
+                          comparisonStartIndexRef.current = -1;
+                        }}
+                        className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    {comparingProducts.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {comparingProducts.map((product) => (
+                          <div key={product.id} className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
+                              {product.image ? (
+                                <img 
+                                  src={product.image} 
+                                  alt={product.title}
+                                  className="w-6 h-6 object-cover rounded"
+                                />
+                              ) : (
+                                <Package className="w-4 h-4 text-gray-400" />
+                              )}
+                            </div>
+                            <div className="text-sm font-semibold text-chewy-blue">
+                              {product.title}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  message.content
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex justify-start mb-4">
+              <div className="bg-white px-4 py-3 rounded-2xl border border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <div className="flex space-x-1">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                  </div>
+                  <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-gray-100 p-4 bg-white flex-shrink-0">
+          <div className="flex space-x-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask about these products..."
+              className="flex-1 rounded-full border-gray-200 font-work-sans py-2 px-4 text-sm focus:border-chewy-blue focus:ring-chewy-blue"
+            />
+            <Button 
+              onClick={() => sendMessage()} 
+              size="icon" 
+              disabled={!inputValue.trim() || isLoading}
+              className="bg-chewy-blue hover:bg-blue-700 rounded-full w-10 h-10 flex items-center justify-center disabled:bg-gray-300"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Desktop: floating window, Mobile: bottom drawer/modal
   if (isMobile) {
     return (
@@ -468,7 +642,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         </div>
                       )}
                       
-                      {messages.map((message) => (
+                      {messages
+                        .filter(message => {
+                          // Filter out comparison messages when there are 0 products
+                          if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((message) => (
                         <div
                           key={message.id}
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -754,7 +936,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                     </div>
                   )}
                   
-                  {messages.map((message) => (
+                  {messages
+                    .filter(message => {
+                      // Filter out comparison messages when there are 0 products
+                      if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((message) => (
                     <div
                       key={message.id}
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}

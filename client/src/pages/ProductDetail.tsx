@@ -368,7 +368,6 @@ export default function ProductDetail() {
 
       <ChatWidget 
         onClearChat={() => {}} 
-        chatContext={{ type: 'product', product: product }}
       />
 
       <ComparisonFooter />

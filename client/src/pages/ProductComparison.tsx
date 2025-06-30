@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Package, Star } from 'lucide-react';
+import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatWidget from '@/components/ChatWidget';
 import { Button } from '@/components/ui/button';
@@ -61,11 +61,58 @@ export default function ProductComparison() {
     return stars;
   };
 
+  const renderImage = (product: any) => {
+    if (!product.image || product.image === '') {
+      return (
+        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={product.image} 
+        alt={product.title}
+        className="w-full h-48 object-cover"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          target.nextElementSibling?.classList.remove('hidden');
+        }}
+      />
+    );
+  };
+
+  // Extract categories from search matches for each product
+  const getMatchedCategories = (product: any) => {
+    if (!product.search_matches) return [];
+    
+    const categories = new Set<string>();
+    product.search_matches.forEach((match: any) => {
+      if (match.field.includes(':')) {
+        const [category, value] = match.field.split(':', 2);
+        categories.add(value.trim());
+      } else {
+        match.matched_terms.forEach((term: string) => categories.add(term));
+      }
+    });
+    
+    return Array.from(categories);
+  };
+
+  const handleAddToCart = (product: any) => {
+    console.log('Add to cart:', product.title);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
-      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="flex-1 max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
         {/* Header with Exit Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -92,122 +139,117 @@ export default function ProductComparison() {
 
         {/* Product Comparison Grid */}
         <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(comparingProducts.length, 4)}, 1fr)` }}>
-          {comparingProducts.map((product) => (
-            <Card key={product.id} className="bg-white rounded-xl shadow-sm h-full">
-              <div className="relative">
-                {/* Product Image */}
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center rounded-t-xl">
-                  {product.image ? (
-                    <img 
-                      src={product.image} 
-                      alt={product.title}
-                      className="w-full h-48 object-cover rounded-t-xl"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Image not available</p>
+          {comparingProducts.map((product) => {
+            const matchedCategories = getMatchedCategories(product);
+            
+            return (
+              <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+                <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
+                  {/* Product Image */}
+                  <div className="relative w-full h-48">
+                    {renderImage(product)}
+                    {/* Fallback image (hidden by default) */}
+                    <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
+                      <div className="text-center">
+                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Image not available</p>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-              
-              <CardContent className="p-4">
-                {/* Product Title and Brand */}
-                <div className="mb-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
-                      {product.brand}
-                    </Badge>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 line-clamp-3 leading-5">
-                    {product.title}
-                  </h3>
-                </div>
-
-                {/* Rating */}
-                <div className="flex items-center mb-3">
-                  <div className="flex text-sm">
-                    {renderStars(product.rating || 0)}
-                  </div>
-                  <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
-                  </span>
-                </div>
-
-                {/* Pricing */}
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg font-semibold text-gray-900">${product.price}</span>
-                    {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                      <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
-                    )}
-                  </div>
-                  {(product.autoshipPrice ?? 0) > 0 && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
-                      <span className="text-xs text-chewy-blue">Autoship</span>
+                  
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    {/* Original Product Information */}
+                    <div className="mb-3">
+                      <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
+                        <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
+                        <span className="text-[13px] align-middle">{product.title}</span>
+                      </h4>
                     </div>
-                  )}
-                </div>
-
-                {/* Categories Matched */}
-                {product.search_matches && product.search_matches.length > 0 && (
-                  <div className="mb-3">
-                    <div className="text-xs font-medium text-gray-700 mb-1">Categories Matched</div>
-                    <div className="flex flex-wrap gap-1">
-                      {product.search_matches.slice(0, 2).map((match, index) => {
-                        const category = match.field.includes(':') 
-                          ? match.field.split(':', 2)[1].trim() 
-                          : match.matched_terms[0];
-                        return (
-                          <Badge
-                            key={index}
-                            className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
-                          >
-                            {category}
-                          </Badge>
-                        );
-                      })}
-                      {product.search_matches.length > 2 && (
-                        <Badge className="text-xs px-1.5 py-0.5 bg-gray-50 text-gray-600 border border-gray-200 rounded-md">
-                          +{product.search_matches.length - 2}
-                        </Badge>
+                    
+                    <div className="flex items-center mb-2">
+                      <div className="flex items-center">
+                        <div className="flex text-sm">
+                          {renderStars(product.rating || 0)}
+                        </div>
+                        <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1 mb-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg font-semibold text-gray-900">${product.price}</span>
+                        {product.originalPrice && product.originalPrice > (product.price || 0) && (
+                          <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                        )}
+                      </div>
+                      {(product.autoshipPrice ?? 0) > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
+                          <div className="flex items-center space-x-1">
+                            <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                            <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
 
-                {/* Action Buttons */}
-                <div className="space-y-2">
-                  <Button className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-9 text-sm">
-                    Add to Cart
+                    {/* Categories Matched Section - Show ALL categories */}
+                    {matchedCategories.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
+                        <div className="flex flex-wrap gap-1">
+                          {matchedCategories.map((category, index) => (
+                            <Badge
+                              key={index}
+                              className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
+                            >
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Link>
+
+                {/* Add to Cart Button */}
+                <div className="px-4 pb-3">
+                  <Button
+                    onClick={() => handleAddToCart(product)}
+                    className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Add to Cart</span>
                   </Button>
+                </div>
+
+                {/* Bottom Controls - View Details button only */}
+                <div className="px-4 pb-4">
                   <Link href={`/product/${product.id}`}>
                     <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg h-9 text-sm">
                       View Details
                     </Button>
                   </Link>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Instructions */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-600 text-sm">
-            Use the chat below to ask questions about these products or get recommendations
-          </p>
-        </div>
       </main>
 
-      {/* Chat Widget - positioned at bottom */}
-      <ChatWidget 
-        chatContext={{ type: 'comparison', products: comparingProducts }}
-        onClearChat={() => {}}
-      />
+      {/* Chat Widget - fills bottom of screen */}
+      <div className="h-96 border-t border-gray-200 bg-white">
+        <div className="h-full">
+          <ChatWidget 
+            chatContext={{ type: 'comparison', products: comparingProducts }}
+            onClearChat={() => {}}
+          />
+        </div>
+      </div>
     </div>
   );
 } 
