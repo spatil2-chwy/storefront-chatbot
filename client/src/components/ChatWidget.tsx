@@ -1063,80 +1063,80 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       key={message.id}
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div
-                        className={`max-w-[75%] px-3 py-2 rounded-lg font-work-sans text-sm ${
-                          message.sender === 'user'
-                            ? 'bg-chewy-blue text-white'
-                            : message.content.includes('Now comparing:')
-                            ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
-                            : 'bg-gray-100 text-gray-900'
-                        } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
-                      >
-                        {message.content.includes('Now comparing:') ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
-                              <button
-                                onClick={() => {
-                                  clearComparison();
-                                  comparisonStartIndexRef.current = -1;
-                                  // Exit comparison without transition message
-                                }}
-                                className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                            {comparingProducts.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                {comparingProducts.map((product) => (
-                                  <div key={product.id} className="flex items-center space-x-2">
-                                    <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                      {product.image ? (
-                                        <img 
-                                          src={product.image} 
-                                          alt={product.title}
-                                          className="w-6 h-6 object-cover rounded"
-                                        />
-                                      ) : (
-                                        <Package className="w-4 h-4 text-gray-400" />
-                                      )}
-                                    </div>
-                                    <div className="text-sm font-semibold text-chewy-blue">
-                                      {product.title}
-                                    </div>
+                                                  <div
+                          className={`max-w-[75%] px-3 py-2 rounded-lg font-work-sans text-sm ${
+                            message.sender === 'user'
+                              ? 'bg-chewy-blue text-white'
+                              : message.content.includes('Now comparing:')
+                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                              : 'bg-gray-100 text-gray-900'
+                          } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
+                          >
+                            {message.content.includes('Now comparing:') ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                                  <button
+                                    onClick={() => {
+                                      clearComparison();
+                                      comparisonStartIndexRef.current = -1;
+                                      // Exit comparison without transition message
+                                    }}
+                                    className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                {comparingProducts.length > 0 && (
+                                  <div className="mt-3 space-y-2">
+                                    {comparingProducts.map((product) => (
+                                      <div key={product.id} className="flex items-center space-x-2">
+                                        <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                          {product.image ? (
+                                            <img 
+                                              src={product.image} 
+                                              alt={product.title}
+                                              className="w-6 h-6 object-cover rounded"
+                                            />
+                                          ) : (
+                                            <Package className="w-4 h-4 text-gray-400" />
+                                          )}
+                                        </div>
+                                        <div className="text-sm font-semibold text-chewy-blue">
+                                          {product.title}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
                               </div>
+                            ) : (
+                              <div 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                                }} 
+                              />
                             )}
                           </div>
-                        ) : (
-                          <div 
-                            dangerouslySetInnerHTML={{ 
-                              __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
-                            }} 
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Loading indicator */}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-gray-100 px-3 py-2 rounded-md">
-                        <div className="flex items-center space-x-2">
-                          <div className="flex space-x-1">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
-                          </div>
-                          <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                  
+                      ))}
+                      
+                      {/* Loading indicator */}
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-gray-100 px-3 py-2 rounded-md">
+                            <div className="flex items-center space-x-2">
+                              <div className="flex space-x-1">
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                              </div>
+                              <span className="text-xs text-gray-500 font-work-sans">LOADING...</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                   <div ref={messagesEndRef} />
                 </div>
 

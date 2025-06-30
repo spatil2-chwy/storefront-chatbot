@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Product, ChatMessage } from '../types';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 // Simple markdown to HTML converter for chat messages
 const formatMessageContent = (content: string): string => {
@@ -73,6 +74,7 @@ interface ProductChatModalProps {
 }
 
 export default function ProductChatModal({ product, isOpen, onClose, onHideMainChat }: ProductChatModalProps) {
+  const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
