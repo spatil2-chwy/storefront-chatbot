@@ -99,25 +99,44 @@ export const api = {
     return data.response;
   },
 
-  // async chatbot(message: string, history: any[] = []): Promise<{message: string, history: any[], products: any[]}> {
-  //   const payload = {
-  //     message,
-  //     history,
-  //   };
+  async chatbot(message: string, history: any[] = [], customer_key?: number, skip_products?: boolean): Promise<{message: string, history: any[], products: any[]}> {
+    const payload = {
+      message,
+      history,
+      customer_key,
+      skip_products: skip_products || false,
+    };
     
-  //   const response = await fetch(`${API_BASE_URL}/chats/chatbot`, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify(payload),
-  //   });
+    const response = await fetch(`${API_BASE_URL}/chats/chatbot`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-  //   if (!response.ok) {
-  //     const errorText = await response.text();
-  //     console.error('Response error text:', errorText);
-  //     throw new ApiError(response.status, `Failed to get chatbot response: ${response.statusText}`);
-  //   }
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to get chatbot response: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+  },
+
+  async searchAndChat(query: string, customer_key?: number): Promise<{searchResults: {products: Product[], reply: string}, chatResponse: {message: string, history: any[], products: any[]}}> {
+    // Make both calls in parallel
+    const [searchResults, chatResponse] = await Promise.all([
+      this.searchProducts(query, 30),
+      this.chatbot(query, [], customer_key, true) // skip_products = true
+    ]);
+
+    return {
+      searchResults,
+      chatResponse
+    };
+  },
 
   //   const data = await response.json();
   //   return data.response;

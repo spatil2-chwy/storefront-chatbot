@@ -7,6 +7,7 @@ import { ChatMessage, ChatContext, Product } from '../types';
 import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -38,6 +39,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setHasSearched
   } = useGlobalChat();
   
+  const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveAgent, setIsLiveAgent] = useState(false);
@@ -251,17 +253,24 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
           } else {
-            // Use backend SearchProducts for general chat mode to update products and display
-            const response = await api.searchProducts(initialQuery);
+            // Use backend chatbot endpoint for general chat mode
+            const chatHistory = messages.map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+            
+            // Skip products if this is the initial query from search bar (products already loaded)
+            const skipProducts = initialQuery === processedQueryRef.current;
+            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key, skipProducts);
             aiResponse = {
               id: (Date.now() + 1).toString(),
-              content: response.reply,
+              content: response.message,
               sender: 'ai',
               timestamp: new Date(),
             };
             
-            // Update global search state with the products from the response
-            if (response.products && response.products.length > 0) {
+            // Update global search state with the products from the response only if we didn't skip them
+            if (!skipProducts && response.products && response.products.length > 0) {
               setSearchResults(response.products);
               setCurrentSearchQuery(initialQuery);
               setHasSearched(true);
@@ -285,7 +294,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -327,11 +336,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           timestamp: new Date(),
         };
       } else {
-        // Use backend SearchProducts for general chat mode to update products and display
-        const response = await api.searchProducts(messageToSend);
+        // Use backend chatbot endpoint for general chat mode
+        const chatHistory = messages.map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }));
+        
+        const response = await api.chatbot(messageToSend, chatHistory, user?.customer_key);
         aiResponse = {
           id: (Date.now() + 1).toString(),
-          content: response.reply,
+          content: response.message,
           sender: 'ai',
           timestamp: new Date(),
         };
