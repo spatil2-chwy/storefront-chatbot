@@ -147,14 +147,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           
           <CardContent className="p-4 flex-1 flex flex-col">
             {/* Original Product Information */}
-            <div className="mb-3">
-              <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
+            <div className="mb-2 flex-shrink-0">
+              <h4 className="line-clamp-3 text-sm h-16 leading-5 font-normal">
                 <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
                 <span className="text-[13px] align-middle">{product.title}</span>
               </h4>
             </div>
             
-            <div className="flex items-center mb-2">
+            <div className="flex items-center mb-2 flex-shrink-0 h-5">
               <div className="flex items-center">
                 <div className="flex text-sm">
                   {renderStars(product.rating || 0)}
@@ -166,7 +166,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             </div>
             
-            <div className="space-y-1 mb-3">
+            <div className="space-y-1 mb-2 flex-shrink-0 min-h-[2.5rem]">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-semibold text-gray-900">${product.price}</span>
                 {product.originalPrice && product.originalPrice > (product.price || 0) && (
@@ -184,22 +184,27 @@ export default function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
 
-            {/* Categories Matched Section */}
-            {matchedCategories.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
-                <div className="flex flex-wrap gap-1">
-                  {matchedCategories.map((category, index) => (
-                    <Badge
-                      key={index}
-                      className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
-                    >
-                      {category}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Categories Matched Section - Fixed height container */}
+            <div className="mb-2 flex-shrink-0 min-h-[3rem]">
+              {matchedCategories.length > 0 && (
+                <>
+                  <div className="text-xs font-medium text-gray-700 mb-1">Categories Matched</div>
+                  <div className="flex flex-wrap gap-1">
+                    {matchedCategories.map((category, index) => (
+                      <Badge
+                        key={index}
+                        className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
+                      >
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Spacer to push bottom content down */}
+            <div className="flex-1"></div>
           </CardContent>
         </Link>
 
