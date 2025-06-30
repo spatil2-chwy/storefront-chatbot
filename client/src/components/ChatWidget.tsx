@@ -35,7 +35,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     searchResults,
     setSearchResults,
     setCurrentSearchQuery,
-    setHasSearched
+    setHasSearched,
+    isMainChatHidden
   } = useGlobalChat();
   
   const [inputValue, setInputValue] = useState('');
@@ -66,6 +67,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
 
+    // Product chat is now handled by the ProductChatModal component
+
   // Handle chat context changes
   useEffect(() => {
     if (chatContext) {
@@ -75,42 +78,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // Only auto-open chatbot if there's an explicit shouldOpen trigger
       // Don't auto-open on context changes alone
       
-      // If switching to product context, add a product discussion message
-      if (chatContext.type === 'product' && chatContext.product && previousContext.type !== 'product') {
-        const productMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `🔄 Now discussing: ${chatContext.product.title}`,
-          sender: 'ai',
-          timestamp: new Date(),
-          productTitle: chatContext.product.title, // Store product title for history
-        };
-        addMessage(productMessage);
+      // Product context set - no message needed, will be handled by modal
+      
+      // If switching to comparison context, add a comparison message (don't duplicate what useEffect handles)
+      if (chatContext.type === 'comparison' && chatContext.products && chatContext.products.length >= 2) {
+        // Set the ref to indicate we're in comparison mode, but let the useEffect handle the message
+        comparisonStartIndexRef.current = 1;
       }
       
-      // If switching to comparison context, add a comparison message
-      if (chatContext.type === 'comparison' && chatContext.products && chatContext.products.length >= 1) {
-        const comparisonMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `🔄 Now comparing: ${chatContext.products.length} products`,
-          sender: 'ai',
-          timestamp: new Date(),
-          comparisonProductIds: chatContext.products.map(p => p.id).filter((id): id is number => id !== undefined),
-          comparisonProductCount: chatContext.products.length,
-          comparisonProducts: [...chatContext.products],
-        };
-        addMessage(comparisonMessage);
-      }
-      
-      // If switching back to general context, add a transition message
-      if (chatContext.type === 'general' && (previousContext.type === 'product' || previousContext.type === 'comparison')) {
-        const transitionMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `Transitioned to general chat`,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        addMessage(transitionMessage);
-      }
+      // Removed transition message - no longer showing "Transitioned to general chat"
     }
   }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
 
@@ -122,58 +98,41 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // This prevents the "Transitioned to general chat" message from appearing
       comparisonStartIndexRef.current = -1;
       
-      // Check if we just switched to product context
-      const hasProductMessage = messages.some(msg => 
-        msg.content.includes('🔄 Now discussing:') && msg.productTitle === currentContext.product?.title
-      );
-      
-      if (!hasProductMessage) {
-        const productMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `🔄 Now discussing: ${currentContext.product.title}`,
-          sender: 'ai',
-          timestamp: new Date(),
-          productTitle: currentContext.product.title,
-        };
-        addMessage(productMessage);
-      }
+      // Product context handled by modal - no automatic message needed
     }
   }, [currentContext.type, currentContext.product?.id, chatContext, messages, addMessage]);
 
   // Handle comparison mode changes - simplified to avoid infinite loops
   useEffect(() => {
-    // Only add comparison message when first entering comparison mode
-    if (isInComparisonMode && comparingProducts.length >= 1 && comparisonStartIndexRef.current === -1) {
-      comparisonStartIndexRef.current = 1; // Mark that we've added the comparison message
-      
-      const comparisonMessage: ChatMessage = {
-        id: Date.now().toString(),
-        content: `Now comparing: ${comparingProducts.length} product${comparingProducts.length !== 1 ? 's' : ''}`,
-        sender: 'ai',
-        timestamp: new Date(),
-        comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
-        comparisonProductCount: comparingProducts.length,
-        comparisonProducts: [...comparingProducts],
-      };
-      addMessage(comparisonMessage);
+    // Only add comparison message when first entering comparison mode (2+ products)
+    if (isInComparisonMode && comparingProducts.length >= 2 && comparisonStartIndexRef.current === -1) {
+      // Check if we already have a comparison message to avoid duplicates
+      const hasComparisonMessage = messages.some(msg => msg.content.includes('Now comparing:'));
+      if (!hasComparisonMessage && comparingProducts.length >= 2) { // Double-check we have 2+ products
+        comparisonStartIndexRef.current = 1; // Mark that we've added the comparison message
+        
+        const comparisonMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `Now comparing: ${comparingProducts.length} products`,
+          sender: 'ai',
+          timestamp: new Date(),
+          comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
+          comparisonProductCount: comparingProducts.length,
+          comparisonProducts: [...comparingProducts],
+        };
+        addMessage(comparisonMessage);
+      } else {
+        comparisonStartIndexRef.current = 1; // Mark as handled even if message exists
+      }
     }
-    // When exiting comparison mode (no products left)
+    // When exiting comparison mode (no products left) - only if we were actually in comparison mode
     else if (!isInComparisonMode && comparingProducts.length === 0 && comparisonStartIndexRef.current !== -1) {
       // Reset the comparison start index
       comparisonStartIndexRef.current = -1;
       
-      // Add transition message when exiting comparison mode (unless transitioning to product mode)
-      if (currentContext.type !== 'product') {
-        const transitionMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `Transitioned to general chat`,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        addMessage(transitionMessage);
-      }
+      // Removed transition message - no longer showing "Transitioned to general chat"
     }
-  }, [isInComparisonMode, comparingProducts.length, addMessage, currentContext.type]);
+  }, [isInComparisonMode, comparingProducts.length, messages, currentContext.type]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
@@ -186,13 +145,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     clearComparison();
     comparisonStartIndexRef.current = -1; // Reset comparison start index
     setCurrentContext({ type: 'general' });
-    const exitMessage: ChatMessage = {
-      id: Date.now().toString(),
-      content: `Transitioned to general chat`,
-      sender: 'ai',
-      timestamp: new Date(),
-    };
-    addMessage(exitMessage);
+    // Removed transition message - no longer showing "Transitioned to general chat"
   };
 
   useEffect(() => {
@@ -221,15 +174,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         try {
           let aiResponse: ChatMessage;
 
-          // If in comparison mode and we have products to compare, call the backend
-          if (isInComparisonMode && comparingProducts.length >= 1) {
-            const response = await api.compareProducts(initialQuery, comparingProducts);
-            aiResponse = {
-              id: (Date.now() + 1).toString(),
-              content: response,
-              sender: 'ai',
-              timestamp: new Date(),
-            };
+                // If in comparison mode and we have at least 2 products to compare, call the backend
+      if (isInComparisonMode && comparingProducts.length >= 2) {
+        const response = await api.compareProducts(initialQuery, comparingProducts);
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
                 } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
         const response = await api.askAboutProduct(initialQuery, currentContext.product);
@@ -306,8 +259,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     try {
       let aiResponse: ChatMessage;
 
-      // If in comparison mode and we have products to compare, call the backend
-      if (isInComparisonMode && comparingProducts.length >= 1) {
+      // If in comparison mode and we have at least 2 products to compare, call the backend
+      if (isInComparisonMode && comparingProducts.length >= 2) {
         const response = await api.compareProducts(messageToSend, comparingProducts);
         aiResponse = {
           id: (Date.now() + 1).toString(),
@@ -378,6 +331,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     // Store that user closed the chat so we can auto-open on page transitions
     localStorage.setItem('chatClosed', 'true');
   };
+
+  // Hide chat when product modal is active
+  if (isMainChatHidden) {
+    return null;
+  }
 
   // Desktop: floating window, Mobile: bottom drawer/modal
   if (isMobile) {
@@ -459,15 +417,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       >
                         Clear chat
                       </button>
-                      {isInComparisonMode && (
-                        <button
-                          onClick={handleExitToGeneralChat}
-                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                          Exit to general chat
-                        </button>
-                      )}
                       {/* Show exit button for product discussion mode when not on product detail page */}
                       {currentContext.type === 'product' && !chatContext && (
                         <button
@@ -528,22 +477,12 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             className={`max-w-xs px-3 py-2 rounded-2xl font-work-sans text-sm ${
                               message.sender === 'user'
                                 ? 'bg-chewy-blue text-white'
-                                                            : message.content.includes('🔄 Now discussing:') || 
-                              message.content.includes('Transitioned to general chat') ||
-                              message.content.includes('Now comparing:')
+                                : message.content.includes('Now comparing:')
                                 ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                                 : 'bg-gray-100 text-gray-900'
                             }`}
                           >
-                            {message.content.includes('🔄 Now discussing:') ? (
-                              <div className="space-y-2">
-                                <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
-                              </div>
-                            ) : message.content.includes('Transitioned to general chat') ? (
-                              <div className="space-y-2">
-                                <div className="font-semibold">Transitioned to general chat</div>  
-                              </div>
-                            ) : message.content.includes('Now comparing:') ? (
+                            {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
@@ -551,14 +490,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     onClick={() => {
                                       clearComparison();
                                       comparisonStartIndexRef.current = -1;
-                                      // Add transition message
-                                      const transitionMessage: ChatMessage = {
-                                        id: Date.now().toString(),
-                                        content: `Transitioned to general chat`,
-                                        sender: 'ai',
-                                        timestamp: new Date(),
-                                      };
-                                      addMessage(transitionMessage);
+                                      // Exit comparison without transition message
                                     }}
                                     className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
                                   >
@@ -770,15 +702,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   >
                     Clear chat
                   </button>
-                  {isInComparisonMode && (
-                    <button
-                      onClick={handleExitToGeneralChat}
-                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      Exit to general chat
-                    </button>
-                  )}
                   {/* Show exit button for product discussion mode when not on product detail page */}
                   {currentContext.type === 'product' && !chatContext && (
                     <button
@@ -840,22 +763,12 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         className={`max-w-xs px-6 py-2 rounded-2xl font-work-sans text-sm ${
                           message.sender === 'user'
                             ? 'bg-chewy-blue text-white'
-                            : message.content.includes('🔄 Now discussing:') || 
-                              message.content.includes('Transitioned to general chat') ||
-                              message.content.includes('Now comparing:')
+                            : message.content.includes('Now comparing:')
                             ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
                             : 'bg-gray-100 text-gray-900'
                         }`}
                       >
-                        {message.content.includes('🔄 Now discussing:') ? (
-                          <div className="space-y-2">
-                            <div className="font-semibold">🔄 Now discussing: {message.productTitle || currentContext.product?.title}</div>
-                          </div>
-                        ) : message.content.includes('Transitioned to general chat') ? (
-                          <div className="space-y-2">
-                            <div className="font-semibold">Transitioned to general chat</div>
-                          </div>
-                        ) : message.content.includes('Now comparing:') ? (
+                        {message.content.includes('Now comparing:') ? (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
@@ -863,14 +776,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                 onClick={() => {
                                   clearComparison();
                                   comparisonStartIndexRef.current = -1;
-                                  // Add transition message
-                                  const transitionMessage: ChatMessage = {
-                                    id: Date.now().toString(),
-                                    content: `Transitioned to general chat`,
-                                    sender: 'ai',
-                                    timestamp: new Date(),
-                                  };
-                                  addMessage(transitionMessage);
+                                  // Exit comparison without transition message
                                 }}
                                 className="text-chewy-blue hover:text-blue-700 text-sm ml-2"
                               >

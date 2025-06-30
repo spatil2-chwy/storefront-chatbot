@@ -19,14 +19,13 @@ export default function ProductComparison() {
     clearComparison
   } = useGlobalChat();
 
-  // Set comparison context when component mounts
+  // Auto-open chat when component mounts (context is set via ChatWidget chatContext prop)
   useEffect(() => {
     if (comparingProducts.length > 0) {
-      setCurrentContext({ type: 'comparison', products: comparingProducts });
       setIsOpen(true);
       setShouldAutoOpen(true);
     }
-  }, [comparingProducts, setCurrentContext, setIsOpen, setShouldAutoOpen]);
+  }, [comparingProducts, setIsOpen, setShouldAutoOpen]);
 
   // Redirect back if no products to compare
   useEffect(() => {

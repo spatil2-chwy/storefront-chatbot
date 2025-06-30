@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare } from 'lucide-react';
 import { Product } from '../types';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import SearchMatches from './SearchMatches';
+import ProductChatModal from './ProductChatModal';
 import { useGlobalChat } from '../contexts/ChatContext';
 
 interface ProductCardProps {
@@ -14,6 +15,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { 
     comparingProducts, 
     addToComparison, 
@@ -21,7 +23,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     isInComparisonMode,
     setCurrentContext,
     setIsOpen,
-    setShouldAutoOpen
+    setShouldAutoOpen,
+    clearMessages,
+    setIsMainChatHidden
   } = useGlobalChat();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
@@ -83,9 +87,19 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   const handleChatClick = () => {
-    setCurrentContext({ type: 'product', product });
-    setIsOpen(true);
-    setShouldAutoOpen(true);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsMainChatHidden(false);
+  };
+
+  const handleHideMainChat = (hide: boolean) => {
+    setIsMainChatHidden(hide);
+    if (hide) {
+      setIsOpen(false); // Hide main chat when product modal is open
+    }
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -235,6 +249,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-sm">Chat</span>
         </Button>
       </div>
+
+      {/* Product Chat Modal */}
+      <ProductChatModal
+        product={product}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onHideMainChat={handleHideMainChat}
+      />
     </Card>
   );
 }

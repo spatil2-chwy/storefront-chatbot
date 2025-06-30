@@ -27,6 +27,9 @@ interface GlobalChatContextType {
   // Auto-open management
   shouldAutoOpen: boolean;
   setShouldAutoOpen: (should: boolean) => void;
+  // Hide main chat when product modal is active
+  isMainChatHidden: boolean;
+  setIsMainChatHidden: (hidden: boolean) => void;
 }
 
 const GlobalChatContext = createContext<GlobalChatContextType | undefined>(undefined);
@@ -58,10 +61,13 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   
   // Auto-open management
   const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
+  
+  // Hide main chat when product modal is active
+  const [isMainChatHidden, setIsMainChatHidden] = useState<boolean>(false);
 
-  // Compute comparison mode based on number of products
+  // Compute comparison mode based on number of products (need 2+ to compare)
   const isInComparisonMode = useMemo(() => {
-    return comparingProducts.length >= 1;
+    return comparingProducts.length >= 2;
   }, [comparingProducts.length]);
 
   const addMessage = useCallback((message: ChatMessage) => {
@@ -127,6 +133,8 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         isInComparisonMode,
         shouldAutoOpen,
         setShouldAutoOpen,
+        isMainChatHidden,
+        setIsMainChatHidden,
       }}
     >
       {children}

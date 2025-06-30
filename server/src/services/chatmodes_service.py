@@ -48,7 +48,7 @@ def compare_products(user_question: str, products: List[Dict[str, Any]]) -> str:
     Compare products based on user question using OpenAI.
     """
     if not products or len(products) < 2:
-        return "I need at least 2 products to provide a comparison. Please select more products to compare."
+        return "Please select at least 2 products to compare them."
     
     # Generate the comparison prompt
     prompt = get_comparison_prompt(user_question, products)
