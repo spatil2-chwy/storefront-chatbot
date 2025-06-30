@@ -85,6 +85,9 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
       const exists = prev.find(p => p.id === product.id);
       if (exists) return prev; // Already in comparison
       
+      // Limit to 4 products maximum
+      if (prev.length >= 4) return prev;
+      
       return [...prev, product];
     });
   }, []);

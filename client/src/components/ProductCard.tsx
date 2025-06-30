@@ -25,6 +25,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   } = useGlobalChat();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
+  const isComparisonFull = comparingProducts.length >= 4 && !isSelected;
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -210,11 +211,14 @@ export default function ProductCard({ product }: ProductCardProps) {
             id={`compare-${product.id}`}
             checked={isSelected}
             onCheckedChange={handleCompareChange}
+            disabled={isComparisonFull}
             className="border-gray-300 w-5 h-5"
+            title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
           />
           <label
             htmlFor={`compare-${product.id}`}
-            className="text-sm cursor-pointer text-gray-700"
+            className={`text-sm cursor-pointer ${isComparisonFull ? 'text-gray-400' : 'text-gray-700'}`}
+            title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
           >
             Compare
           </label>
