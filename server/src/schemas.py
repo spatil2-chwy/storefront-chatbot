@@ -144,6 +144,8 @@ class ProductBase(BaseModel):
     what_customers_love: Optional[str]
     what_to_watch_out_for: Optional[str]
     should_you_buy_it: Optional[str]
+    unanswered_faqs: Optional[str] = None
+    answered_faqs: Optional[str] = None
 
 class Product(ProductBase):
     class Config:

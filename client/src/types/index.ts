@@ -37,6 +37,8 @@ export interface Product {
   what_customers_love?: string; // what_customers_love
   what_to_watch_out_for?: string; // what_to_watch_out_for
   should_you_buy_it?: string; // should_you_buy_it
+  unanswered_faqs?: string; // Unanswered FAQs
+  answered_faqs?: string; // Answered FAQs
 }
 
 export interface ChatMessage {

@@ -192,6 +192,8 @@ class ProductService:
             what_customers_love=what_customers_love,
             what_to_watch_out_for=what_to_watch_out_for,
             should_you_buy_it=should_you_buy_it,
+            unanswered_faqs=self.safe_str(metadata.get("unanswered_faqs", "")) or None,
+            answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
         )
 
     def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:

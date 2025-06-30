@@ -167,20 +167,69 @@ def query_products(query: str, required_ingredients: list, excluded_ingredients:
     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
 
-def rank_products(results):
-    """Rank products by rating average and count"""
-    start_time = time.time()
-    # for now we can rank like this:
-    sorted_results = sorted(
-        zip(results['metadatas'][0], results['documents'][0], results['ids'][0], results['distances'][0]),
-        key=lambda x: (-x[0].get('RATING_CNT', 0), -x[0].get('RATING_AVG', 0))
-    )
-    print(f"Products ranked in {time.time() - start_time:.4f} seconds")
-    return sorted_results
+# def rank_products(results):
+#     """Rank products by rating average and count"""
+#     start_time = time.time()
+#     # for now we can rank like this:
+#     sorted_results = sorted(
+#         zip(results['metadatas'][0], results['documents'][0], results['ids'][0], results['distances'][0]),
+#         key=lambda x: (-x[0].get('RATING_CNT', 0), -x[0].get('RATING_AVG', 0))
+#     )
+#     print(f"Products ranked in {time.time() - start_time:.4f} seconds")
+#     return sorted_results
 
 def rank_products(results):
     """Advanced ranking with multiple non-linear scoring strategies"""
     start_time = time.time()
+    
+    # Debug: Count products with reviews and FAQs
+    total_products = len(results['metadatas'][0]) if results['metadatas'] and results['metadatas'][0] else 0
+    products_with_reviews = 0
+    products_with_faqs = 0
+    products_with_both = 0
+    
+    for metadata in results['metadatas'][0]:
+        # Check review synthesis flag and parse JSON content
+        review_synthesis_flag = metadata.get('review_synthesis_flag', False)
+        review_synthesis_json = metadata.get('review_synthesis', '{}')
+        
+        # Parse review synthesis JSON to check for actual content
+        try:
+            import json
+            review_data = json.loads(review_synthesis_json)
+            has_review_content = (
+                review_synthesis_flag and 
+                review_data.get('should_you_buy_it', '') != "Insufficient reviews! No review synthesis"
+            )
+        except:
+            has_review_content = review_synthesis_flag
+        
+        answered_faqs = metadata.get('answered_faqs', '') or ''
+        
+        if has_review_content:
+            products_with_reviews += 1
+        if answered_faqs and answered_faqs.strip():
+            products_with_faqs += 1
+        if has_review_content and answered_faqs and answered_faqs.strip():
+            products_with_both += 1
+    
+    print(f"\n=== PRODUCT CONTENT STATISTICS ===")
+    print(f"Total products: {total_products}")
+    print(f"Products with synthesized reviews: {products_with_reviews} ({products_with_reviews/total_products*100:.1f}%)")
+    print(f"Products with answered FAQs: {products_with_faqs} ({products_with_faqs/total_products*100:.1f}%)")
+    print(f"Products with both: {products_with_both} ({products_with_both/total_products*100:.1f}%)")
+    print(f"Products with neither: {total_products - max(products_with_reviews, products_with_faqs)}")
+    
+    # Debug: Show available fields in first few products
+    if total_products > 0:
+        print(f"\n=== DEBUG: Available fields in first product ===")
+        first_metadata = results['metadatas'][0][0]
+        for key, value in first_metadata.items():
+            if 'review' in key.lower() or 'love' in key.lower() or 'buy' in key.lower() or 'customer' in key.lower():
+                print(f"Field: {key} = {str(value)[:100]}...")
+        print(f"================================\n")
+    
+    print(f"================================\n")
     
     def wilson_score(positive_ratings, total_ratings, confidence=0.95):
         """
@@ -214,6 +263,42 @@ def rank_products(results):
         """
         return 1 - math.exp(-rating_count / half_life)
     
+    def content_quality_score(metadata):
+        """
+        Score based on content quality - synthesized reviews and FAQs
+        """
+        score = 0.0
+        
+        # Check review synthesis flag and parse JSON content
+        review_synthesis_flag = metadata.get('review_synthesis_flag', False)
+        review_synthesis_json = metadata.get('review_synthesis', '{}')
+        
+        # Parse review synthesis JSON to check for actual content
+        try:
+            import json
+            review_data = json.loads(review_synthesis_json)
+            has_review_content = (
+                review_synthesis_flag and 
+                review_data.get('should_you_buy_it', '') != "Insufficient reviews! No review synthesis"
+            )
+        except:
+            has_review_content = review_synthesis_flag
+        
+        # Synthesized reviews presence bonus (0.3 points for having review content)
+        if has_review_content:
+            score += 0.3
+        
+        # FAQ presence bonus (0.2 points for having answered FAQs)
+        answered_faqs = metadata.get('answered_faqs', '') or ''
+        if answered_faqs and answered_faqs.strip():
+            score += 0.2
+        
+        # Additional bonus for having both synthesized reviews and FAQs (0.1 points)
+        if has_review_content and answered_faqs and answered_faqs.strip():
+            score += 0.1
+        
+        return score
+    
     scored_results = []
     for metadata, document, product_id, distance in zip(
         results['metadatas'][0], 
@@ -237,12 +322,16 @@ def rank_products(results):
         # Method 4: Semantic relevance
         relevance = max(0, 1 - distance)
         
-        # Combine with weights - you can adjust these
+        # Method 5: Content quality (synthesized reviews and FAQs presence)
+        content_quality = content_quality_score(metadata)
+        
+        # Combine with weights - maximum priority to content quality
         final_score = (
-            wilson * 0.3 +
-            (bayesian / 5.0) * 0.3 +  # Normalize to 0-1
-            popularity * 0.2 +
-            relevance * 0.2
+            wilson * 0.1 +
+            (bayesian / 5.0) * 0.1 +  # Normalize to 0-1
+            popularity * 0.05 +
+            relevance * 0.15 +
+            content_quality * 0.6  # Maximum weight for content quality
         )
         
         scored_results.append((metadata, document, product_id, distance, final_score))
