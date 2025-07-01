@@ -1,3 +1,8 @@
+"""
+Prompts for various chat modes.
+"""
+import json
+
 COMPARISON_PROMPT_TEMPLATE = """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice, specializing in product comparisons.
 
@@ -52,17 +57,21 @@ def format_product_details(products):
     
     return "\n".join(formatted_details)
 
-def get_comparison_prompt(user_question: str, products: list) -> str:
+def get_comparison_prompt(products, question):
     """
-    Generate a comparison prompt for the given user question and products.
+    Generate a prompt for comparing multiple products.
     """
-    product_details = format_product_details(products)
+    prompt = "Please compare the following products:\n\n"
     
-    return COMPARISON_PROMPT_TEMPLATE.format(
-        num_products=len(products),
-        product_details=product_details,
-        user_question=user_question
-    ) 
+    for i, product in enumerate(products, 1):
+        prompt += f"Product {i}:\n"
+        prompt += format_single_product_details(product)
+        prompt += "\n"
+    
+    prompt += f"\nQuestion: {question}\n"
+    prompt += "\nPlease provide a detailed comparison focusing on the key differences and similarities between these products."
+    
+    return prompt
 
 ASK_ABOUT_PRODUCT_PROMPT_TEMPLATE = """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice, specializing in answering questions about specific products.
@@ -81,44 +90,28 @@ def format_single_product_details(product):
     """
     details = f"Title: {product.get('title', 'Unknown Product')}\n"
     details += f"Brand: {product.get('brand', 'Unknown')}\n"
+    details += f"Price: ${product.get('price', 0.00):.2f}\n"
+    details += f"Autoship Price: ${product.get('autoshipPrice', 0.00):.2f}\n"
+    details += f"Rating: {product.get('rating', 0.0)} stars ({product.get('reviewCount', 0)} reviews)\n"
+    details += f"Description: {product.get('description', 'No description available')}\n"
     
-    # Handle price safely
-    price = product.get('price', 0)
-    price = price if price is not None else 0
-    details += f"Price: ${price:.2f}\n"
+    # Format keywords/features if available
+    keywords = product.get('keywords', [])
+    if keywords:
+        details += f"Key Features: {', '.join(keywords)}\n"
     
-    # Handle autoship price safely
-    if product.get('autoshipPrice'):
-        autoship_price = product.get('autoshipPrice', 0)
-        autoship_price = autoship_price if autoship_price is not None else 0
-        details += f"Autoship Price: ${autoship_price:.2f}\n"
-    
-    # Handle rating safely
-    rating = product.get('rating', 0)
-    rating = rating if rating is not None else 0
-    review_count = product.get('reviewCount', 0)
-    review_count = review_count if review_count is not None else 0
-    details += f"Rating: {rating:.1f} stars ({review_count} reviews)\n"
-    
-    if product.get('description'):
-        details += f"Description: {product.get('description', '')}\n"
-        
-    if product.get('keywords'):
-        details += f"Key Features: {', '.join(product.get('keywords', []))}\n"
-        
-    if product.get('category'):
-        details += f"Category: {product.get('category', '')}\n"
+    details += f"Category: {product.get('category', 'Unknown')}\n"
     
     return details
 
-def get_ask_about_product_prompt(user_question: str, product_data: dict) -> str:
+def get_ask_about_product_prompt(product_data, question):
     """
-    Generate a prompt for the given user question and product data.
+    Generate a prompt for asking about a specific product.
     """
-    product_details = format_single_product_details(product_data)
+    prompt = "Please analyze the following product:\n\n"
+    prompt += format_single_product_details(product_data)
+    prompt += f"\nQuestion: {question}\n"
+    prompt += "\nPlease provide a detailed answer based on the product information above."
     
-    return ASK_ABOUT_PRODUCT_PROMPT_TEMPLATE.format(
-        user_question=user_question,
-        product_details=product_details
-    )
+    return prompt
     

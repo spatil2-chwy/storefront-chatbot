@@ -380,10 +380,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       addMessage(aiResponse);
     } catch (error) {
       console.error('Error in sendMessage:', error);
-      // Handle API errors gracefully
+      // Handle API errors 
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment.",
+        content: String(error),
         sender: 'ai',
         timestamp: new Date(),
       };
