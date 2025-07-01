@@ -139,3 +139,41 @@ The comparison feature allows users to select up to 3 products and ask the AI to
 3. **`client/src/contexts/ChatContext.tsx`** - Added comparison state management
 4. **`client/src/lib/api.ts`** - Added comparison API call
 
+
+# Product Buffer System
+
+The product buffer system manages the top 300 products retrieved from initial searches and enables efficient follow-up queries using the review synthesis collection.
+
+## Architecture
+
+### Collections
+- **Products Collection**: Contains product metadata and embeddings for initial search
+- **Review Synthesis Collection**: Contains review synthesis data and embeddings for follow-up re-ranking
+
+### Buffer Management
+- **Global Buffer**: Stores top 300 products from initial search
+- **Context Tracking**: Maintains query and filter context for follow-up searches
+
+## Workflow
+
+### 1. Initial Search (`search_products`)
+```
+User Query → Product Collection → Top 300 Products → Buffer Storage → Display Top 30 + Follow-up Questions
+```
+
+### 2. Follow-up Search (`search_products_with_followup`)
+```
+User Follow-up → Review Collection → Re-rank Buffer Products → Update Buffer → Display Re-ranked Top 30 + New Follow-up Questions
+```
+
+## Key Functions
+
+### Buffer Management
+- `get_product_buffer()`: Retrieve current buffer
+- `set_product_buffer(products, query, filters)`: Store products with context
+- `clear_product_buffer()`: Clear buffer for new searches
+
+### Search Functions
+- `query_products()`: Initial search, stores results in buffer
+- `query_products_with_followup()`: Re-ranks buffer using review collection
+

@@ -34,3 +34,5 @@ class Product(BaseModel):
     what_customers_love: Optional[str] = None  # what_customers_love
     what_to_watch_out_for: Optional[str] = None  # what_to_watch_out_for
     should_you_buy_it: Optional[str] = None  # should_you_buy_it
+    unanswered_faqs: Optional[str] = None  # Unanswered FAQs
+    answered_faqs: Optional[str] = None  # Answered FAQs
