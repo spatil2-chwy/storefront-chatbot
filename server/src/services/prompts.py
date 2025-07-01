@@ -45,8 +45,10 @@ def format_product_details(products):
         if product.get('keywords'):
             details += f"  Key Features: {', '.join(product.get('keywords', []))}\n"
             
-        if product.get('category'):
-            details += f"  Category: {product.get('category', '')}\n"
+        if product.get('category_level_1'):
+            details += f"  Category: {product.get('category_level_1', '')}\n"
+        if product.get('category_level_2'):
+            details += f"  Subcategory: {product.get('category_level_2', '')}\n"
             
         formatted_details.append(details)
     
@@ -106,8 +108,10 @@ def format_single_product_details(product):
     if product.get('keywords'):
         details += f"Key Features: {', '.join(product.get('keywords', []))}\n"
         
-    if product.get('category'):
-        details += f"Category: {product.get('category', '')}\n"
+    if product.get('category_level_1'):
+        details += f"Category: {product.get('category_level_1', '')}\n"
+    if product.get('category_level_2'):
+        details += f"Subcategory: {product.get('category_level_2', '')}\n"
     
     return details
 
