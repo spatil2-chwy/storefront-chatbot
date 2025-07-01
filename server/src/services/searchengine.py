@@ -13,6 +13,8 @@ load_dotenv()
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
+product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
+review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
 def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -163,12 +165,11 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
     
-    collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
     query_start = time.time()
     print(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
     
     db_start = time.time()
-    results = collection.query(
+    results = review_collection.query(
         # query_embeddings=query_embedding,
         query_texts=[query],
         n_results=300,
@@ -193,7 +194,7 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
         filtered_distances = []
         for i in range(len(results['documents'][0])):
             metadata = results['metadatas'][0][i]
-            if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
+            if not any(f"ingredienttag:{ingredient.lower()}" in metadata for ingredient in excluded_ingredients):
                 filtered_metadatas.append(metadata)
                 filtered_documents.append(results['documents'][0][i])
                 filtered_ids.append(results['ids'][0][i])
@@ -218,116 +219,114 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
 
-def query_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
-    """
-    Follow-up product search - re-ranks previous products based on user's follow-up response
+# def query_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
+#     """
+#     Follow-up product search - re-ranks previous products based on user's follow-up response
     
-    Args:
-        query: User's follow-up response/refinement
-        required_ingredients: Required ingredients filter
-        excluded_ingredients: Excluded ingredients filter  
-        special_diet_tags: Special diet tags filter
-        original_query: The original query to retrieve cached results from
-    """
-    start_time = time.time()
-    print(f"Starting follow-up search for: '{query}' using original query: '{original_query}'")
+#     Args:
+#         query: User's follow-up response/refinement
+#         required_ingredients: Required ingredients filter
+#         excluded_ingredients: Excluded ingredients filter  
+#         special_diet_tags: Special diet tags filter
+#         original_query: The original query to retrieve cached results from
+#     """
+#     start_time = time.time()
+#     print(f"Starting follow-up search for: '{query}' using original query: '{original_query}'")
     
-    # Get the original cached results from query_products
-    original_results = query_products(original_query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+#     # Get the original cached results from query_products
+#     original_results = query_products(original_query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
     
-    if not original_results or not original_results['metadatas'] or not original_results['metadatas'][0]:
-        print("No original results found, falling back to regular search")
-        return query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+#     if not original_results or not original_results['metadatas'] or not original_results['metadatas'][0]:
+#         print("No original results found, falling back to regular search")
+#         return query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
     
-    # Convert results to list of tuples for easier manipulation
-    previous_products = []
-    for i in range(len(original_results['metadatas'][0])):
-        previous_products.append((
-            original_results['metadatas'][0][i],
-            original_results['documents'][0][i],
-            original_results['ids'][0][i],
-            original_results['distances'][0][i]
-        ))
+#     # Convert results to list of tuples for easier manipulation
+#     previous_products = []
+#     for i in range(len(original_results['metadatas'][0])):
+#         previous_products.append((
+#             original_results['metadatas'][0][i],
+#             original_results['documents'][0][i],
+#             original_results['ids'][0][i],
+#             original_results['distances'][0][i]
+#         ))
     
-    print(f"Retrieved {len(previous_products)} products from cached original query")
+#     print(f"Retrieved {len(previous_products)} products from cached original query")
     
-    # Get the review synthesis collection for semantic similarity
-    try:
-        review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
-        
-        where_clause = build_where_clause(required_ingredients, special_diet_tags)
-        if where_clause == {}:
-            where_clause = None
+#     # Get the review synthesis collection for semantic similarity
+#     try:
+#         where_clause = build_where_clause(required_ingredients, special_diet_tags)
+#         if where_clause == {}:
+#             where_clause = None
             
-        # Query the review synthesis collection for these specific products
-        # We'll use the review collection to get semantic similarity scores
-        review_results = review_collection.query(
-            query_texts=[query],
-            n_results=len(previous_products),
-            where=cast(Any, where_clause)
-        )
+#         # Query the review synthesis collection for these specific products
+#         # We'll use the review collection to get semantic similarity scores
+#         review_results = review_collection.query(
+#             query_texts=[query],
+#             n_results=len(previous_products),
+#             where=cast(Any, where_clause)
+#         )
 
-        # Handle case where no results are returned
-        if not review_results or not review_results['metadatas'] or not review_results['metadatas'][0]:
-            print("No results found in review synthesis query")
-            return original_results
+#         # Handle case where no results are returned
+#         if not review_results or not review_results['metadatas'] or not review_results['metadatas'][0]:
+#             print("No results found in review synthesis query")
+#             return original_results
         
-        # Filter out excluded ingredients
-        if excluded_ingredients:
-            filtered_metadatas = []
-            filtered_documents = []
-            filtered_ids = []
-            filtered_distances = []
-            for i in range(len(review_results['documents'][0])):
-                metadata = review_results['metadatas'][0][i]
-                if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
-                    filtered_metadatas.append(metadata)
-                    filtered_documents.append(review_results['documents'][0][i])
-                    filtered_ids.append(review_results['ids'][0][i])
-                    filtered_distances.append(review_results['distances'][0][i])
-            review_results = {
-                'metadatas': [filtered_metadatas],
-                'documents': [filtered_documents],
-                'ids': [filtered_ids],
-                'distances': [filtered_distances],
-            }
-        else:
-            review_results = {
-                'metadatas': [review_results['metadatas'][0] if review_results['metadatas'] else []],
-                'documents': [review_results['documents'][0] if review_results['documents'] else []],
-                'ids': [review_results['ids'][0] if review_results['ids'] else []],
-                'distances': [review_results['distances'][0] if review_results['distances'] else []],
-            }
+#         # Filter out excluded ingredients
+#         if excluded_ingredients:
+#             filtered_metadatas = []
+#             filtered_documents = []
+#             filtered_ids = []
+#             filtered_distances = []
+#             for i in range(len(review_results['documents'][0])):
+#                 metadata = review_results['metadatas'][0][i]
+#                 if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
+#                     filtered_metadatas.append(metadata)
+#                     filtered_documents.append(review_results['documents'][0][i])
+#                     filtered_ids.append(review_results['ids'][0][i])
+#                     filtered_distances.append(review_results['distances'][0][i])
+#             review_results = {
+#                 'metadatas': [filtered_metadatas],
+#                 'documents': [filtered_documents],
+#                 'ids': [filtered_ids],
+#                 'distances': [filtered_distances],
+#             }
+#         else:
+#             review_results = {
+#                 'metadatas': [review_results['metadatas'][0] if review_results['metadatas'] else []],
+#                 'documents': [review_results['documents'][0] if review_results['documents'] else []],
+#                 'ids': [review_results['ids'][0] if review_results['ids'] else []],
+#                 'distances': [review_results['distances'][0] if review_results['distances'] else []],
+#             }
 
-        # Create a mapping of product_id to distance for re-ranking
-        distance_map = {}
-        for i, product_id in enumerate(review_results['ids'][0]):
-            distance = review_results['distances'][0][i]
-            distance_map[product_id] = distance
+#         # Create a mapping of product_id to distance for re-ranking
+#         distance_map = {}
+#         for i, product_id in enumerate(review_results['ids'][0]):
+#             distance = review_results['distances'][0][i]
+#             distance_map[product_id] = distance
         
-        # Re-rank previous products based on new distances from review collection
-        reranked_products = []
-        for metadata, document, product_id, old_distance in previous_products:
-            new_distance = distance_map.get(str(product_id), old_distance)
-            reranked_products.append((metadata, document, product_id, new_distance))
+#         # Re-rank previous products based on new distances from review collection
+#         reranked_products = []
+#         for metadata, document, product_id, old_distance in previous_products:
+#             new_distance = distance_map.get(str(product_id), old_distance)
+#             reranked_products.append((metadata, document, product_id, new_distance))
         
-        # Sort by new distance (lower is better)
-        reranked_products.sort(key=lambda x: x[3])
+#         # Sort by new distance (lower is better)
+#         reranked_products.sort(key=lambda x: x[3])
         
-        # Convert back to the expected format
-        results = {
-            'metadatas': [[p[0] for p in reranked_products]],
-            'documents': [[p[1] for p in reranked_products]],
-            'ids': [[p[2] for p in reranked_products]],
-            'distances': [[p[3] for p in reranked_products]],
-        }
+#         # Convert back to the expected format
+#         results = {
+#             'metadatas': [[p[0] for p in reranked_products]],
+#             'documents': [[p[1] for p in reranked_products]],
+#             'ids': [[p[2] for p in reranked_products]],
+#             'distances': [[p[3] for p in reranked_products]],
+#         }
         
-        print(f"Follow-up search completed in {time.time() - start_time:.4f} seconds")
-        return results
+#         print(f"Follow-up search completed in {time.time() - start_time:.4f} seconds")
+#         return results
         
-    except Exception as e:
-        print(f"Error in follow-up search: {e}, falling back to original results")
-        return original_results
+#     except Exception as e:
+#         print(f"Error in follow-up search: {e}, falling back to original results")
+#         return original_results
 
 def rank_products(results, user_query=None, previous_questions=None):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""

@@ -94,14 +94,14 @@ for row in product_rows:
         
         # Extract review synthesis data
         what_customers_love = review_data.get('what_customers_love', [])
-        what_to_watch_out_for = review_data.get('what_to_watch_out_for', [])
+        # what_to_watch_out_for = review_data.get('what_to_watch_out_for', [])
         
         # Convert lists to strings
         what_customers_love_str = ' '.join(what_customers_love) if isinstance(what_customers_love, list) else str(what_customers_love)
-        what_to_watch_out_for_str = ' '.join(what_to_watch_out_for) if isinstance(what_to_watch_out_for, list) else str(what_to_watch_out_for)
+        # what_to_watch_out_for_str = ' '.join(what_to_watch_out_for) if isinstance(what_to_watch_out_for, list) else str(what_to_watch_out_for)
         
         # Create combined text for embedding
-        combined_text = f"PRODUCT NAME: {clean_name}\n\nWHAT CUSTOMERS LOVE: {what_customers_love_str}\n\nWHAT TO WATCH OUT FOR: {what_to_watch_out_for_str}"
+        combined_text = f"PRODUCT NAME: {clean_name}\n\nWHAT CUSTOMERS LOVE: {what_customers_love_str}"
         
         # Add answered FAQs if available
         if answered_faqs and answered_faqs.strip():
