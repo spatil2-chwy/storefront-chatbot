@@ -15,5 +15,5 @@ scripts/all_chewy_products_with_qanda.csv
 scripts/chroma_db
 server/scripts/chroma_db/
 server/src/seed.db
-
+scripts/all_wp_posts.json
 server/metadata_filters_cache.json
