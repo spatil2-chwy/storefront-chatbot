@@ -186,7 +186,8 @@ class ProductService:
             deal=False,
             description=self.safe_str(metadata.get("DESCRIPTION_LONG", "")),
             inStock=True,
-            category=self.safe_str(metadata.get("CATEGORY_LEVEL1", "")),
+            category_level_1=metadata.get("CATEGORY_LEVEL1", ""),
+            category_level_2=metadata.get("CATEGORY_LEVEL2", ""),
             keywords=keywords,
             search_matches=search_matches,  # Add search matches if provided
             what_customers_love=what_customers_love,

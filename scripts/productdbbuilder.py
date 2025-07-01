@@ -171,7 +171,7 @@ for row in product_rows:
     if row["INGREDIENTS"]:
         for tag in map(str.strip, row["INGREDIENTS"].split(',')):
             if tag:
-                metadata[f"ingredienttag:{tag}"] = True
+                metadata[f"ingredienttag:{tag.lower()}"] = True
 
     documents.append(clean_name)
     metadatas.append(metadata)

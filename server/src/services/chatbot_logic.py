@@ -16,86 +16,104 @@ tools = [
     {
         "type": "function",
         "name": "search_products",
-        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags. ",
+        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein. should i switch to salmon? idk'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags. ",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'."""
+                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients like chicken or grain in search query since they have seperate filters"""
                 },
                 "required_ingredients": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must be present in the product, e.g. 'Chicken', 'Peas'"
+                        "description": "Ingredients that must be present in the product, e.g. 'chicken', 'peas'. Don't include ingredient like 'protein' or 'grain. They are not ingredients."
                     },
-                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required."
+                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
                 "excluded_ingredients": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must not be present in the product, e.g. 'Corn', 'Soy'"
+                        "description": "Ingredients that must not be present in the product, e.g. 'corn', 'soy'. Don't include ingredient like 'protein' or 'grain. They are not ingredients."
                     },
-                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded."
+                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
-                "special_diet_tags": {
+                "category_level_1": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": [
-                            'Chicken-Free',
-                            'Flax-Free',
-                            'Gluten Free',
-                            'Grain-Free',
-                            'High Calcium',
-                            'High Calorie',
-                            'High Fat',
-                            'High Fiber',
-                            'High-Protein',
-                            'Human-Grade',
-                            'Hydrolyzed Protein',
-                            'Indoor',
-                            'Limited Ingredient Diet',
-                            'Low Calorie',
-                            'Low Fat',
-                            'Low Glycemic',
-                            'Low NSC',
-                            'Low Phosphorus',
-                            'Low Sodium',
-                            'Low Starch',
-                            'Low Sugar',
-                            'Low-Protein',
-                            'Medicated',
-                            'Molasses-Free',
-                            'Natural',
-                            'No Corn No Wheat No Soy',
-                            'Non-GMO',
-                            'Odor-Free',
-                            'Organic',
-                            'Pea-Free',
-                            'Plant Based',
-                            'Premium',
-                            'Raw',
-                            'Rawhide-Free',
-                            'Sensitive Digestion',
-                            'Soy Free',
-                            'Starch Free',
-                            'Sugar Free',
-                            'Vegan',
-                            'Vegetarian',
-                            'Veterinary Diet',
-                            'Weight Control',
-                            'With Grain',
-                            'Yeast Free'
-                        ],
-                        "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
+                        "enum": ['Farm', 'Bird', 'Cat', 'Dog', 'Fish', 'Wild Bird', 'Reptile', 'Horse', 'Small Pet', 'Gifts & Books', 'Pharmacy', 'Gift Cards', 'Virtual Bundle', 'Services', 'ARCHIVE', 'Programs'],
+                        "description": "The category of the product, e.g. 'Dog', 'Cat'.. if applicable"
                     },
-                    "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
+                    "description": "The first level category of the product, e.g. 'Dog', 'Cat'.. if applicable. Leave empty if no category is required."
                 },
+                "category_level_2": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ['Chicken', 'Litter & Nesting', 'Beds, Crates & Gear', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
+                        "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable."
+                    },
+                    "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
+                },
+                # "special_diet_tags": {
+                #     "type": "array",
+                #     "items": {
+                #         "type": "string",
+                #         "enum": [
+                #             'Chicken-Free',
+                #             'Flax-Free',
+                #             'Gluten Free',
+                #             'Grain-Free',
+                #             'High Calcium',
+                #             'High Calorie',
+                #             'High Fat',
+                #             'High Fiber',
+                #             'High-Protein',
+                #             'Human-Grade',
+                #             'Hydrolyzed Protein',
+                #             'Indoor',
+                #             'Limited Ingredient Diet',
+                #             'Low Calorie',
+                #             'Low Fat',
+                #             'Low Glycemic',
+                #             'Low NSC',
+                #             'Low Phosphorus',
+                #             'Low Sodium',
+                #             'Low Starch',
+                #             'Low Sugar',
+                #             'Low-Protein',
+                #             'Medicated',
+                #             'Molasses-Free',
+                #             'Natural',
+                #             'No Corn No Wheat No Soy',
+                #             'Non-GMO',
+                #             'Odor-Free',
+                #             'Organic',
+                #             'Pea-Free',
+                #             'Plant Based',
+                #             'Premium',
+                #             'Raw',
+                #             'Rawhide-Free',
+                #             'Sensitive Digestion',
+                #             'Soy Free',
+                #             'Starch Free',
+                #             'Sugar Free',
+                #             'Vegan',
+                #             'Vegetarian',
+                #             'Veterinary Diet',
+                #             'Weight Control',
+                #             'With Grain',
+                #             'Yeast Free'
+                #         ],
+                #         "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
+                #     },
+                #     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
+                # },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "special_diet_tags"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "category_level_2"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
@@ -200,7 +218,7 @@ system_message = {
     "content": """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
 
-Your mission is to guide pet parents toward the best products for their pet's specific needs. You can either ask a follow-up question if the query is too vague or respond through *action* by using one of the tools available to you.
+Your mission is to guide pet parents toward the best products for their pet's specific needs. You can either ask a follow-up question if the query is too vague or respond through *action* by using one of the tools available to you. When using the tools, ensure to convert the potential "conversational query" into a structured query.
 
 - Use precise, mobile-friendly language.
 - DO NOT: Answer questions unrelated to pet products. Gently steer back to product needs.
@@ -209,7 +227,7 @@ Your mission is to guide pet parents toward the best products for their pet's sp
 }
 MODEL = "gpt-4.1-mini"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -227,7 +245,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()

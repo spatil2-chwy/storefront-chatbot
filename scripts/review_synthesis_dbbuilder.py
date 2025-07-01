@@ -25,7 +25,33 @@ df = pd.read_csv(
     }
 )
 
-# === Step 2: Load Review Synthesis JSONL ===
+# === Step 2: Build Item Variant Map ===
+df_items = df[df['TYPE'] == 'Item']
+
+# Build items_dict using iterrows to avoid type checking issues
+items_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    items_dict[parent_id] = []
+    for _, row in group.iterrows():
+        items_dict[parent_id].append({
+            "NAME": row["NAME"],
+            "PART_NUMBER": row["PART_NUMBER"], 
+            "PRODUCT_ID": row["PRODUCT_ID"]
+        })
+
+# Get first available images for each parent product from items
+images_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    # Get first non-null thumbnail and fullimage
+    thumbnail = group['THUMBNAIL'].dropna().iloc[0] if group['THUMBNAIL'].dropna().size > 0 else None
+    fullimage = group['FULLIMAGE'].dropna().iloc[0] if group['FULLIMAGE'].dropna().size > 0 else None
+    
+    images_dict[parent_id] = {
+        "THUMBNAIL": thumbnail,
+        "FULLIMAGE": fullimage
+    }
+
+# === Step 3: Load Review Synthesis JSONL ===
 with open(REVIEW_SYNTH_PATH, "r") as f:
     review_map = {
         entry["product_id"]: entry
@@ -34,7 +60,7 @@ with open(REVIEW_SYNTH_PATH, "r") as f:
 
 print(f"📊 Review synthesis data loaded: {len(review_map)} entries")
 
-# === Step 3: Filter for Parent Products ===
+# === Step 4: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
     "NAME": "",
     "CLEAN_NAME": "",
@@ -57,7 +83,26 @@ product_df = df[df['TYPE'] == 'Product'].fillna({
     "Answered FAQs": "",
 })
 
-# === Step 4: Build Documents & Metadata for Review Synthesis ===
+# === Step 4.5: Fill Missing Thumbnails and Print Stats ===
+# Track NaNs before filling
+nan_before = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+# Fill thumbnails from images_dict (based on item variants)
+def fill_image(row, col):
+    if not row[col]:  # empty string or NaN
+        return images_dict.get(row['PRODUCT_ID'], {}).get(col, "")
+    return row[col]
+
+product_df['THUMBNAIL'] = product_df.apply(lambda row: fill_image(row, 'THUMBNAIL'), axis=1)
+product_df['FULLIMAGE'] = product_df.apply(lambda row: fill_image(row, 'FULLIMAGE'), axis=1)
+
+# Track NaNs after filling
+nan_after = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+print(f"🖼️ THUMBNAILs missing before fill: {nan_before}")
+print(f"🖼️ THUMBNAILs missing after fill: {nan_after}")
+
+# === Step 5: Build Documents & Metadata for Review Synthesis ===
 product_rows = product_df.to_dict(orient='records')
 documents = []
 metadatas = []
@@ -126,8 +171,8 @@ for row in product_rows:
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
         "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
-        "THUMBNAIL": row["THUMBNAIL"],
-        "FULLIMAGE": row["FULLIMAGE"],
+        "THUMBNAIL": row["THUMBNAIL"] if row["THUMBNAIL"] else images_dict.get(part_number, {}).get("THUMBNAIL", ""),
+        "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
         "unanswered_faqs": row["Unanswered FAQs"] or "",
@@ -162,7 +207,7 @@ for row in product_rows:
     if row["INGREDIENTS"]:
         for tag in map(str.strip, row["INGREDIENTS"].split(',')):
             if tag:
-                metadata[f"ingredienttag:{tag}"] = True
+                metadata[f"ingredienttag:{tag.lower()}"] = True
 
     documents.append(combined_text)
     metadatas.append(metadata)
@@ -177,7 +222,7 @@ print(f"   Coverage: {review_coverage:.1f}%")
 
 print(f"✅ Prepared {len(documents)} documents for review synthesis embedding")
 
-# === Step 5: Initialize ChromaDB & Embed ===
+# === Step 6: Initialize ChromaDB & Embed ===
 print("🔄 Loading embedding model...")
 model = SentenceTransformer(EMBEDDING_MODEL)
 
@@ -199,7 +244,7 @@ collection = client.create_collection(
 
 print(f"✅ Created collection: {COLLECTION_NAME}")
 
-# === Step 6: Batch Upload ===
+# === Step 7: Batch Upload ===
 print("🔄 Starting batch embedding and upload...")
 total_processed = 0
 
