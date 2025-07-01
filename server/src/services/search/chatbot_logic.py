@@ -237,10 +237,10 @@ DO NOT:
 - Answer questions unrelated to pet products. Gently steer back to product needs.
 """
 }
-MODEL = "gpt-4.1-mini"
 
 # Initialize OpenAI client once for this module
 client = get_openai_client("OPENAI_API_KEY_2")
+MODEL = "gpt-4.1-mini"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
@@ -298,11 +298,11 @@ def search_products_with_followup(query: str, required_ingredients: list, exclud
     Returns:
         tuple: A tuple containing a list of products and follow-up questions
     """
-    from src.services.search.searchengine import query_products_with_followup
+    from src.services.searchengine import query_products_with_followup
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
-    from .product_service import ProductService
+    from src.services.database.product_service import ProductService
     product_service = ProductService()
     
     # Use query_products_with_followup for refined searches

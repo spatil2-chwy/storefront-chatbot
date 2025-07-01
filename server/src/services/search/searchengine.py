@@ -3,7 +3,7 @@ from functools import lru_cache
 import time
 import math
 import json
-from typing import cast, Any, Dict, List
+from typing import cast, Any, Dict, List, Tuple
 
 from src.config.env import get_openai_client
 
@@ -13,17 +13,7 @@ client = chromadb.PersistentClient(path="./../scripts/databases/chroma_db")
 PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
 
-def build_where_clause(required_ingredients: List[str], special_diet_tags: List[str]) -> Dict[str, Any]:
-    """
-    Build a ChromaDB where clause for filtering products by ingredients and diet tags.
-    
-    Args:
-        required_ingredients (List[str]): List of required ingredient tags
-        special_diet_tags (List[str]): List of special diet tags
-    
-    Returns:
-        Dict[str, Any]: ChromaDB compatible where clause
-    """
+def build_where_clause(required_ingredients: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
     if len(special_diet_tags) + len(required_ingredients) == 0:
         where_clause = {}

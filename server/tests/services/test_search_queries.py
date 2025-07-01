@@ -1,5 +1,5 @@
 """
-Tests for search queries with real product terms and dietary restrictions.
+Make sure search works properly when users look for products.
 """
 import pytest
 from src.services.search.searchengine import query_products
@@ -7,11 +7,22 @@ from src.services.search.search_analyzer import SearchAnalyzer
 
 @pytest.fixture
 def search_analyzer():
-    """Creates a SearchAnalyzer instance."""
+    """
+    Creates a tool that helps analyze search results.
+    """
     return SearchAnalyzer()
 
 def test_basic_product_searches():
-    """Test basic product search terms."""
+    """
+    Makes sure simple searches work correctly.
+    
+    For example, when someone searches for "dog food", we want to make sure:
+    - We actually find some products
+    - The products are actually dog food
+    - We know what brand they are
+    - They're in the right category (like "Dog Food" or "Cat Food")
+    """
+    # List of common things people search for
     search_terms = [
         "dog food",
         "cat food",
@@ -23,28 +34,44 @@ def test_basic_product_searches():
     ]
     
     for term in search_terms:
+        # Try to find products matching what the user searched for
         results = query_products(
             term,
-            required_ingredients=(),
-            excluded_ingredients=(),
-            special_diet_tags=()
+            required_ingredients=(),  # We're not looking for specific ingredients here
+            excluded_ingredients=(),   # We're not avoiding any ingredients here
+            special_diet_tags=()      # We're not filtering for special diets here
         )
         
+        # Make sure we found something
         assert results is not None
         assert len(results['metadatas'][0]) > 0
         
-        # Verify relevant metadata fields
-        for metadata in results['metadatas'][0][:3]:  # Check first 3 results
-            assert 'CLEAN_NAME' in metadata
-            assert 'CATEGORY_LEVEL1' in metadata
-            assert 'PURCHASE_BRAND' in metadata
-            print(f"\nSearch term: {term}")
-            print(f"Found product: {metadata['CLEAN_NAME']}")
-            print(f"Category: {metadata['CATEGORY_LEVEL1']}")
-            print(f"Brand: {metadata['PURCHASE_BRAND']}")
+        # Look at the first 3 products we found
+        for metadata in results['metadatas'][0][:3]:
+            # Every product should have these basic details:
+            assert 'CLEAN_NAME' in metadata      # The product's name
+            assert 'CATEGORY_LEVEL1' in metadata # What type of product it is
+            assert 'PURCHASE_BRAND' in metadata  # What brand makes it
+            
+            # Print out what we found (helps us check if it makes sense)
+            print(f"\nWhen someone searched for: {term}")
+            print(f"We found this product: {metadata['CLEAN_NAME']}")
+            print(f"It's in this category: {metadata['CATEGORY_LEVEL1']}")
+            print(f"It's made by: {metadata['PURCHASE_BRAND']}")
 
 def test_dietary_restriction_searches():
-    """Test searches with dietary restrictions."""
+    """
+    Makes sure we can find products for pets with special diets.
+    
+    For example:
+    - Finding grain-free food
+    - Finding food without chicken (for allergic pets)
+    - Finding diet food for overweight pets
+    
+    We need to make sure these special requirements are actually met
+    in the products we find.
+    """
+    # Different types of special diet searches to test
     test_cases = [
         {
             "query": "dog food",
@@ -67,6 +94,7 @@ def test_dietary_restriction_searches():
     ]
     
     for case in test_cases:
+        # Search for products with these special requirements
         results = query_products(
             case["query"],
             required_ingredients=(),
@@ -74,27 +102,40 @@ def test_dietary_restriction_searches():
             special_diet_tags=case["special_diets"]
         )
         
+        # Make sure we found something
         assert results is not None
-        print(f"\nTesting: {case['description']}")
+        print(f"\nChecking for: {case['description']}")
         
-        # Check first 3 results
+        # Look at each product we found
         for metadata in results['metadatas'][0][:3]:
-            print(f"Found product: {metadata['CLEAN_NAME']}")
+            print(f"Found this product: {metadata['CLEAN_NAME']}")
             
-            # Verify dietary restrictions
+            # Make sure it meets the special diet requirements
             for diet in case["special_diets"]:
                 diet_key = f"specialdiettag:{diet.lower()}"
                 if diet_key in metadata:
+                    # The product should have this special diet tag
                     assert metadata[diet_key] is True
             
-            # Verify excluded ingredients
+            # Make sure it doesn't have ingredients we don't want
             for ingredient in case["excluded"]:
                 ingredient_key = f"ingredienttag:{ingredient.lower()}"
                 if ingredient_key in metadata:
+                    # The product shouldn't have this ingredient
                     assert not metadata[ingredient_key]
 
 def test_specific_product_categories():
-    """Test searches for specific product categories."""
+    """
+    Makes sure products show up in the right categories.
+    
+    For example:
+    - Flea medicine should be in "Pharmacy"
+    - Dog beds should be in "Furniture"
+    - Dog food should be in "Dog Food"
+    
+    This helps users find products in the right section of the store.
+    """
+    # List of searches and where we expect to find their products
     categories = [
         ("flea meds for cats", "Pharmacy"),
         ("dog crate furniture", "Supplies"),
@@ -104,6 +145,7 @@ def test_specific_product_categories():
     ]
     
     for search_term, expected_category in categories:
+        # Search for products
         results = query_products(
             search_term,
             required_ingredients=(),
@@ -111,18 +153,28 @@ def test_specific_product_categories():
             special_diet_tags=()
         )
         
+        # Make sure we found something
         assert results is not None
-        print(f"\nSearch term: {search_term}")
+        print(f"\nWhen searching for: {search_term}")
         
-        # Check first 3 results
+        # Check each product we found
         for metadata in results['metadatas'][0][:3]:
-            print(f"Found product: {metadata['CLEAN_NAME']}")
-            print(f"Category: {metadata['CATEGORY_LEVEL1']}")
-            # Category might not match exactly but should be related
+            print(f"Found this product: {metadata['CLEAN_NAME']}")
+            print(f"It's in this category: {metadata['CATEGORY_LEVEL1']}")
+            # Make sure it has a category
             assert metadata['CATEGORY_LEVEL1'] is not None
 
 def test_brand_specific_searches():
-    """Test searches for specific brands."""
+    """
+    Makes sure we can find products from specific brands.
+    
+    For example, when someone searches for:
+    - "Purina dog food"
+    - "Royal Canin cat food"
+    
+    We should find products actually made by those brands.
+    """
+    # List of brand-specific searches to test
     brand_searches = [
         "purina pro plan for dogs",
         "royal canin dog food",
@@ -132,6 +184,7 @@ def test_brand_specific_searches():
     ]
     
     for brand_term in brand_searches:
+        # Search for products from this brand
         results = query_products(
             brand_term,
             required_ingredients=(),
@@ -139,12 +192,13 @@ def test_brand_specific_searches():
             special_diet_tags=()
         )
         
+        # Make sure we found something
         assert results is not None
-        print(f"\nBrand search: {brand_term}")
+        print(f"\nWhen searching for brand: {brand_term}")
         
-        # Check first 3 results
+        # Check each product we found
         for metadata in results['metadatas'][0][:3]:
-            print(f"Found product: {metadata['CLEAN_NAME']}")
-            print(f"Brand: {metadata['PURCHASE_BRAND']}")
-            # Brand in results should match or be related to search term
+            print(f"Found this product: {metadata['CLEAN_NAME']}")
+            print(f"It's made by: {metadata['PURCHASE_BRAND']}")
+            # Make sure it has a brand name
             assert metadata['PURCHASE_BRAND'] is not None 

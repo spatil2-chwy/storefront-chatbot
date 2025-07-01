@@ -18,14 +18,14 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     try:
         if json_mode:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": query}],
                 response_format={"type": "json_object"},
                 temperature=0.2
             )
         else:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": query}],
                 temperature=0.2
             )

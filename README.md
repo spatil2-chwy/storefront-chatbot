@@ -150,6 +150,32 @@ cd storefront-chatbot/scripts/data-loaders
 python load_data.py  # Recreates tables and loads fresh data
 ```
 
+## 🧪 Testing
+
+### Running Backend Tests
+```bash
+# From the server directory
+cd storefront-chatbot/server
+pytest tests/
+
+# Run with coverage report
+pytest --cov=src tests/
+
+# Run specific test file
+pytest tests/services/test_search_queries.py
+```
+
+### Test Structure
+The test suite is organized by service:
+
+#### Search Services Tests
+- **test_search_queries.py**: Tests basic product searches, dietary restrictions, categories, and brand-specific searches
+- **test_search_analyzer.py**: Tests matching search terms with product details (brands, categories, ingredients)
+- **test_searchengine.py**: Tests product ranking and search result sorting
+
+#### Prompt Services Tests
+- **test_prompts.py**: Tests generating AI prompts for product details, comparisons, and Q&A
+
 ## 🤝 Contributing
 
 1. Fork the repository
