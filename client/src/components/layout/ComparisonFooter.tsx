@@ -13,25 +13,28 @@ export default function ComparisonFooter() {
     clearComparison
   } = useGlobalChat();
 
-  // Don't render if no products
+  // If there are no products selected for comparison, don't render the footer
   if (comparingProducts.length < 1) {
     return null;
   }
 
+  // Navigate to the comparison page when the Compare button is clicked
   const handleCompare = () => {
     // Navigate to comparison page
     setLocation('/compare');
   };
 
+  // Remove a product from the comparison list
   const handleRemoveProduct = (productId: number) => {
     removeFromComparison(productId);
   };
 
-  // Create array of 4 slots, filling with products and empty slots
+  // Create an array of 4 slots, filling with selected products and empty slots for UI consistency
   const slots = Array.from({ length: 4 }, (_, index) => {
     return comparingProducts[index] || null;
   });
 
+  // Render the comparison footer with product slots and compare button
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg z-40 p-4">
       <div className="max-w-full mx-auto px-8 sm:px-12 lg:px-16">

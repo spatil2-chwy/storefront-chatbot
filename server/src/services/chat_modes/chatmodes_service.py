@@ -6,7 +6,14 @@ client = get_openai_client()
 
 def get_openai_response(query: str, json_mode: bool = True) -> str:
     """
-    Get response from OpenAI API.
+    Get response from OpenAI API with optional JSON formatting.
+    
+    Args:
+        query (str): The prompt to send to OpenAI
+        json_mode (bool): Whether to request JSON formatted response
+    
+    Returns:
+        str: The generated response or error message
     """
     try:
         if json_mode:
@@ -29,11 +36,11 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     except Exception as e:
         error_message = str(e)
         if "rate_limit" in error_message.lower() or "429" in error_message:
-            return error_message
+            return "Rate limit exceeded. Please try again in a moment."
         elif "quota" in error_message.lower():
             return "I've reached my usage limit for today. Please try again tomorrow."
         else:
-            return f"Sorry, I encountered an error: {error_message}"
+            return "Sorry, I encountered an error processing your request. Please try again."
 
 def compare_products(user_question: str, products: List[Dict[str, Any]]) -> str:
     """
@@ -87,7 +94,14 @@ def get_product_comparison_data(products: List[Dict[str, Any]]) -> Dict[str, Any
 
 def ask_about_product(user_question: str, product: Dict[str, Any]) -> str:
     """
-    Ask about a product based on user question using OpenAI.
+    Generate a response about a product based on user's question.
+    
+    Args:
+        user_question (str): The user's question about the product
+        product (Dict[str, Any]): Product data dictionary
+    
+    Returns:
+        str: Generated response about the product
     """
     product_data = get_product_data(product)
     prompt = get_ask_about_product_prompt(user_question, product_data)
@@ -97,7 +111,13 @@ def ask_about_product(user_question: str, product: Dict[str, Any]) -> str:
 
 def get_product_data(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get product data for to answer a question about a product.
+    Extract relevant product data for question answering.
+    
+    Args:
+        product (Dict[str, Any]): Raw product dictionary
+    
+    Returns:
+        Dict[str, Any]: Cleaned product data with relevant fields
     """
     product_data = {
         "title": product.get("title"),

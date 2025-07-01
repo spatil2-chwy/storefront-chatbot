@@ -7,12 +7,22 @@ from collections import Counter
 from src.models.product import SearchMatch
 
 class SearchAnalyzer:
+    """
+    Analyzes product search queries and matches them against product metadata.
+    Provides functionality for extracting search criteria and analyzing how well
+    products match the search criteria.
+    """
     def __init__(self):
+        """Initializes the SearchAnalyzer with metadata filters from cache or database."""
         self.metadata_filters = self._build_metadata_filters()
         print(f"Search Analyzer initialized with {sum(len(v) for v in self.metadata_filters.values())} discoverable criteria")
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
-        """Build search filters from actual product metadata"""
+        """
+        Builds search filters from product metadata, using cache when available.
+        Returns:
+            Dict[str, Dict[str, Set[str]]]: Categorized metadata filters for search analysis
+        """
         cache_file = "../scripts/databases/metadata_filters_cache.json"
         
         # Try to load from cache first

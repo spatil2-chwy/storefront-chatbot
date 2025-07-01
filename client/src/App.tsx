@@ -15,7 +15,7 @@ import NotFound from "@/pages/not-found";
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   
-  // Show loading state while checking authentication
+  // Show a loading spinner while checking authentication status (e.g., on page refresh or initial load)
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

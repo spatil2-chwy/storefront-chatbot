@@ -4,24 +4,31 @@ from src.services.search.chatbot_logic import chat
 import time
 
 class ProductService:
+    """
+    Service class for handling product-related operations including search, retrieval,
+    and metadata processing. Uses ChromaDB for vector-based product search and storage.
+    """
     def __init__(self):
         import chromadb
         self.client = chromadb.PersistentClient(path="../scripts/databases/chroma_db")
         self.collection = self.client.get_collection(name="products")
         self._search_analyzer = None  # Lazy loading for search matches
-        print("✅ ProductService initialized successfully")
     
     @property
     def search_analyzer(self):
-        """Lazy load the search analyzer only when needed"""
+        """
+        Lazily initializes and returns the search analyzer instance.
+        Returns:
+            SearchAnalyzer: An instance of the search analyzer for product matching.
+        """
         if self._search_analyzer is None:
             from src.services.search.search_analyzer import SearchAnalyzer
-            print("🔄 Initializing SearchAnalyzer...")
             self._search_analyzer = SearchAnalyzer()
         return self._search_analyzer
 
     @staticmethod
     def safe_float(val, default=0.0):
+        """Safely converts a value to float, returning default if conversion fails."""
         try:
             return float(val)
         except Exception:
@@ -29,6 +36,7 @@ class ProductService:
 
     @staticmethod
     def safe_int(val, default=0):
+        """Safely converts a value to integer, returning default if conversion fails."""
         try:
             return int(val)
         except Exception:
@@ -36,6 +44,15 @@ class ProductService:
 
     @staticmethod
     def safe_list(val, sep=",", default=None):
+        """
+        Safely converts a string or list value to a list.
+        Args:
+            val: Value to convert
+            sep: Separator to use if val is a string
+            default: Default value if conversion fails
+        Returns:
+            list: Converted list or default value
+        """
         if not val:
             return default or []
         if isinstance(val, list):
@@ -44,6 +61,7 @@ class ProductService:
 
     @staticmethod
     def safe_json(val, default=None):
+        """Safely parses a JSON string, returning default if parsing fails."""
         import json
         try:
             return json.loads(val)
@@ -52,6 +70,7 @@ class ProductService:
 
     @staticmethod
     def safe_str(val, default=""):
+        """Safely converts a value to string, returning default if value is None."""
         if val is None:
             return default
         return str(val)
@@ -92,6 +111,14 @@ class ProductService:
         return "https://via.placeholder.com/400x300?text=Image+Not+Found"
 
     def _metadata_to_product(self, metadata: dict, search_matches: Optional[List] = None) -> Product:
+        """
+        Converts raw metadata from ChromaDB to a Product object.
+        Args:
+            metadata (dict): Raw metadata from ChromaDB
+            search_matches (Optional[List]): List of search matches if available
+        Returns:
+            Product: Converted Product object
+        """
         # Images: use FULLIMAGE (as list) and THUMBNAIL
         images = []
         if metadata.get("FULLIMAGE"):
@@ -197,31 +224,30 @@ class ProductService:
         )
 
     def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
-        """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
+        """
+        Converts a ranked result tuple to a Product object with optional search match analysis.
+        Args:
+            ranked_result: Tuple of (metadata, document, product_id, distance)
+            query: Optional search query for match analysis
+        Returns:
+            Product: Converted Product object with search matches if query provided
+        """
         metadata, document, product_id, distance = ranked_result
         
         # Analyze search matches if query is provided
         search_matches = None
         if query:
             try:
-                analysis_start = time.time()
                 # Extract categorized search criteria
                 categorized_criteria = self.search_analyzer.extract_search_criteria(query)
-                criteria_time = time.time() - analysis_start
                 
                 # Analyze matches
-                match_start = time.time()
                 search_matches = self.search_analyzer.analyze_product_matches(
                     metadata, categorized_criteria, query
                 )
-                match_time = time.time() - match_start
-                
-                print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
-            except Exception as e:
-                print(f"⚠️ Error analyzing search matches: {e}")
+            except Exception:
                 search_matches = None
         
-        # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
 
     async def search_products(self, query: str, limit: int = 10) -> dict:
@@ -284,6 +310,13 @@ class ProductService:
             }
 
     async def get_product(self, product_id: int) -> Optional[Product]:
+        """
+        Retrieves a product by its ID from the ChromaDB collection.
+        Args:
+            product_id: The ID of the product to retrieve
+        Returns:
+            Optional[Product]: The product if found, None otherwise
+        """
         try:
             results = self.collection.get(where={"PRODUCT_ID": str(product_id)})
             
@@ -304,8 +337,7 @@ class ProductService:
             
             product = self._metadata_to_product(meta_dict)
             return product
-        except Exception as e:
-            print(f"⚠️ Error fetching product {product_id}: {e}")
+        except Exception:
             return None
 
 

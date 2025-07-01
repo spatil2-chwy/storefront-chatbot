@@ -25,6 +25,7 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
     }
   };
 
+  // Mobile version: show only search bar and user/cart icons
   if (isMobile) {
     return (
       <header className="bg-chewy-blue text-white shadow-lg sticky top-0 z-40">
@@ -65,7 +66,7 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
     );
   }
 
-  // Desktop version
+  // Desktop version: full navigation, search, and user actions
   return (
     <header className="bg-chewy-blue text-white shadow-lg sticky top-0 z-40">
       <div className="max-w-full mx-auto px-8 sm:px-12 lg:px-16">
@@ -165,7 +166,7 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
         </div>
       </div>
       
-      {/* Promotional Banner */}
+      {/* Promotional Banner for first order offer */}
       <div className="bg-chewy-yellow text-chewy-blue text-center py-2 text-sm font-medium">
         $20 eGift card with $49+ on 1st order* use WELCOME
       </div>

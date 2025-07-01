@@ -16,10 +16,12 @@ export default function SearchMatches({
   showTitle = true,
   maxMatches = 50
 }: SearchMatchesProps) {
+  // If there are no matches, render nothing
   if (!matches || matches.length === 0) {
     return null;
   }
 
+  // Format a match object for display (category, value, display text)
   const formatMatchDisplay = (match: SearchMatch) => {
     // If the field contains a category (e.g., "Pet Type: Dog"), extract both parts
     if (match.field.includes(':')) {
@@ -57,11 +59,11 @@ export default function SearchMatches({
     };
   };
 
-  // Sort matches by confidence (highest first) - show all matches
+  // Sort matches by confidence (highest first)
   const sortedMatches = matches
     .sort((a, b) => b.confidence - a.confidence);
 
-  // Group matches by category
+  // Group matches by category for display
   const groupedMatches = sortedMatches.reduce((acc, match) => {
     const { category, value, displayText } = formatMatchDisplay(match);
     const categoryKey = category;
@@ -85,12 +87,14 @@ export default function SearchMatches({
     return acc;
   }, {} as Record<string, { category: string; values: string[]; confidence: number; field: string }>);
 
+  // Return a color class based on confidence score
   const getConfidenceColor = (confidence: number): string => {
     if (confidence >= 0.8) return 'bg-green-100 text-green-800 border-green-200';
     if (confidence >= 0.6) return 'bg-blue-100 text-blue-800 border-blue-200';
     return 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
+  // Return an icon based on confidence score
   const getConfidenceIcon = (confidence: number) => {
     if (confidence >= 0.8) {
       return <CheckCircle className="w-3 h-3 fill-current" />;
@@ -98,6 +102,7 @@ export default function SearchMatches({
     return <Target className="w-3 h-3" />;
   };
 
+  // Return an icon based on the match category
   const getCategoryIcon = (field: string) => {
     // New metadata-driven categories
     if (field.includes('Brands')) return <Award className="w-3 h-3" />;
@@ -122,6 +127,7 @@ export default function SearchMatches({
     return <Target className="w-3 h-3" />;
   };
 
+  // Render grouped and formatted matches as badges
   return (
     <div className={`space-y-2 ${className}`}>
       {showTitle && (

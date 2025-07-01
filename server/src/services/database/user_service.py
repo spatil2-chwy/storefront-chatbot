@@ -4,10 +4,35 @@ from src.models.user import User
 from src.models.pet import PetProfile
 
 class UserService:
+    """
+    Service class for managing user operations in the database.
+    Provides methods for creating, retrieving, updating, and deleting users,
+    as well as managing user-pet relationships and user context for chat.
+    """
+    
     def get_users(self, db: Session) -> List[User]:
+        """
+        Retrieve all users from the database.
+        
+        Args:
+            db (Session): Database session
+        
+        Returns:
+            List[User]: List of all users
+        """
         return db.query(User).all()
 
     def get_user(self, db: Session, customer_key: int) -> User | None:
+        """
+        Retrieve a user by their customer key.
+        
+        Args:
+            db (Session): Database session
+            customer_key (int): Customer key to look up
+        
+        Returns:
+            User | None: The user if found, None otherwise
+        """
         return (
             db.query(User)
               .options(joinedload(User.pets))
@@ -16,12 +41,33 @@ class UserService:
         )
 
     def create_user(self, db: Session, user_data: User) -> User:
+        """
+        Create a new user in the database.
+        
+        Args:
+            db (Session): Database session
+            user_data (User): User data to create
+        
+        Returns:
+            User: The created user
+        """
         db.add(user_data)
         db.commit()
         db.refresh(user_data)
         return user_data
 
     def update_user(self, db: Session, customer_key: int, user_data: User) -> User | None:
+        """
+        Update an existing user's information.
+        
+        Args:
+            db (Session): Database session
+            customer_key (int): Customer key of the user to update
+            user_data (User): Updated user data
+        
+        Returns:
+            User | None: The updated user if found, None otherwise
+        """
         user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
         if not user:
             return None
@@ -34,6 +80,16 @@ class UserService:
         return user
 
     def delete_user(self, db: Session, customer_key: int) -> bool:
+        """
+        Delete a user from the database.
+        
+        Args:
+            db (Session): Database session
+            customer_key (int): Customer key of the user to delete
+        
+        Returns:
+            bool: True if the user was deleted, False if not found
+        """
         user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
         if not user:
             return False
@@ -42,6 +98,16 @@ class UserService:
         return True
 
     def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
+        """
+        Retrieve all pets associated with a user.
+        
+        Args:
+            db (Session): Database session
+            customer_key (int): Customer key of the user
+        
+        Returns:
+            List[PetProfile]: List of pet profiles owned by the user
+        """
         # First get the user to find their customer_id
         user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
         if not user:
@@ -55,6 +121,18 @@ class UserService:
         )
     
     def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
+        """
+        Authenticate a user by email and password.
+        Note: Currently using temporary authentication without password check.
+        
+        Args:
+            db (Session): Database session
+            email (str): User's email
+            password (str): User's password (currently not used)
+        
+        Returns:
+            User | None: The authenticated user if found, None otherwise
+        """
         user = db.query(User).filter(User.email == email).one_or_none()
         # if not user or user.password != password:
         #     return None
@@ -64,7 +142,16 @@ class UserService:
         return user
 
     def get_user_context_for_chat(self, db: Session, customer_key: int) -> dict | None:
-        """Get user and pet information formatted for chat context"""
+        """
+        Get formatted user and pet information for chat context.
+        
+        Args:
+            db (Session): Database session
+            customer_key (int): Customer key of the user
+        
+        Returns:
+            dict | None: Formatted user context if found, None otherwise
+        """
         user = self.get_user(db, customer_key)
         if not user:
             return None
@@ -102,7 +189,15 @@ class UserService:
         return user_context
     
     def _calculate_age_months(self, birthday) -> int:
-        """Calculate pet age in months"""
+        """
+        Calculate pet age in months from birthday.
+        
+        Args:
+            birthday: Pet's birthday date
+        
+        Returns:
+            int: Age in months, or None if birthday is not provided
+        """
         from datetime import date
         if not birthday:
             return None
@@ -112,7 +207,15 @@ class UserService:
         return max(0, months)
     
     def format_pet_context_for_ai(self, user_context: dict) -> str:
-        """Format user and pet information for AI context"""
+        """
+        Format user and pet information into a string for AI context.
+        
+        Args:
+            user_context (dict): User context dictionary
+        
+        Returns:
+            str: Formatted string containing user and pet information
+        """
         if not user_context or not user_context.get("pets"):
             return ""
         

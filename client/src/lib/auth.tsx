@@ -46,13 +46,13 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 //     }
 //   };
 
-  // auth.tsx
+// AuthProvider manages user authentication state and provides login/logout methods
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from localStorage on mount
+  // On mount, initialize authentication state from localStorage (persisted login)
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // we got a valid user back → log them in
       setUser(data);
       setIsAuthenticated(true);
-      // persist so that refreshes also "remember" they're in
+      // Save user info to localStorage so that refreshes also "remember" they're logged in
       localStorage.setItem("user", JSON.stringify(data));
       return true;
     } catch {
@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Logout clears user state and removes persisted login info
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
@@ -96,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Custom hook to access authentication context
 export function useAuth() {
   const ctx = React.useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be inside AuthProvider');

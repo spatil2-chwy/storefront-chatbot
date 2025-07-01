@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ChevronDown } from 'lucide-react';
 
-// 5 users who have pets - these will always be suggested
+// Demo: 5 users who have pets - these will always be suggested for quick login
 const USERS_WITH_PETS = [
   'diane.anderson@gmail.com',
   'jessica.ewing@gmail.com',
@@ -27,14 +27,14 @@ export default function Login() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredEmails, setFilteredEmails] = useState<string[]>([]);
 
-  // Redirect if already authenticated
+  // If already authenticated, redirect to the home page
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       setLocation('/');
     }
   }, [isAuthenticated, authLoading, setLocation]);
 
-  // Filter emails based on input - but always show all 5 if there's any input
+  // Filter the demo email suggestions based on input - always show all 5 if there's any input
   useEffect(() => {
     if (email.length > 0) {
       const filtered = USERS_WITH_PETS.filter(emailOption => 
@@ -48,7 +48,7 @@ export default function Login() {
     }
   }, [email]);
 
-  // Show loading while checking auth state
+  // Show a loading spinner while checking authentication state
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -57,16 +57,18 @@ export default function Login() {
     );
   }
 
-  // Don't show login form if already authenticated
+  // If already authenticated, don't show the login form (redirect will happen via useEffect)
   if (isAuthenticated) {
     return null;
   }
 
+  // When a suggestion is clicked, fill the email input and hide suggestions
   const handleEmailSelect = (selectedEmail: string) => {
     setEmail(selectedEmail);
     setShowSuggestions(false);
   };
 
+  // Handle login form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
