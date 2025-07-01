@@ -11,9 +11,9 @@ import os
 load_dotenv()
 
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
-PRODUCT_COLLECTION_NAME = "products"
+# PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
-product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
+# product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
 def get_openai_client():
@@ -22,30 +22,32 @@ def get_openai_client():
         raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
     return OpenAI(api_key=api_key)
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
+def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) == 0:
+    if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:
         where_clause = {}
-    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) == 1:
+    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 1:
         # if only one special diet or ingredient, use a single condition
         if len(category_level_1) == 1:
-            where_clause = {"CATEGORY_LEVEL1": {"$eq": category_level_1[0]}}
+            where_clause = {f"categorytag1:{category_level_1[0]}": {"$eq": True}}
         elif len(category_level_2) == 1:
-            where_clause = {"CATEGORY_LEVEL2": {"$eq": category_level_2[0]}}
+            where_clause = {f"categorytag2:{category_level_2[0]}": {"$eq": True}}
+        elif len(special_diet_tags) == 1:
+            where_clause = {f"specialdiettag:{special_diet_tags[0]}": {"$eq": True}}
         else:
             where_clause = {f"ingredienttag:{required_ingredients[0].lower()}": {"$eq": True}}
     else:
         where_clause = {
             "$and": [
                 {
-                    "CATEGORY_LEVEL1": {
-                        "$eq": category
+                    f"categorytag1:{category}": {
+                        "$eq": True
                     }
                 } for category in category_level_1
             ] + [
                 {
-                    "CATEGORY_LEVEL2": {
-                        "$eq": category
+                    f"categorytag2:{category}": {
+                        "$eq": True
                     }
                 } for category in category_level_2
             ] + [
@@ -54,7 +56,13 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
                         "$eq": True
                     }
                 } for ingredient in required_ingredients
-            ] 
+            ] + [
+                {
+                    f"specialdiettag:{diet}": {
+                        "$eq": True
+                    }
+                } for diet in special_diet_tags
+            ]
         }
 
     return where_clause
@@ -165,10 +173,10 @@ Sure! Just a couple of questions to help you out:
         return "These look like great options based on the reviews — go with what fits your style or budget!"
 
 @lru_cache(maxsize=128)
-def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple):
+def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple, special_diet_tags: tuple):
     print(query_products.cache_info())
     start_time = time.time()
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
+    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)
     if where_clause == {}:
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 

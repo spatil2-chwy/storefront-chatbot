@@ -209,6 +209,16 @@ for row in product_rows:
             if tag:
                 metadata[f"ingredienttag:{tag.lower()}"] = True
 
+    # Add category tags
+    if row["CATEGORY_LEVEL1"]:
+        for tag in map(str.strip, row["CATEGORY_LEVEL1"].split(',')):
+            if tag:
+                metadata[f"categorytag1:{tag}"] = True
+    if row["CATEGORY_LEVEL2"]:
+        for tag in map(str.strip, row["CATEGORY_LEVEL2"].split(',')):
+            if tag:
+                metadata[f"categorytag2:{tag}"] = True
+
     documents.append(combined_text)
     metadatas.append(metadata)
     ids.append(product_id)

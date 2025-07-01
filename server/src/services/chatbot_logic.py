@@ -28,7 +28,7 @@ tools = [
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must be present in the product, e.g. 'chicken', 'peas'. Don't include ingredient like 'protein' or 'grain. They are not ingredients."
+                        "description": "Ingredients that must be present in the product, e.g. 'chicken', 'peas'. 'protein'/'grain' is NOT an ingredient"
                     },
                     "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
@@ -36,7 +36,7 @@ tools = [
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must not be present in the product, e.g. 'corn', 'soy'. Don't include ingredient like 'protein' or 'grain. They are not ingredients."
+                        "description": "Ingredients that must not be present in the product, e.g. 'corn', 'soy'. 'protein'/'grain' is NOT an ingredient"
                     },
                     "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
@@ -58,60 +58,32 @@ tools = [
                     },
                     "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
                 },
-                # "special_diet_tags": {
-                #     "type": "array",
-                #     "items": {
-                #         "type": "string",
-                #         "enum": [
-                #             'Chicken-Free',
-                #             'Flax-Free',
-                #             'Gluten Free',
-                #             'Grain-Free',
-                #             'High Calcium',
-                #             'High Calorie',
-                #             'High Fat',
-                #             'High Fiber',
-                #             'High-Protein',
-                #             'Human-Grade',
-                #             'Hydrolyzed Protein',
-                #             'Indoor',
-                #             'Limited Ingredient Diet',
-                #             'Low Calorie',
-                #             'Low Fat',
-                #             'Low Glycemic',
-                #             'Low NSC',
-                #             'Low Phosphorus',
-                #             'Low Sodium',
-                #             'Low Starch',
-                #             'Low Sugar',
-                #             'Low-Protein',
-                #             'Medicated',
-                #             'Molasses-Free',
-                #             'Natural',
-                #             'No Corn No Wheat No Soy',
-                #             'Non-GMO',
-                #             'Odor-Free',
-                #             'Organic',
-                #             'Pea-Free',
-                #             'Plant Based',
-                #             'Premium',
-                #             'Raw',
-                #             'Rawhide-Free',
-                #             'Sensitive Digestion',
-                #             'Soy Free',
-                #             'Starch Free',
-                #             'Sugar Free',
-                #             'Vegan',
-                #             'Vegetarian',
-                #             'Veterinary Diet',
-                #             'Weight Control',
-                #             'With Grain',
-                #             'Yeast Free'
-                #         ],
-                #         "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
-                #     },
-                #     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
-                # },
+                "special_diet_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "Chicken-Free",
+                            "Natural",
+                            "Gluten Free",
+                            "Limited Ingredient Diet",
+                            "High Fiber",
+                            "Human-Grade",
+                            "Veterinary Diet",
+                            "Rawhide-Free",
+                            "No Corn No Wheat No Soy",
+                            "Raw",
+                            "Organic",
+                            "Weight Control",
+                            "With Grain",
+                            "Non-GMO",
+                            "Grain-Free",
+                            "High-Protein",
+                        ],
+                        "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
+                    },
+                    "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
+                },
             },
             "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "category_level_2"],
             "additionalProperties": False,
@@ -225,9 +197,9 @@ Your mission is to guide pet parents toward the best products for their pet's sp
 """
 
 }
-MODEL = "gpt-4.1-mini"
+MODEL = "gpt-4o"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list):
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -245,7 +217,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2), tuple(special_diet_tags))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
