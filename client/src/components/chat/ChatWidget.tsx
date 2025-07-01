@@ -3,11 +3,12 @@ import { MessageCircle, X, Send, Package, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChatMessage, ChatContext, Product } from '../types';
-import { useGlobalChat } from '../contexts/ChatContext';
+import { ChatMessage, ChatContext, Product } from '../../types';
+import { useGlobalChat } from '../../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+// import ProductChatModal from '../product/ProductChatModal';
 
 interface ChatWidgetProps {
   initialQuery?: string;

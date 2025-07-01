@@ -6,12 +6,12 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "results.jsonl"
+CSV_PATH = "../data/all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "../data/results.jsonl"
 
-COLLECTION_NAME = "review_synthesis"
+COLLECTION_NAME = "products"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHROMADB_PATH = "chroma_db"
+CHROMADB_PATH = "../databases/chroma_db"
 BATCH_SIZE = 1000
 
 # === Step 1: Load Data ===
@@ -25,14 +25,31 @@ df = pd.read_csv(
     }
 )
 
-# === Step 2: Load Review Synthesis JSONL ===
-with open(REVIEW_SYNTH_PATH, "r") as f:
-    review_map = {
-        entry["product_id"]: entry
-        for entry in map(json.loads, f)
-    }
+# === Step 2: Build Item Variant Map ===
+df_items = df[df['TYPE'] == 'Item']
 
-print(f"📊 Review synthesis data loaded: {len(review_map)} entries")
+# Build items_dict using iterrows to avoid type checking issues
+items_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    items_dict[parent_id] = []
+    for _, row in group.iterrows():
+        items_dict[parent_id].append({
+            "NAME": row["NAME"],
+            "PART_NUMBER": row["PART_NUMBER"], 
+            "PRODUCT_ID": row["PRODUCT_ID"]
+        })
+
+# Get first available images for each parent product from items
+images_dict = {}
+for parent_id, group in df_items.groupby('PARENT_ID'):
+    # Get first non-null thumbnail and fullimage
+    thumbnail = group['THUMBNAIL'].dropna().iloc[0] if group['THUMBNAIL'].dropna().size > 0 else None
+    fullimage = group['FULLIMAGE'].dropna().iloc[0] if group['FULLIMAGE'].dropna().size > 0 else None
+    
+    images_dict[parent_id] = {
+        "THUMBNAIL": thumbnail,
+        "FULLIMAGE": fullimage
+    }
 
 # === Step 3: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
@@ -57,7 +74,41 @@ product_df = df[df['TYPE'] == 'Product'].fillna({
     "Answered FAQs": "",
 })
 
-# === Step 4: Build Documents & Metadata for Review Synthesis ===
+# === Step 3.5: Fill Missing Thumbnails and Print Stats ===
+# Track NaNs before filling
+nan_before = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+# Fill thumbnails from images_dict (based on item variants)
+def fill_image(row, col):
+    if not row[col]:  # empty string or NaN
+        return images_dict.get(row['PRODUCT_ID'], {}).get(col, "")
+    return row[col]
+
+product_df['THUMBNAIL'] = product_df.apply(lambda row: fill_image(row, 'THUMBNAIL'), axis=1)
+product_df['FULLIMAGE'] = product_df.apply(lambda row: fill_image(row, 'FULLIMAGE'), axis=1)
+
+# Track NaNs after filling
+nan_after = product_df['THUMBNAIL'].isna().sum() + (product_df['THUMBNAIL'] == '').sum()
+
+print(f"🖼️ THUMBNAILs missing before fill: {nan_before}")
+print(f"🖼️ THUMBNAILs missing after fill: {nan_after}")
+
+# === Step 4: Load Review Synthesis JSONL ===
+with open(REVIEW_SYNTH_PATH, "r") as f:
+    review_map = {
+        entry["product_id"]: entry
+        for entry in map(json.loads, f)
+    }
+
+print(f"📊 Review synthesis data loaded: {len(review_map)} entries")
+
+# === Step 5: Build Documents & Metadata ===
+default_synth = {
+    "what_customers_love": ["Insufficient reviews! No review synthesis"],
+    "what_to_watch_out_for": ["Insufficient reviews! No review synthesis"],
+    "should_you_buy_it": "Insufficient reviews! No review synthesis"
+}
+
 product_rows = product_df.to_dict(orient='records')
 documents = []
 metadatas = []
@@ -76,7 +127,7 @@ for row in product_rows:
     if has_review_synthesis:
         products_with_reviews += 1
     
-    # Get product name for embedding (always available)
+    # Ensure we have valid text for embedding
     clean_name = row["CLEAN_NAME"] or row["NAME"] or f"Product {product_id}"
     if not clean_name or clean_name.strip() == "":
         clean_name = f"Product {product_id}"
@@ -84,33 +135,6 @@ for row in product_rows:
     # add purchase brand to clean name if available: Brand: {row['PURCHASE_BRAND']}
     if row["PURCHASE_BRAND"]:
         clean_name += f" | Brand: {row['PURCHASE_BRAND']}"
-
-    # Get answered FAQs (may or may not be available)
-    answered_faqs = row.get("Answered FAQs", "") or ""
-
-    # Build the combined text for embedding
-    if has_review_synthesis:
-        review_data = review_map[part_number]
-        
-        # Extract review synthesis data
-        what_customers_love = review_data.get('what_customers_love', [])
-        what_to_watch_out_for = review_data.get('what_to_watch_out_for', [])
-        
-        # Convert lists to strings
-        what_customers_love_str = ' '.join(what_customers_love) if isinstance(what_customers_love, list) else str(what_customers_love)
-        what_to_watch_out_for_str = ' '.join(what_to_watch_out_for) if isinstance(what_to_watch_out_for, list) else str(what_to_watch_out_for)
-        
-        # Create combined text for embedding
-        combined_text = f"PRODUCT NAME: {clean_name}\n\nWHAT CUSTOMERS LOVE: {what_customers_love_str}\n\nWHAT TO WATCH OUT FOR: {what_to_watch_out_for_str}"
-        
-        # Add answered FAQs if available
-        if answered_faqs and answered_faqs.strip():
-            combined_text += f"\n\nANSWERED FAQs: {answered_faqs}"
-    else:
-        # For products without review synthesis, use product name and answered FAQs if available
-        combined_text = f"PRODUCT NAME: {clean_name}"
-        if answered_faqs and answered_faqs.strip():
-            combined_text += f"\n\nANSWERED FAQs: {answered_faqs}"
 
     metadata = {
         "PRODUCT_ID": product_id,
@@ -126,31 +150,16 @@ for row in product_rows:
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
         "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
-        "THUMBNAIL": row["THUMBNAIL"],
-        "FULLIMAGE": row["FULLIMAGE"],
+        "THUMBNAIL": row["THUMBNAIL"] if row["THUMBNAIL"] else images_dict.get(part_number, {}).get("THUMBNAIL", ""),
+        "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
+        "items": json.dumps(items_dict.get(product_id, [])),
+        "review_synthesis": json.dumps(review_map.get(part_number, default_synth)),
+        "review_synthesis_flag": has_review_synthesis,
         "unanswered_faqs": row["Unanswered FAQs"] or "",
-        "answered_faqs": answered_faqs,
-        "has_review_synthesis": has_review_synthesis,
+        "answered_faqs": row["Answered FAQs"] or "",
     }
-
-    # Add review synthesis data to metadata if available
-    if has_review_synthesis:
-        review_data = review_map[part_number]
-        metadata["review_synthesis"] = json.dumps(review_data)
-        metadata["what_customers_love"] = json.dumps(review_data.get('what_customers_love', []))
-        metadata["what_to_watch_out_for"] = json.dumps(review_data.get('what_to_watch_out_for', []))
-        metadata["should_you_buy_it"] = review_data.get('should_you_buy_it', '')
-    else:
-        metadata["review_synthesis"] = json.dumps({
-            "what_customers_love": ["No review synthesis available"],
-            "what_to_watch_out_for": ["No review synthesis available"],
-            "should_you_buy_it": "No review synthesis available"
-        })
-        metadata["what_customers_love"] = json.dumps(["No review synthesis available"])
-        metadata["what_to_watch_out_for"] = json.dumps(["No review synthesis available"])
-        metadata["should_you_buy_it"] = "No review synthesis available"
 
     # Add special diet tags
     if row["ATTR_SPECIAL_DIET"]:
@@ -164,7 +173,7 @@ for row in product_rows:
             if tag:
                 metadata[f"ingredienttag:{tag}"] = True
 
-    documents.append(combined_text)
+    documents.append(clean_name)
     metadatas.append(metadata)
     ids.append(product_id)
 
@@ -175,16 +184,16 @@ print(f"   Total products: {total_products}")
 print(f"   Products with review synthesis: {products_with_reviews}")
 print(f"   Coverage: {review_coverage:.1f}%")
 
-print(f"✅ Prepared {len(documents)} documents for review synthesis embedding")
+print(f"✅ Prepared {len(documents)} documents for embedding")
 
-# === Step 5: Initialize ChromaDB & Embed ===
+# === Step 6: Initialize ChromaDB & Embed ===
 print("🔄 Loading embedding model...")
 model = SentenceTransformer(EMBEDDING_MODEL)
 
 print("🔄 Initializing ChromaDB...")
 client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
-# Delete existing review synthesis collection if it exists
+# Delete existing collection if it exists
 try:
     client.delete_collection(name=COLLECTION_NAME)
     print(f"🗑️  Deleted existing collection: {COLLECTION_NAME}")
@@ -199,7 +208,7 @@ collection = client.create_collection(
 
 print(f"✅ Created collection: {COLLECTION_NAME}")
 
-# === Step 6: Batch Upload ===
+# === Step 7: Batch Upload ===
 print("🔄 Starting batch embedding and upload...")
 total_processed = 0
 
@@ -244,7 +253,7 @@ try:
     # Test a query
     if count > 0:
         results = collection.query(
-            query_texts=["customers love this product"],
+            query_texts=["pet food"],
             n_results=1
         )
         print(f"✅ Test query successful, found {len(results['ids'][0])} results")
@@ -252,4 +261,4 @@ try:
 except Exception as e:
     print(f"❌ Error verifying upload: {str(e)}")
 
-print("✅ Review synthesis embedding process complete!") 
+print("✅ Embedding process complete!")

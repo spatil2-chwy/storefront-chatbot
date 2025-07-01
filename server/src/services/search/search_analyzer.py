@@ -13,7 +13,7 @@ class SearchAnalyzer:
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
         """Build search filters from actual product metadata"""
-        cache_file = "metadata_filters_cache.json"
+        cache_file = "../scripts/databases/metadata_filters_cache.json"
         
         # Try to load from cache first
         if os.path.exists(cache_file):
@@ -49,7 +49,7 @@ class SearchAnalyzer:
         """Discover all searchable criteria from product metadata"""
         try:
             import chromadb
-            client = chromadb.PersistentClient(path="../scripts/chroma_db")
+            client = chromadb.PersistentClient(path="../scripts/databases/chroma_db")
             collection = client.get_collection(name="products")
             
             # Sample products for analysis

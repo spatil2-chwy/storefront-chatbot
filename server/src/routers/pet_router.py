@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import PetProfile as PetSchema, User as UserSchema
-from src.services.pet_service import PetService
+from src.services.database.pet_service import PetService
 from src.models.pet import PetProfile
 
 router = APIRouter(prefix="/pets", tags=["pets"])

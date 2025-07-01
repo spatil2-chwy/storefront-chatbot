@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
-import Header from '@/components/Header';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
-import SearchMatches from '@/components/SearchMatches';
+import Header from '@/components/layout/Header';
+import ChatWidget from '@/components/chat/ChatWidget';
+import ComparisonFooter from '@/components/layout/ComparisonFooter';
+import SearchMatches from '@/components/chat/SearchMatches';
 import { useProduct } from '@/hooks/useProducts';
 import { Product } from '../types';
 import { Button } from '@/components/ui/button';

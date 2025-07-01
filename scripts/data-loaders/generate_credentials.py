@@ -6,8 +6,8 @@ from passlib.context import CryptContext
 import re
 
 # setup
-BASE    = Path(__file__).resolve().parent.parent  
-DATA    = BASE / "data"
+BASE    = Path(__file__).resolve().parent  
+DATA    = BASE / "../data/server-data"
 IN_TSV  = DATA / "customers_full.tsv"
 OUT_TSV = DATA / "customers_full_with_creds.tsv"
 

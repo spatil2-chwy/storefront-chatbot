@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
-import { Product } from '../types';
+import { Product } from '../../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import SearchMatches from './SearchMatches';
+import SearchMatches from '../chat/SearchMatches';
 import ProductChatModal from './ProductChatModal';
-import { useGlobalChat } from '../contexts/ChatContext';
+import { useGlobalChat } from '../../contexts/ChatContext';
 
 interface ProductCardProps {
   product: Product;

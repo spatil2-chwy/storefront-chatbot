@@ -1,12 +1,12 @@
 from typing import List, Optional
 from src.models.product import Product
-from src.services.chatbot_logic import chat
+from src.services.search.chatbot_logic import chat
 import time
 
 class ProductService:
     def __init__(self):
         import chromadb
-        self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
+        self.client = chromadb.PersistentClient(path="../scripts/databases/chroma_db")
         self.collection = self.client.get_collection(name="products")
         self._search_analyzer = None  # Lazy loading for search matches
         print("✅ ProductService initialized successfully")
@@ -15,7 +15,7 @@ class ProductService:
     def search_analyzer(self):
         """Lazy load the search analyzer only when needed"""
         if self._search_analyzer is None:
-            from src.services.search_analyzer import SearchAnalyzer
+            from src.services.search.search_analyzer import SearchAnalyzer
             print("🔄 Initializing SearchAnalyzer...")
             self._search_analyzer = SearchAnalyzer()
         return self._search_analyzer
@@ -231,7 +231,7 @@ class ProductService:
             print(f"🔍 Starting direct search for: '{query}'")
             
             # Use direct semantic search instead of going through the chat function
-            from src.services.searchengine import query_products, rank_products
+            from src.services.search.searchengine import query_products, rank_products
             
             search_start = time.time()
             results = query_products(query, (), (), ())  # No filters for direct search

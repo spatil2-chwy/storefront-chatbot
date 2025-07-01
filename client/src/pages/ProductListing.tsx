@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
-import Header from '@/components/Header';
-import ProductCard from '@/components/ProductCard';
-import ProductFilters from '@/components/ProductFilters';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
+import Header from '@/components/layout/Header';
+import ProductCard from '@/components/product/ProductCard';
+import ProductFilters from '@/components/product/ProductFilters';
+import ChatWidget from '@/components/chat/ChatWidget';
+import ComparisonFooter from '@/components/layout/ComparisonFooter';
 import { api } from '@/lib/api';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';

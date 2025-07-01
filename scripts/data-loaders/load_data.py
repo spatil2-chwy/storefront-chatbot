@@ -1,14 +1,16 @@
 from pathlib import Path
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
-from src.database import engine, Base
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent / "server" / "src"))
+from database import engine, Base
 
 def main():
     # ensure all ORM tables are created
     Base.metadata.create_all(bind=engine)
 
-    BASE = Path(__file__).resolve().parent.parent  # server/src
-    DATA = BASE / "data"
+    BASE = Path(__file__).resolve().parent  # scripts/data-loaders
+    DATA = BASE / "../data/server-data"
     USERS_TSV = DATA / "customers_full_with_creds.tsv"
     PETS_TSV  = DATA / "pet_profiles_assigned.tsv"
 

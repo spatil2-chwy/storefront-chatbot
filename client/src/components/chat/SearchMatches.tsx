@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchMatch } from '../types';
+import { SearchMatch } from '../../types';
 import { Badge } from '@/components/ui/badge';
 import { Target, CheckCircle, Heart, Dog, Baby, Scale, Package, Shield, Pill, Utensils, Award } from 'lucide-react';
 

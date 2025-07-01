@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import ChatMessage as ChatSchema
 from src.models.chat import ChatMessage
-from src.services.chat_service import ChatService
-from src.services.user_service import UserService
-from src.services.chatbot_logic import chat
-from src.services.chatmodes_service import compare_products, ask_about_product
+from src.services.database.chat_service import ChatService
+from src.services.database.user_service import UserService
+from src.services.search.chatbot_logic import chat
+from src.services.chat_modes.chatmodes_service import compare_products, ask_about_product
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 chat_svc = ChatService()

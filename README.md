@@ -1,82 +1,170 @@
-# Storefront Chatbot
+# 🛍️ Storefront Chatbot
 
-Chewy chatbot application with a React frontend and FastAPI backend. Features AI-powered product recommendations and live agent support.
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js (v18 or higher) - for frontend
-- Python (v3.8 or higher) - for backend
-- npm or yarn
-
-### Frontend (React/Vite)
-```bash
-# Navigate to client directory
-cd client
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-The frontend will be available at `http://localhost:5173`
-
-### Backend (FastAPI)
-```bash
-# Navigate to server directory
-cd server
-
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-Load the data from server:
-
-```bash
-python -m src.scripts.load_data
-````
-
-# Start FastAPI server
-uvicorn src.main:app --reload --host localhost --port 8000
-```
-The backend will be available at `http://localhost:8000`
-
-### API Documentation
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+A modern e-commerce chatbot application with intelligent product search, comparison features, and personalized recommendations. Built with React frontend and FastAPI backend.
 
 ## 🏗️ Project Structure
 
 ```
-├── client/                # React frontend
+storefront-chatbot/
+├── 🖥️  client/                    # React frontend application
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
-│   │   ├── lib/           # Utilities and hooks
-│   │   ├── types/         # TypeScript type definitions
-│   │   └── main.tsx       # Entry point
-│   ├── public/            # Static assets
-│   ├── package.json       # Frontend dependencies
-│   ├── vite.config.ts     # Vite configuration
-│   ├── tailwind.config.ts # Tailwind CSS configuration
-│   ├── tsconfig.json      # TypeScript configuration
-│   ├── postcss.config.js  # PostCSS configuration
-│   ├── components.json    # shadcn/ui configuration
-│   └── index.html         # HTML template
-├── server/                # FastAPI backend
-│   ├── main.py            # FastAPI application
-│   ├── routes.py          # API routes
-│   ├── storage.py         # In-memory data storage
-│   ├── schemas.py         # Pydantic models
-│   └── requirements.txt   # Python dependencies
-├── dist/                  # Production build output
-├── .gitignore            # Git ignore rules
-└── README.md             # This file
+│   │   ├── components/           # Reusable UI components
+│   │   ├── pages/               # Page components (routing)
+│   │   ├── contexts/            # React contexts (state management)
+│   │   ├── hooks/               # Custom React hooks
+│   │   ├── lib/                 # Utilities and API clients
+│   │   └── types/               # TypeScript type definitions
+│   └── public/                  # Static assets
+│
+├── 🖧  server/                     # FastAPI backend application
+│   └── src/
+│       ├── models/              # SQLAlchemy database models
+│       ├── routers/             # API route handlers
+│       ├── services/            # Business logic services
+│       │   ├── database/        # Database/CRUD services
+│       │   ├── search/          # Search and AI services
+│       │   ├── chat-modes/      # Chat feature modes
+│       │   └── prompts/         # Prompt templates
+│       ├── database.py          # Database configuration
+│       ├── schemas.py           # Pydantic schemas
+│       └── main.py              # FastAPI application entry point
+│
+└── 📁 scripts/                    # Data processing and setup scripts
+    ├── chromadb-builders/       # ChromaDB vector database builders
+    ├── data-loaders/            # Data loading and setup scripts
+    ├── data/                    # Large datasets and files
+    └── databases/               # Vector databases and cache files
 ```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Node.js** 18+ and npm (for frontend)
+- **Python** 3.10+ (for backend)
+- **Git** for version control
+
+### 1️⃣ Setup Backend
+```bash
+cd storefront-chatbot/server
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 2️⃣ Setup Frontend
+```bash
+cd storefront-chatbot/client
+npm install
+```
+
+### 3️⃣ Initialize Databases
+```bash
+cd storefront-chatbot/scripts/chromadb-builders
+python productdbbuilder.py
+python review_synthesis_dbbuilder.py
+
+cd ../data-loaders
+python load_data.py
+```
+
+### 4️⃣ Run the Application
+```bash
+# Terminal 1: Start backend server
+cd storefront-chatbot/server/src
+python main.py
+
+# Terminal 2: Start frontend dev server
+cd storefront-chatbot/client
+npm run dev
+```
+
+🎉 **Access the application at `http://localhost:5173`**
+
+## 🔧 Key Features
+
+### 🤖 AI-Powered Chat
+- **Intelligent Product Search**: Semantic search across product catalogs
+- **Product Comparison**: Side-by-side product comparisons with AI insights
+- **Q&A Mode**: Ask specific questions about products
+
+### 👤 User Management  
+- **User Authentication**: Secure login/logout functionality
+- **Pet Profiles**: Manage pet information for personalized recommendations
+- **Order History**: Track previous purchases and preferences
+
+### 🛍️ Product Discovery
+- **Advanced Filtering**: Filter by brand, category, price, and more
+- **Search Analytics**: Understanding user search patterns
+- **Recommendation Engine**: AI-powered product suggestions
+
+## 📊 Services Architecture
+
+### Database Services (`server/src/services/database/`)
+- **ProductService**: Product catalog management and retrieval
+- **UserService**: User authentication and profile management  
+- **PetService**: Pet profile management
+- **ChatService**: Chat history and message persistence
+
+### Search Services (`server/src/services/search/`)
+- **SearchEngine**: Vector-based semantic product search
+- **ChatbotLogic**: AI conversation handling and context management
+- **SearchAnalyzer**: Search pattern analysis and optimization
+
+### Chat Features (`server/src/services/chat-modes/`)
+- **ProductComparison**: Side-by-side product comparison logic
+- **ProductQA**: Question-answering about specific products
+
+### Configuration (`server/src/services/prompts/`)
+- **Prompt Templates**: AI prompt engineering and templates
+
+## 📚 Data Management
+
+### ChromaDB Builders (`scripts/chromadb-builders/`)
+- **ProductDBBuilder**: Builds vector embeddings for products
+- **ReviewSynthesisBuilder**: Processes and embeds product reviews
+- **ArticleDBBuilder**: Creates knowledge base from articles
+
+### Data Loaders (`scripts/data-loaders/`)
+- **load_data.py**: Loads user and pet data into SQL database
+- **generate_credentials.py**: Creates user authentication credentials
+- **assign_pets.py**: Associates pets with user accounts
+
+## 🛠️ Development
+
+### Adding New Features
+1. **Backend**: Add new services in appropriate `services/` subdirectory
+2. **Frontend**: Create components in `client/src/components/`
+3. **Database**: Add models in `server/src/models/`
+4. **API**: Add routes in `server/src/routers/`
+
+### Environment Configuration
+Create `.env` file in `server/` directory:
+```env
+OPENAI_API_KEY_2=your_openai_api_key
+DATABASE_URL=sqlite:///./storefront.db
+```
+
+### Database Migrations
+```bash
+cd storefront-chatbot/scripts/data-loaders
+python load_data.py  # Recreates tables and loads fresh data
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes following the project structure
+4. Test your changes thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**Built with ❤️ using React, FastAPI, ChromaDB, and OpenAI**
 
 ## 🔧 Architecture
 

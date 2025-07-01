@@ -10,12 +10,12 @@ import os
 
 load_dotenv()
 
-client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+client = chromadb.PersistentClient(path="./../scripts/databases/chroma_db")
 PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
 
 def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY_2")
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
     return OpenAI(api_key=api_key)

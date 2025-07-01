@@ -1,8 +1,5 @@
-from .product_service import ProductService
-from .pet_service import PetService
-from .user_service import UserService
-from .chat_service import ChatService
-from .chatmodes_service import compare_products, get_product_comparison_data, ask_about_product
+from .database import ProductService, PetService, UserService, ChatService
+from .chat_modes import compare_products, get_product_comparison_data, ask_about_product
 
 # Create singleton instances
 product_service = ProductService()
@@ -16,5 +13,6 @@ __all__ = [
     'user_service',
     'chat_service',
     'compare_products',
-    'get_product_comparison_data'
+    'get_product_comparison_data',
+    'ask_about_product'
 ]

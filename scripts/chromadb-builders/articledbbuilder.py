@@ -95,7 +95,7 @@ metadatas = [
 ids = [str(article['id']) for article in articles]
 
 # === Initialize ChromaDB Persistent Client ===
-client = chromadb.PersistentClient(path="./chroma_db")
+client = chromadb.PersistentClient(path="../databases/chroma_db")
 collection = client.get_or_create_collection(name="wordpress_articles")
 
 # === Batch Indexing ===

@@ -6,8 +6,8 @@ from os import getenv
 import time
 from typing import List, Dict, Any, Optional, Union, cast
 load_dotenv()
-from src.services.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY")
+from src.services.search.searchengine import query_products, rank_products
+api_key = getenv("OPENAI_API_KEY_2")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 client = OpenAI(api_key=api_key)
@@ -259,7 +259,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
-    from src.services.product_service import ProductService
+    from src.services.database.product_service import ProductService
     product_service = ProductService()
     
     # Use query_products for all searches (it handles empty filters fine)
@@ -302,7 +302,7 @@ def search_products_with_followup(query: str, required_ingredients: list, exclud
     Returns:
         tuple: A tuple containing a list of products and follow-up questions
     """
-    from src.services.searchengine import query_products_with_followup
+    from src.services.search.searchengine import query_products_with_followup
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects

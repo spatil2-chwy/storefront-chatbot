@@ -2,7 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from typing import List, Dict, Any
-from .prompts import get_comparison_prompt, get_ask_about_product_prompt
+from src.services.prompts.prompts import get_comparison_prompt, get_ask_about_product_prompt
 
 load_dotenv()
 
@@ -19,14 +19,14 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     try:
         if json_mode:
             response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+                model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": query}],
                 response_format={"type": "json_object"},
                 temperature=0.2
             )
         else:
             response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+                model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": query}],
                 temperature=0.2
             )
@@ -37,7 +37,7 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     except Exception as e:
         error_message = str(e)
         if "rate_limit" in error_message.lower() or "429" in error_message:
-            return "I'm currently experiencing high demand. Please try again in a few minutes."
+            return error_message
         elif "quota" in error_message.lower():
             return "I've reached my usage limit for today. Please try again tomorrow."
         else:

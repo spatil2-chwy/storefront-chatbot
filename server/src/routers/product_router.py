@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import Product as ProductSchema, SearchResponse
 from src.models.product import Product
-from src.services.product_service import ProductService
+from src.services.database.product_service import ProductService
 
 router = APIRouter(prefix="/products", tags=["products"])
 product_svc = ProductService()

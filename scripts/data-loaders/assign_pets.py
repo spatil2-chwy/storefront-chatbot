@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR      = os.path.normpath(os.path.join(BASE_DIR, "..", "data"))
+DATA_DIR      = os.path.normpath(os.path.join(BASE_DIR, "..", "data", "server-data"))
 
 CUSTOMERS_TSV = os.path.join(DATA_DIR, "customers_full.tsv")
 PETS_TSV      = os.path.join(DATA_DIR, "pet_profiles.tsv")
