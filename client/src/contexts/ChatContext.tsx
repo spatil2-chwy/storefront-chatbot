@@ -27,6 +27,9 @@ interface GlobalChatContextType {
   // Auto-open management
   shouldAutoOpen: boolean;
   setShouldAutoOpen: (should: boolean) => void;
+  // Hide main chat when product modal is active
+  isMainChatHidden: boolean;
+  setIsMainChatHidden: (hidden: boolean) => void;
 }
 
 const GlobalChatContext = createContext<GlobalChatContextType | undefined>(undefined);
@@ -58,8 +61,11 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   
   // Auto-open management
   const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
+  
+  // Hide main chat when product modal is active
+  const [isMainChatHidden, setIsMainChatHidden] = useState<boolean>(false);
 
-  // Compute comparison mode based on number of products
+  // Compute comparison mode based on number of products (need 2+ to compare)
   const isInComparisonMode = useMemo(() => {
     return comparingProducts.length >= 2;
   }, [comparingProducts.length]);
@@ -82,10 +88,11 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
 
   const addToComparison = useCallback((product: Product) => {
     setComparingProducts(prev => {
-      if (prev.length >= 3) return prev; // Max 3 products
-      
       const exists = prev.find(p => p.id === product.id);
       if (exists) return prev; // Already in comparison
+      
+      // Limit to 4 products maximum
+      if (prev.length >= 4) return prev;
       
       return [...prev, product];
     });
@@ -126,6 +133,8 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         isInComparisonMode,
         shouldAutoOpen,
         setShouldAutoOpen,
+        isMainChatHidden,
+        setIsMainChatHidden,
       }}
     >
       {children}

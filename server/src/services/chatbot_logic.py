@@ -243,8 +243,6 @@ Use the `search_products_with_followup` function:
 - Prioritize calling a tool over returning text explanations unless the query is super vague or not product related.
 """
 }
-
-
 MODEL = "gpt-4.1-mini"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):

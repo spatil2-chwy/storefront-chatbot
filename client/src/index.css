@@ -123,3 +123,75 @@
 .delay-300 {
   animation-delay: 300ms;
 }
+
+/* Chat message prose styling */
+@layer components {
+  .prose.prose-sm {
+    @apply text-sm leading-relaxed;
+  }
+  
+  .prose.prose-sm p {
+    @apply my-2 first:mt-0 last:mb-0;
+  }
+  
+  .prose.prose-sm ul, .prose.prose-sm ol {
+    @apply my-2 pl-4;
+  }
+  
+  .prose.prose-sm li {
+    @apply my-1;
+  }
+  
+  .prose.prose-sm strong {
+    @apply font-semibold;
+  }
+  
+  .prose.prose-sm em {
+    @apply italic;
+  }
+  
+  .prose.prose-sm code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-xs font-mono;
+  }
+  
+  .prose.prose-sm pre {
+    @apply bg-gray-100 p-2 rounded text-xs overflow-x-auto;
+  }
+  
+  .prose.prose-sm blockquote {
+    @apply border-l-4 border-gray-300 pl-3 italic;
+  }
+  
+  .prose.prose-sm h1, .prose.prose-sm h2, .prose.prose-sm h3 {
+    @apply font-semibold mt-3 mb-2 first:mt-0;
+  }
+  
+  .prose.prose-sm h1 {
+    @apply text-base;
+  }
+  
+  .prose.prose-sm h2 {
+    @apply text-sm;
+  }
+  
+  .prose.prose-sm h3 {
+    @apply text-sm;
+  }
+}
+
+/* Chat widget drag and resize styles */
+.no-drag {
+  pointer-events: auto;
+}
+
+.drag-handle:active {
+  cursor: grabbing !important;
+}
+
+/* Prevent text selection during drag */
+.select-none {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

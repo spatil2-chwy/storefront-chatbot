@@ -8,6 +8,7 @@ import { GlobalChatProvider } from "@/contexts/ChatContext";
 import Login from "@/pages/Login";
 import ProductListing from "@/pages/ProductListing";
 import ProductDetail from "@/pages/ProductDetail";
+import ProductComparison from "@/pages/ProductComparison";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
@@ -42,6 +43,11 @@ function Router() {
       <Route path="/product/:id">
         <ProtectedRoute>
           <ProductDetail />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/compare">
+        <ProtectedRoute>
+          <ProductComparison />
         </ProtectedRoute>
       </Route>
       <Route path="/profile">
