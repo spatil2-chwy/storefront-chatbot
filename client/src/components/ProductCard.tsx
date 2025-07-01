@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare } from 'lucide-react';
+import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
 import { Product } from '../types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showAIOverview, setShowAIOverview] = useState(false);
   const { 
     comparingProducts, 
     addToComparison, 
@@ -129,134 +130,167 @@ export default function ProductCard({ product }: ProductCardProps) {
   const matchedCategories = getMatchedCategories();
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
-      <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
-        {/* Product Image */}
-        <div className="relative w-full h-48">
-          {renderImage()}
-          {/* Fallback image (hidden by default) */}
-          <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
-            <div className="text-center">
-              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Image not available</p>
-            </div>
-          </div>
-        </div>
-        
-        <CardContent className="p-4 flex-1 flex flex-col">
-          {/* Original Product Information */}
-          <div className="mb-3">
-            <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
-              <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
-              <span className="text-[13px] align-middle">{product.title}</span>
-            </h4>
-          </div>
-          
-          <div className="flex items-center mb-2">
-            <div className="flex items-center">
-              <div className="flex text-sm">
-                {renderStars(product.rating || 0)}
+    <>
+      <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
+        <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
+          {/* Product Image */}
+          <div className="relative w-full h-48">
+            {renderImage()}
+            {/* Fallback image (hidden by default) */}
+            <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
+              <div className="text-center">
+                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Image not available</p>
               </div>
-              <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
-              <span className="text-xs text-gray-500 ml-1">
-                ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
-              </span>
             </div>
           </div>
           
-          <div className="space-y-1 mb-3">
-            <div className="flex items-center space-x-2">
-              <span className="text-lg font-semibold text-gray-900">${product.price}</span>
-              {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+          <CardContent className="p-4 flex-1 flex flex-col">
+            {/* Original Product Information */}
+            <div className="mb-2 flex-shrink-0">
+              <h4 className="line-clamp-3 text-sm h-16 leading-5 font-normal">
+                <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
+                <span className="text-[13px] align-middle">{product.title}</span>
+              </h4>
+            </div>
+            
+            <div className="flex items-center mb-2 flex-shrink-0 h-5">
+              <div className="flex items-center">
+                <div className="flex text-sm">
+                  {renderStars(product.rating || 0)}
+                </div>
+                <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
+                <span className="text-xs text-gray-500 ml-1">
+                  ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-1 mb-2 flex-shrink-0 min-h-[2.5rem]">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg font-semibold text-gray-900">${product.price}</span>
+                {product.originalPrice && product.originalPrice > (product.price || 0) && (
+                  <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                )}
+              </div>
+              {(product.autoshipPrice ?? 0) > 0 && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
+                  <div className="flex items-center space-x-1">
+                    <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                    <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+                  </div>
+                </div>
               )}
             </div>
-            {(product.autoshipPrice ?? 0) > 0 && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
-                <div className="flex items-center space-x-1">
-                  <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                  <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+
+            {/* Categories Matched Section - Fixed height container */}
+            <div className="mb-2 flex-shrink-0 min-h-[3rem]">
+              {matchedCategories.length > 0 && (
+                <>
+                  <div className="text-xs font-medium text-gray-700 mb-1">Categories Matched</div>
+                  <div className="flex flex-wrap gap-1">
+                    {matchedCategories.map((category, index) => (
+                      <Badge
+                        key={index}
+                        className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
+                      >
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Spacer to push bottom content down */}
+            <div className="flex-1"></div>
+          </CardContent>
+        </Link>
+
+        {/* Should You Buy It Button - Top right corner */}
+        {product.should_you_buy_it && (
+          <div className="absolute top-2 right-2">
+            <button
+              onMouseEnter={() => setShowAIOverview(true)}
+              onMouseLeave={() => setShowAIOverview(false)}
+              className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
+              title="Should You Buy It?"
+            >
+              <Bot className="w-4 h-4" />
+            </button>
+            
+            {/* Should You Buy It AI Overview Tooltip */}
+            {showAIOverview && product.should_you_buy_it && (
+              <div className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
                 </div>
+                <div className="text-gray-700 text-xs leading-relaxed">
+                  {product.should_you_buy_it}
+                </div>
+                {/* Arrow pointing down to the button */}
+                <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
               </div>
             )}
           </div>
+        )}
 
-          {/* Categories Matched Section */}
-          {matchedCategories.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
-              <div className="flex flex-wrap gap-1">
-                {matchedCategories.slice(0, 3).map((category, index) => (
-                  <Badge
-                    key={index}
-                    className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
-                  >
-                    {category}
-                  </Badge>
-                ))}
-                {matchedCategories.length > 3 && (
-                  <Badge className="text-xs px-2 py-1 bg-gray-50 text-gray-600 border border-gray-200 rounded-md">
-                    +{matchedCategories.length - 3} more
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Link>
-
-      {/* Add to Cart Button */}
-      <div className="px-4 pb-3">
-        <Button
-          onClick={handleAddToCart}
-          className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
-        >
-          <ShoppingCart className="w-4 h-4" />
-          <span>Add to Cart</span>
-        </Button>
-      </div>
-
-      {/* Bottom Controls */}
-      <div className="px-4 pb-4 flex items-center justify-between">
-        {/* Compare Checkbox */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id={`compare-${product.id}`}
-            checked={isSelected}
-            onCheckedChange={handleCompareChange}
-            disabled={isComparisonFull}
-            className="border-gray-300 w-5 h-5"
-            title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
-          />
-          <label
-            htmlFor={`compare-${product.id}`}
-            className={`text-sm cursor-pointer ${isComparisonFull ? 'text-gray-400' : 'text-gray-700'}`}
-            title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
+        {/* Add to Cart Button */}
+        <div className="px-4 pb-3">
+          <Button
+            onClick={handleAddToCart}
+            className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
           >
-            Compare
-          </label>
+            <ShoppingCart className="w-4 h-4" />
+            <span>Add to Cart</span>
+          </Button>
         </div>
 
-        {/* Chat Button */}
-        <Button
-          onClick={handleChatClick}
-          variant="ghost"
-          size="sm"
-          className="text-gray-600 hover:text-chewy-blue hover:bg-blue-50 p-2 h-auto"
-        >
-          <MessageSquare className="!w-8 !h-8 stroke-gray-300 stroke-1" />
-          <span className="text-sm">Chat</span>
-        </Button>
-      </div>
+        {/* Bottom Controls */}
+        <div className="px-4 pb-4 flex items-center justify-between">
+          {/* Compare Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`compare-${product.id}`}
+              checked={isSelected}
+              onCheckedChange={handleCompareChange}
+              disabled={isComparisonFull}
+              className="border-gray-300 w-5 h-5"
+              title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
+            />
+            <label
+              htmlFor={`compare-${product.id}`}
+              className={`text-sm cursor-pointer ${isComparisonFull ? 'text-gray-400' : 'text-gray-700'}`}
+              title={isComparisonFull ? "Maximum 4 products can be compared" : ""}
+            >
+              Compare
+            </label>
+          </div>
 
-      {/* Product Chat Modal */}
-      <ProductChatModal
-        product={product}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onHideMainChat={handleHideMainChat}
-      />
-    </Card>
+          {/* Chat Button */}
+          <Button
+            onClick={handleChatClick}
+            variant="ghost"
+            size="sm"
+            className="text-gray-600 hover:text-chewy-blue hover:bg-blue-50 p-2 h-auto"
+          >
+            <MessageSquare className="!w-8 !h-8 stroke-gray-300 stroke-1" />
+            <span className="text-sm">Chat</span>
+          </Button>
+        </div>
+
+        {/* Product Chat Modal */}
+        <ProductChatModal
+          product={product}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onHideMainChat={handleHideMainChat}
+        />
+      </Card>
+    </>
   );
 }
