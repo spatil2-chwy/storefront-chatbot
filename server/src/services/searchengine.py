@@ -1,82 +1,15 @@
 import chromadb
-from sentence_transformers import SentenceTransformer
-import os
 from functools import lru_cache
 import time
 import math
 
 COLLECTION_NAME = "products"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+# EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
-# Global variables for lazy initialization
-_model = None
-_client = None
-_collection = None
 
-def get_model():
-    """Lazy load and cache the SentenceTransformer model"""
-    global _model
-    if _model is None:
-        start_time = time.time()
-        print("Loading SentenceTransformer model...")
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-        print(f"Model loaded successfully in {time.time() - start_time:.4f} seconds")
-    return _model
+client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+collection = client.get_collection(name=COLLECTION_NAME)
 
-def get_collection():
-    """Lazy load and cache the ChromaDB collection"""
-    global _client, _collection
-    if _collection is None:
-        start_time = time.time()
-        print("Initializing ChromaDB client...")
-        # Get the absolute path to the chroma_db directory
-        # current_dir =  # os.path.dirname(os.path.abspath(__file__))
-        chroma_path = "./../scripts/chroma_db"  # os.path.join(current_dir, "../../scripts/chroma_db")
-        _client = chromadb.PersistentClient(path=chroma_path)
-        _collection = _client.get_collection(name=COLLECTION_NAME)
-        print(f"ChromaDB collection loaded successfully in {time.time() - start_time:.4f} seconds")
-    return _collection
-
-@lru_cache(maxsize=100)
-def encode_query(query: str):
-    """Cache query encodings to avoid re-encoding the same queries"""
-    start_time = time.time()
-    result = get_model().encode([query])
-    print(f"Query encoded in {time.time() - start_time:.4f} seconds")
-    return result
-
-# excluded ingredients feature on hold for now...
-# def build_where_clause(required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
-#     # build where clause for special diet and ingredients tags
-#     if len(special_diet_tags) + len(required_ingredients) == 0 + len(excluded_ingredients):
-#         where_clause = {}
-#     elif len(special_diet_tags) + len(required_ingredients) + len(excluded_ingredients) == 1:
-#         # if only one special diet or ingredient, use a single condition
-#         if len(special_diet_tags) == 1:
-#             where_clause = {f"specialdiettag:{special_diet_tags[0]}": {"$eq": True}}
-#         elif len(required_ingredients) == 1:
-#             where_clause = {f"ingredienttag:{required_ingredients[0]}": {"$eq": True}}
-#         elif len(excluded_ingredients) == 1:
-#             # what to do?
-#             pass
-#     else:
-#         where_clause = {
-#             "$and": [
-#                 {
-#                     f"specialdiettag:{diet}": {
-#                         "$eq": True
-#                     }
-#                 } for diet in special_diet_tags
-#             ] + [
-#                 {
-#                     f"ingredienttag:{ingredient}": {
-#                         "$eq": True
-#                     }
-#                 } for ingredient in required_ingredients
-#             ]  # what do do?
-#         }
-
-#     return where_clause
 
 def build_where_clause(required_ingredients: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
@@ -107,31 +40,66 @@ def build_where_clause(required_ingredients: list, special_diet_tags: list):
 
     return where_clause
 
-def warmup():
-    """Pre-load model and collection to avoid cold start delays"""
-    print("Warming up search engine...")
-    start_time = time.time()
-    get_model()
-    get_collection()
-    # Test query to ensure everything is working
-    encode_query("test query")
-    print(f"Search engine warmed up in {time.time() - start_time:.4f} seconds")
 
-def query_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
+# def query_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
+#     start_time = time.time()
+#     where_clause = build_where_clause(required_ingredients, special_diet_tags)
+#     if where_clause == {}:
+#         where_clause = None
+#     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
+    
+#     db_start = time.time()
+#     results = collection.query(
+#         # query_embeddings=query_embedding,
+#         query_texts=[query],
+#         n_results=300,
+#         where=where_clause,
+#     )
+#     # make sure products do not have excluded ingredients by checking if they are in the metadata
+#     if excluded_ingredients:
+#         filtered_metadatas = []
+#         filtered_documents = []
+#         filtered_ids = []
+#         filtered_distances = []
+#         for i in range(len(results['documents'][0])):
+#             metadata = results['metadatas'][0][i]
+#             if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
+#                 filtered_metadatas.append(metadata)
+#                 filtered_documents.append(results['documents'][0][i])
+#                 filtered_ids.append(results['ids'][0][i])
+#                 filtered_distances.append(results['distances'][0][i])
+#         results = {
+#             'metadatas': [filtered_metadatas],
+#             'documents': [filtered_documents],
+#             'ids': [filtered_ids],
+#             'distances': [filtered_distances],
+#         }
+#     else:
+#         # Ensure results are always lists of lists for compatibility
+#         results = {
+#             'metadatas': [results['metadatas'][0] if results['metadatas'] else []],
+#             'documents': [results['documents'][0] if results['documents'] else []],
+#             'ids': [results['ids'][0] if results['ids'] else []],
+#             'distances': [results['distances'][0] if results['distances'] else []],
+#         }
+
+#     print(f"Database query completed in {time.time() - db_start:.4f} seconds")
+#     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
+#     return results
+
+@lru_cache(maxsize=128)
+def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, special_diet_tags: tuple):
+    print(query_products.cache_info())
     start_time = time.time()
     where_clause = build_where_clause(required_ingredients, special_diet_tags)
     if where_clause == {}:
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
     
-    collection = get_collection()
-    query_start = time.time()
-    query_embedding = encode_query(query)
-    print(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
-    
     db_start = time.time()
     results = collection.query(
-        query_embeddings=query_embedding,
+        # query_embeddings=query_embedding,
+        query_texts=[query],
         n_results=300,
         where=where_clause,
     )
@@ -275,8 +243,18 @@ if __name__ == "__main__":
     #     print(f"Document: {doc}, Metadata: {meta}")
     # print(f"Total results found: {len(results['documents'])}")
 
-    results = query_products("dog food", ingredient_needs, excluded_ingredients, special_diet_needs)
-    ranked_products = rank_products(results)
-    print("Ranked Products:")
-    for metadata, document, product_id, distance in ranked_products:
-        print(f"Product ID: {product_id}, Metadata: {metadata}, Document: {document}, Distance: {distance}")
+    start = time.time()
+    results1 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 1 executed in {time.time() - start:.4f} seconds")
+    results2 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 2 executed in {time.time() - start:.4f} seconds")
+    results3 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 3 executed in {time.time() - start:.4f} seconds")
+    results4 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 4 executed in {time.time() - start:.4f} seconds")
+    print(results1 == results3 and results2 == results4)  # Should be True due to caching
+
+    # ranked_products = rank_products(results)
+    # print("Ranked Products:")
+    # for metadata, document, product_id, distance in ranked_products:
+    #     print(f"Product ID: {product_id}, Metadata: {metadata}, Document: {document}, Distance: {distance}")

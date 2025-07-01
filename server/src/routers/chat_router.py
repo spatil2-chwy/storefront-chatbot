@@ -45,7 +45,7 @@ async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
             user_context_data = user_svc.get_user_context_for_chat(db, request.customer_key)
             if user_context_data:
                 user_context = user_svc.format_pet_context_for_ai(user_context_data)
-                print(f"User context for customer {request.customer_key}:\n{user_context}")
+                # print(f"User context for customer {request.customer_key}:\n{user_context}")
         except Exception as e:
             print(f"Error getting user context for customer {request.customer_key}: {e}")
     

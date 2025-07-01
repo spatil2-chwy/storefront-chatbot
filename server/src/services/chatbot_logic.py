@@ -132,7 +132,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     product_service = ProductService()
     
     # Use query_products for all searches (it handles empty filters fine)
-    results = query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
@@ -192,7 +192,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
     )
-    print(full_history)
+    # print(full_history)
     # Step 1: Get model response
     response = client.responses.create(
         model=MODEL,

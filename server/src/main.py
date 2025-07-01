@@ -2,9 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import engine, Base
 from src.routers.routes import router
-from src.services.searchengine import warmup
-import asyncio
-import threading
 
 
 def create_app() -> FastAPI:
@@ -20,15 +17,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
-    
-    # Warm up the search engine in a background thread to avoid blocking startup
-    def warmup_thread():
-        try:
-            warmup()
-        except Exception as e:
-            print(f"Error during warmup: {e}")
-    
-    threading.Thread(target=warmup_thread, daemon=True).start()
     
     return app
 
