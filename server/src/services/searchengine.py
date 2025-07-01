@@ -6,102 +6,19 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import cast, Any
+import os
 
 load_dotenv()
 
+client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-
-# Global variables for lazy initialization
-_model = None
-_client = None
-_product_collection = None
-_review_collection = None
-
-# Global product buffer for conversation management
-_product_buffer = []
-_buffer_query = None
-_buffer_filters = None
-
-def get_model():
-    """Lazy load and cache the SentenceTransformer model"""
-    global _model
-    if _model is None:
-        start_time = time.time()
-        print("Loading SentenceTransformer model...")
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-        print(f"Model loaded successfully in {time.time() - start_time:.4f} seconds")
-    return _model
-
-def get_client():
-    """Lazy load and cache the ChromaDB client"""
-    global _client
-    if _client is None:
-        start_time = time.time()
-        print("Initializing ChromaDB client...")
-        chroma_path = "./../scripts/chroma_db"
-        _client = chromadb.PersistentClient(path=chroma_path)
-        print(f"ChromaDB client initialized in {time.time() - start_time:.4f} seconds")
-    return _client
-
-def get_product_collection():
-    """Lazy load and cache the product ChromaDB collection"""
-    global _product_collection
-    if _product_collection is None:
-        start_time = time.time()
-        print("Loading product collection...")
-        client = get_client()
-        _product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
-        print(f"Product collection loaded successfully in {time.time() - start_time:.4f} seconds")
-    return _product_collection
-
-def get_review_collection():
-    """Lazy load and cache the review synthesis ChromaDB collection"""
-    global _review_collection
-    if _review_collection is None:
-        start_time = time.time()
-        print("Loading review synthesis collection...")
-        client = get_client()
-        _review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
-        print(f"Review synthesis collection loaded successfully in {time.time() - start_time:.4f} seconds")
-    return _review_collection
-
 
 def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
     return OpenAI(api_key=api_key)
-
-@lru_cache(maxsize=100)
-def encode_query(query: str):
-    """Cache query encodings to avoid re-encoding the same queries"""
-    start_time = time.time()
-    result = get_model().encode([query])
-    print(f"Query encoded in {time.time() - start_time:.4f} seconds")
-    return result
-
-def get_product_buffer():
-    """Get the current product buffer"""
-    global _product_buffer
-    return _product_buffer.copy()
-
-def set_product_buffer(products, query, filters):
-    """Set the product buffer with new products and context"""
-    global _product_buffer, _buffer_query, _buffer_filters
-    _product_buffer = products
-    _buffer_query = query
-    _buffer_filters = filters
-    print(f"Product buffer updated with {len(products)} products for query: '{query}'")
-
-def clear_product_buffer():
-    """Clear the product buffer"""
-    global _product_buffer, _buffer_query, _buffer_filters
-    _product_buffer = []
-    _buffer_query = None
-    _buffer_filters = None
-    print("Product buffer cleared")
 
 def build_where_clause(required_ingredients: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
@@ -131,17 +48,6 @@ def build_where_clause(required_ingredients: list, special_diet_tags: list):
         }
 
     return where_clause
-
-def warmup():
-    """Pre-load model and collection to avoid cold start delays"""
-    print("Warming up search engine...")
-    start_time = time.time()
-    get_model()
-    get_product_collection()
-    get_review_collection()
-    # Test query to ensure everything is working
-    encode_query("test query")
-    print(f"Search engine warmed up in {time.time() - start_time:.4f} seconds")
 
 def generate_followup_questions(top_products, user_query, previous_questions=None):
     """
@@ -248,17 +154,17 @@ Sure! Just a couple of questions to help you out:
         print(f"Error generating follow-up questions: {e}")
         return "These look like great options based on the reviews — go with what fits your style or budget!"
 
-def query_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
-    """Initial product search - returns products and stores top 300 in buffer"""
+@lru_cache(maxsize=128)
+def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, special_diet_tags: tuple):
+    print(query_products.cache_info())
     start_time = time.time()
     where_clause = build_where_clause(required_ingredients, special_diet_tags)
     if where_clause == {}:
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
     
-    collection = get_product_collection()
+    collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
     query_start = time.time()
-    query_embedding = encode_query(query)
     print(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
     
     db_start = time.time()
@@ -266,7 +172,7 @@ def query_products(query: str, required_ingredients: list, excluded_ingredients:
         # query_embeddings=query_embedding,
         query_texts=[query],
         n_results=300,
-        where=cast(Any, where_clause),
+        where=where_clause,
     )
     
     # Handle case where no results are returned
@@ -309,28 +215,10 @@ def query_products(query: str, required_ingredients: list, excluded_ingredients:
 
     print(f"Database query completed in {time.time() - db_start:.4f} seconds")
     
-    # Store the top 300 products in the buffer for follow-up queries
-    buffer_products = []
-    for i in range(len(results['metadatas'][0])):
-        buffer_products.append((
-            results['metadatas'][0][i],
-            results['documents'][0][i],
-            results['ids'][0][i],
-            results['distances'][0][i]
-        ))
-    
-    # Store buffer with context
-    filters = {
-        'required_ingredients': required_ingredients,
-        'excluded_ingredients': excluded_ingredients,
-        'special_diet_tags': special_diet_tags
-    }
-    set_product_buffer(buffer_products, query, filters)
-    
     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
 
-def query_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, previous_products: list):
+def query_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
     """
     Follow-up product search - re-ranks previous products based on user's follow-up response
     
@@ -339,40 +227,50 @@ def query_products_with_followup(query: str, required_ingredients: list, exclude
         required_ingredients: Required ingredients filter
         excluded_ingredients: Excluded ingredients filter  
         special_diet_tags: Special diet tags filter
-        previous_products: List of previous products to re-rank (from search_products)
+        original_query: The original query to retrieve cached results from
     """
     start_time = time.time()
-    print(f"Starting follow-up search for: '{query}' with {len(previous_products)} previous products")
+    print(f"Starting follow-up search for: '{query}' using original query: '{original_query}'")
     
-    if not previous_products:
-        print("No previous products provided, falling back to regular search")
-        return query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+    # Get the original cached results from query_products
+    original_results = query_products(original_query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+    
+    if not original_results or not original_results['metadatas'] or not original_results['metadatas'][0]:
+        print("No original results found, falling back to regular search")
+        return query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+    
+    # Convert results to list of tuples for easier manipulation
+    previous_products = []
+    for i in range(len(original_results['metadatas'][0])):
+        previous_products.append((
+            original_results['metadatas'][0][i],
+            original_results['documents'][0][i],
+            original_results['ids'][0][i],
+            original_results['distances'][0][i]
+        ))
+    
+    print(f"Retrieved {len(previous_products)} products from cached original query")
     
     # Get the review synthesis collection for semantic similarity
     try:
-        review_collection = get_review_collection()
-        
-        # Create embedding for the follow-up query
-        query_embedding = encode_query(query)
-        
-        # Get product IDs from previous products
-        previous_product_ids = [str(product[2]) for product in previous_products]  # product_id is at index 2
+        review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
         
         where_clause = build_where_clause(required_ingredients, special_diet_tags)
         if where_clause == {}:
             where_clause = None
+            
         # Query the review synthesis collection for these specific products
         # We'll use the review collection to get semantic similarity scores
         review_results = review_collection.query(
-            query_embeddings=query_embedding,
-            n_results=len(previous_product_ids),
+            query_texts=[query],
+            n_results=len(previous_products),
             where=cast(Any, where_clause)
         )
 
         # Handle case where no results are returned
         if not review_results or not review_results['metadatas'] or not review_results['metadatas'][0]:
             print("No results found in review synthesis query")
-            return query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+            return original_results
         
         # Filter out excluded ingredients
         if excluded_ingredients:
@@ -393,7 +291,6 @@ def query_products_with_followup(query: str, required_ingredients: list, exclude
                 'ids': [filtered_ids],
                 'distances': [filtered_distances],
             }
-
         else:
             review_results = {
                 'metadatas': [review_results['metadatas'][0] if review_results['metadatas'] else []],
@@ -417,14 +314,6 @@ def query_products_with_followup(query: str, required_ingredients: list, exclude
         # Sort by new distance (lower is better)
         reranked_products.sort(key=lambda x: x[3])
         
-        # Update the product buffer with re-ranked products
-        filters = {
-            'required_ingredients': required_ingredients,
-            'excluded_ingredients': excluded_ingredients,
-            'special_diet_tags': special_diet_tags
-        }
-        set_product_buffer(reranked_products, query, filters)
-        
         # Convert back to the expected format
         results = {
             'metadatas': [[p[0] for p in reranked_products]],
@@ -437,8 +326,8 @@ def query_products_with_followup(query: str, required_ingredients: list, exclude
         return results
         
     except Exception as e:
-        print(f"Error in follow-up search: {e}, falling back to regular search")
-        return query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+        print(f"Error in follow-up search: {e}, falling back to original results")
+        return original_results
 
 def rank_products(results, user_query=None, previous_questions=None):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""

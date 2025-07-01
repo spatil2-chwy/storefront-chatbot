@@ -6,7 +6,7 @@ from os import getenv
 import time
 from typing import List, Dict, Any, Optional, Union, cast
 load_dotenv()
-from src.services.searchengine import query_products, rank_products, get_product_buffer, clear_product_buffer
+from src.services.searchengine import query_products, rank_products
 api_key = getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
@@ -22,22 +22,7 @@ tools = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid).
-
-For example:
-User: "My cat is allergic to chicken but needs protein, what should I get?"                 
-query: "cat food"
-required_ingredients: []
-excluded_ingredients: ["chicken"]
-special_diet_tags: ["Chicken-Free", "High-Protein"]
-
-
-User: "Bird food for my parakeet"
-query: "bird food parakeet"
-required_ingredients: []
-excluded_ingredients: []
-special_diet_tags: []
-"""
+                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid)."""
                 },
                 "required_ingredients": {
                     "type": "array",
@@ -118,21 +103,18 @@ special_diet_tags: []
 
         {
         "type": "function",
-        "name": "search_products_with_followup",
+        "name": "search_products_based_on_followup",
         "description": "Use this when the user answers a follow-up question that helps refine their preferences. This function re-ranks a previously shown list of products using semantic similarity between user input and product reviews + titles. This is for personalization and streamlining the search — not for starting a new search.",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user history to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid).
-                    
-User: "Easiest way to deal with dog yard dog poop? + Re-usable scoopers should be fine."
-query: "Re-usable dog poop scoopers"
-required_ingredients: []
-excluded_ingredients: []
-special_diet_tags: []
-"""
+                    "description": "Refine the original query using the user's conversational input. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Preserve original product focus unless the follow-up changes direction."
+                },
+                "original_query": {
+                    "type": "string",
+                    "description": "The original search query that was used to find the initial products. This is used to retrieve the cached results for re-ranking."
                 },
                 "required_ingredients": {
                     "type": "array",
@@ -205,7 +187,7 @@ special_diet_tags: []
                     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
                 },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "special_diet_tags"],
+            "required": ["query", "original_query", "required_ingredients", "excluded_ingredients", "special_diet_tags"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
@@ -221,26 +203,45 @@ You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's b
 Your mission is to guide pet parents toward the best products for their pet's specific needs. You can either ask a follow-up question if the query is too vague or respond through *action* by using one of the tools available to you.
 
 ---
-🔧 TOOL SELECTION RULES:
+TOOL SELECTION RULES - Pick as per the chat history:
+Use search_products when:
+- It's a new topic, or a user starts with a need, product request, or pet issue.
+- The user switches to a different concern (e.g. from food to toys, anxiety to allergies).
 
-Use the `search_products` function:
-- When a pet parent starts with a need, product question, or describes a situation like: "My cat has a chicken allergy" or "I need a toy for a heavy chewer".
-- Also use it if the pet parent gives a new, unrelated response to a follow-up question (e.g. "products to help my dog with anxiety").
+Use search_products_based_on_followup when:
+- The user answers a follow-up that refines the same topic — like size, texture, ingredients, sourcing, or diet preference.
+- The refinement is based on existing recommendations (e.g. “she's under 10 lbs”, “only if it's grain-free”).
 
-Use the `search_products_with_followup` function:
-- When the pet parent answers a follow-up question based on previously recommended products.
-- The follow-up should be relevant to the original search — like "Yes, she needs low-fat too."
+IMPORTANT: If the conversation history shows we've already searched for products and the user is adding preferences or refinements, use search_products_based_on_followup.
 
+EXAMPLE:
+User Query 1: My dog has a chicken allergy and needs high-protein food.
+Assistant:
+- Tool: search_products
+- Query: "dog food"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free"]
+
+Based on follow-up questions presented to the user, say the user responds with...
+User Query 2: Also, grain-free is a must and it would be great if it supports coat and skin health.
+Assistant:
+- Tool: search_products_based_on_followup
+- Query: "grain-free dog food. Supports coat and skin health"
+- original_query: "dog food"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
+
+User Query 3: Something that helps with sensitive digestion and the packaging should be convenient.
+Assistant:
+- Tool: search_products_based_on_followup
+- Query: "grain-free dog food for dogs with sensitive stomachs. Supports coat and skin health. Convenient packaging options are preferred"
+- original_query: "dog food"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
 ---
-🌟 CHEWY BRAND TONE:
-
-- Be clear, friendly, and deeply empathetic — like a savvy pet parent who knows what it's like.
 - Use precise, mobile-friendly language.
-
----
-❌ DO NOT:
+DO NOT:
 - Answer questions unrelated to pet products. Gently steer back to product needs.
-- Prioritize calling a tool over returning text explanations unless the query is super vague or not product related.
 """
 }
 MODEL = "gpt-4.1-mini"
@@ -263,7 +264,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
@@ -290,33 +291,27 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Total search_products time: {time.time() - start:.4f} seconds")
     return products, followup_questions
 
-def search_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
+def search_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
     """Searches for pet products based on user's follow-up response to previous questions.
     Parameters:
         query (str): User's follow-up response/refinement
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
         special_diet_tags (list): List of special diet tags that the product must adhere to
+        original_query (str): The original query to retrieve cached results from
     Returns:
         tuple: A tuple containing a list of products and follow-up questions
     """
-    from src.services.searchengine import query_products_with_followup, get_product_buffer, clear_product_buffer
+    from src.services.searchengine import query_products_with_followup
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
     from .product_service import ProductService
     product_service = ProductService()
     
-    # Get previous products from the product buffer
-    previous_products = get_product_buffer()
-    
-    if not previous_products:
-        print("No previous products in buffer, falling back to regular search")
-        return search_products(query, required_ingredients, excluded_ingredients, special_diet_tags)
-    
     # Use query_products_with_followup for refined searches
-    # This will re-rank the products from the buffer using the review collection
-    results = query_products_with_followup(query, required_ingredients, excluded_ingredients, special_diet_tags, previous_products)
+    # This will retrieve the cached results from the original query and re-rank them
+    results = query_products_with_followup(query, required_ingredients, excluded_ingredients, special_diet_tags, original_query)
     print(f"Follow-up query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
@@ -349,7 +344,7 @@ def search_products_with_followup(query: str, required_ingredients: list, exclud
 
 function_mapping = {
     "search_products": search_products,
-    "search_products_with_followup": search_products_with_followup
+    "search_products_based_on_followup": search_products_with_followup
 }
 
 
@@ -405,6 +400,8 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
         for output_item in response.output:
             if output_item.type == "function_call":
                 tool_call = output_item
+                print(f"🔧 LLM chose to use tool: {tool_call.name}")
+                
                 # Convert tool_call to dict for history
                 tool_call_dict = {
                     "type": "function_call",
@@ -416,18 +413,19 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
                 full_history.append(tool_call_dict)
                 
                 # Determine if this is a new search or follow-up
-                is_followup = tool_call.name == "search_products_with_followup"
+                is_followup = tool_call.name == "search_products_based_on_followup"
                 
-                if tool_call.name not in ["search_products", "search_products_with_followup"]:
+                if tool_call.name not in ["search_products", "search_products_based_on_followup"]:
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
                 args = json.loads(tool_call.arguments)
                 print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
                 
-                # Clear product buffer if this is a new search (not follow-up)
+                # No need to clear buffer anymore - we use caching instead
                 if not is_followup:
-                    clear_product_buffer()
-                    print("🧹 Cleared product buffer for new search")
+                    print("🔄 New search - will use caching for follow-up queries")
+                else:
+                    print("🔄 Follow-up search - re-ranking existing results")
 
                 result = call_function(tool_call.name, args)
                 products, followup_questions = result
