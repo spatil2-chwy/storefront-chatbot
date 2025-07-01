@@ -86,7 +86,7 @@ tools = [
                     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
                 },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "category_level_2"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "category_level_2", "special_diet_tags"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
