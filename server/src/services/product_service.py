@@ -239,7 +239,7 @@ class ProductService:
             print(f"  🔍 Database search took: {search_time:.3f}s")
             
             ranking_start = time.time()
-            ranked_products = rank_products(results)
+            ranked_products, followup_questions = rank_products(results)
             ranking_time = time.time() - ranking_start
             print(f"  📊 Ranking took: {ranking_time:.3f}s")
             
@@ -273,7 +273,7 @@ class ProductService:
             
             return {
                 "products": products,
-                "reply": f"Found {len(products)} products for '{query}'"
+                "reply": f"Followup questions: {followup_questions}"
             }
             
         except Exception as e:
