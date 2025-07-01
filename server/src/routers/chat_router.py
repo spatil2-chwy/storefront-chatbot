@@ -53,7 +53,7 @@ async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
         user_input=request.message,
         history=request.history,
         user_context=user_context,
-        skip_products=request.skip_products
+        skip_products=request.skip_products or False
     )
 
     return {"response": reply}

@@ -81,6 +81,10 @@ for row in product_rows:
     if not clean_name or clean_name.strip() == "":
         clean_name = f"Product {product_id}"
 
+    # add purchase brand to clean name if available: Brand: {row['PURCHASE_BRAND']}
+    if row["PURCHASE_BRAND"]:
+        clean_name += f" | Brand: {row['PURCHASE_BRAND']}"
+
     # Get answered FAQs (may or may not be available)
     answered_faqs = row.get("Answered FAQs", "") or ""
 
