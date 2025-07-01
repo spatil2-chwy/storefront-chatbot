@@ -20,12 +20,24 @@ def format_product_details(products):
     for i, product in enumerate(products, 1):
         details = f"PRODUCT {i}: {product.get('title', 'Unknown Product')}\n"
         details += f"  Brand: {product.get('brand', 'Unknown')}\n"
-        details += f"  Price: ${product.get('price', 0):.2f}\n"
         
+        # Handle price safely
+        price = product.get('price', 0)
+        price = price if price is not None else 0
+        details += f"  Price: ${price:.2f}\n"
+        
+        # Handle autoship price safely
         if product.get('autoshipPrice'):
-            details += f"  Autoship Price: ${product.get('autoshipPrice', 0):.2f}\n"
-            
-        details += f"  Rating: {product.get('rating', 0):.1f} stars ({product.get('reviewCount', 0)} reviews)\n"
+            autoship_price = product.get('autoshipPrice', 0)
+            autoship_price = autoship_price if autoship_price is not None else 0
+            details += f"  Autoship Price: ${autoship_price:.2f}\n"
+        
+        # Handle rating safely
+        rating = product.get('rating', 0)
+        rating = rating if rating is not None else 0
+        review_count = product.get('reviewCount', 0)
+        review_count = review_count if review_count is not None else 0
+        details += f"  Rating: {rating:.1f} stars ({review_count} reviews)\n"
         
         if product.get('description'):
             details += f"  Description: {product.get('description', '')}\n"
@@ -69,12 +81,24 @@ def format_single_product_details(product):
     """
     details = f"Title: {product.get('title', 'Unknown Product')}\n"
     details += f"Brand: {product.get('brand', 'Unknown')}\n"
-    details += f"Price: ${product.get('price', 0):.2f}\n"
     
+    # Handle price safely
+    price = product.get('price', 0)
+    price = price if price is not None else 0
+    details += f"Price: ${price:.2f}\n"
+    
+    # Handle autoship price safely
     if product.get('autoshipPrice'):
-        details += f"Autoship Price: ${product.get('autoshipPrice', 0):.2f}\n"
-        
-    details += f"Rating: {product.get('rating', 0):.1f} stars ({product.get('reviewCount', 0)} reviews)\n"
+        autoship_price = product.get('autoshipPrice', 0)
+        autoship_price = autoship_price if autoship_price is not None else 0
+        details += f"Autoship Price: ${autoship_price:.2f}\n"
+    
+    # Handle rating safely
+    rating = product.get('rating', 0)
+    rating = rating if rating is not None else 0
+    review_count = product.get('reviewCount', 0)
+    review_count = review_count if review_count is not None else 0
+    details += f"Rating: {rating:.1f} stars ({review_count} reviews)\n"
     
     if product.get('description'):
         details += f"Description: {product.get('description', '')}\n"

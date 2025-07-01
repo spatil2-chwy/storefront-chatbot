@@ -1,6 +1,4 @@
 import chromadb
-from sentence_transformers import SentenceTransformer
-import os
 from functools import lru_cache
 import time
 import math
@@ -265,7 +263,8 @@ def query_products(query: str, required_ingredients: list, excluded_ingredients:
     
     db_start = time.time()
     results = collection.query(
-        query_embeddings=query_embedding,
+        # query_embeddings=query_embedding,
+        query_texts=[query],
         n_results=300,
         where=cast(Any, where_clause),
     )
@@ -617,16 +616,31 @@ if __name__ == "__main__":
     special_diet_needs = []
     ingredient_needs = ['Chicken', 'Pumpkin']
     excluded_ingredients = []
-    
-    results = query_products("dog food", ingredient_needs, excluded_ingredients, special_diet_needs)
-    ranked_products, followup = rank_products(results, "dog food")
-    print("Ranked Products:")
-    for i, product in enumerate(ranked_products):
-        if i < 5:  # Only print first 5
-            metadata, document, product_id, distance = product
-            print(f"Product ID: {product_id}, Distance: {distance}")
-    
-    # Test follow-up questions
-    if len(ranked_products) > 10:
-        followup = generate_followup_questions(ranked_products[:10], "dog food")
-        print(f"\nFollow-up questions: {followup}")
+    # where_clause = build_where_clause(ingredient_needs, special_diet_needs)
+    # print(where_clause)
+    # collection = get_collection()
+    # results = collection.query(
+    #     query_embeddings=encode_query("dog food"),
+    #     n_results=100,
+    #     where=where_clause,
+    # )
+    # print("Results:")
+    # for doc, meta in zip(results['documents'], results['metadatas']):
+    #     print(f"Document: {doc}, Metadata: {meta}")
+    # print(f"Total results found: {len(results['documents'])}")
+
+    start = time.time()
+    results1 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 1 executed in {time.time() - start:.4f} seconds")
+    results2 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 2 executed in {time.time() - start:.4f} seconds")
+    results3 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 3 executed in {time.time() - start:.4f} seconds")
+    results4 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    print(f"Query 4 executed in {time.time() - start:.4f} seconds")
+    print(results1 == results3 and results2 == results4)  # Should be True due to caching
+
+    # ranked_products = rank_products(results)
+    # print("Ranked Products:")
+    # for metadata, document, product_id, distance in ranked_products:
+    #     print(f"Product ID: {product_id}, Metadata: {metadata}, Document: {document}, Distance: {distance}")

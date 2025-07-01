@@ -234,7 +234,7 @@ class ProductService:
             from src.services.searchengine import query_products, rank_products
             
             search_start = time.time()
-            results = query_products(query, [], [], [])  # No filters for direct search
+            results = query_products(query, (), (), ())  # No filters for direct search
             search_time = time.time() - search_start
             print(f"  🔍 Database search took: {search_time:.3f}s")
             

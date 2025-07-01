@@ -19,14 +19,14 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     try:
         if json_mode:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-4.1-nano",
                 messages=[{"role": "user", "content": query}],
                 response_format={"type": "json_object"},
                 temperature=0.2
             )
         else:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model="gpt-4.1-nano",
                 messages=[{"role": "user", "content": query}],
                 temperature=0.2
             )
@@ -48,7 +48,7 @@ def compare_products(user_question: str, products: List[Dict[str, Any]]) -> str:
     Compare products based on user question using OpenAI.
     """
     if not products or len(products) < 2:
-        return "I need at least 2 products to provide a comparison. Please select more products to compare."
+        return "Please select at least 2 products to compare them."
     
     # Generate the comparison prompt
     prompt = get_comparison_prompt(user_question, products)
