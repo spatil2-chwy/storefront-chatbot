@@ -16,28 +16,14 @@ tools = [
     {
         "type": "function",
         "name": "search_products",
-        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags.",
+        "description": "Use this for a **new product search** based on the pet parent's initial input. This includes needs like 'dog has chicken allergy', specific intents like 'puppy training treats', or general requests like 'dry cat food'. This tool performs a **broad product discovery**, comparing the search query against product names only — so the query must be **direct, specific, and product-oriented**, using known categories (e.g. 'dog food', 'training treats', 'calming diffusers'). Avoid conversational or vague phrasing — instead, convert the user's situation into a precise product type Chewy sells. Include filters like excluded ingredients or special diet tags if relevant.",   
+
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid).
-
-For example:
-User: "My cat is allergic to chicken but needs protein, what should I get?"                 
-query: "cat food"
-required_ingredients: []
-excluded_ingredients: ["chicken"]
-special_diet_tags: ["Chicken-Free", "High-Protein"]
-
-
-User: "Bird food for my parakeet"
-query: "bird food parakeet"
-required_ingredients: []
-excluded_ingredients: []
-special_diet_tags: []
-"""
+                    "description": "Turn the user's input into a structured, search-friendly product query. Focus on concrete product types (e.g. 'dog food', 'training treats', 'calming chews'). Do **not** use emotional, behavioral, or conversational language — keep it **short, structured, and literal**, since this will be compared to product names only. Avoid subjective phrases like 'something that helps with...', 'I need...', 'convenient packaging', etc.",
                 },
                 "required_ingredients": {
                     "type": "array",
@@ -119,20 +105,13 @@ special_diet_tags: []
         {
         "type": "function",
         "name": "search_products_with_followup",
-        "description": "Use this when the user answers a follow-up question that helps refine their preferences. This function re-ranks a previously shown list of products using semantic similarity between user input and product reviews + titles. This is for personalization and streamlining the search — not for starting a new search.",
+        "description": "Use this when a pet parent gives a **follow-up answer** that refines their preferences for products already shown. This tool **re-ranks the previous product results** by comparing the follow-up text against product reviews and titles — so it's okay for the query to be more **conversational or descriptive**, especially about qualities like texture, packaging, digestibility, or effectiveness. Carry over previous filters unless the user clearly shifts direction. Use this only if the follow-up is related to the original query — otherwise restart with `search_products`.",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user history to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid).
-                    
-User: "Easiest way to deal with dog yard dog poop? + Re-usable scoopers should be fine."
-query: "Re-usable dog poop scoopers"
-required_ingredients: []
-excluded_ingredients: []
-special_diet_tags: []
-"""
+                    "description": "Refine the original query using the user's conversational input. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Preserve original product focus unless the follow-up changes direction.",
                 },
                 "required_ingredients": {
                     "type": "array",
@@ -221,26 +200,46 @@ You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's b
 Your mission is to guide pet parents toward the best products for their pet's specific needs. You can either ask a follow-up question if the query is too vague or respond through *action* by using one of the tools available to you.
 
 ---
-🔧 TOOL SELECTION RULES:
+YOU HAVE 2 TOOLS. PLEASE USE THE CORRECT TOOL AS PER THE USER'S QUERY + CHAT HISTORY:
+Use search_products when:
+- It's a completely new topic, or a user starts with a need, product request, or pet issue.
+- The user switches to a completely different product category (e.g. from food/treats to toys, from nutrition to grooming, from health to accessories).
 
-Use the `search_products` function:
-- When a pet parent starts with a need, product question, or describes a situation like: "My cat has a chicken allergy" or "I need a toy for a heavy chewer".
-- Also use it if the pet parent gives a new, unrelated response to a follow-up question (e.g. "products to help my dog with anxiety").
+Use search_products_with_followup when:
+- The user answers a follow-up that refines the same topic — like size, texture, ingredients, sourcing, or diet preference.
+- The refinement is based on existing recommendations (e.g. "she's under 10 lbs", "only if it's grain-free").
+- The user switches between related product types within the same category (e.g. from "food" to "treats", from "dry food" to "wet food", from "puppy food" to "adult food").
 
-Use the `search_products_with_followup` function:
-- When the pet parent answers a follow-up question based on previously recommended products.
-- The follow-up should be relevant to the original search — like "Yes, she needs low-fat too."
+Do not use the follow-up tool if:
+- The user mentions a completely new issue, product category, or pet.
+- The follow-up changes the intent to a different product category instead of narrowing it.
 
+EXAMPLE:
+User Query 1: My dog has a chicken allergy and needs high-protein food.
+Assistant:
+- Tool: search_products
+- Query: "dog food"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free"]
+
+Based on follow-up questions presented to the user, say the user responds with...
+User Query 2: Also, grain-free is a must and it would be great if it supports coat and skin health.
+Assistant:
+- Tool: search_products_with_followup
+- Query: "grain-free dog food. Supports coat and skin health"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
+
+User Query 3: Something that helps with sensitive digestion and the packaging should be convenient.
+Assistant:
+- Tool: search_products_with_followup
+- Query: "grain-free dog food for dogs with sensitive stomachs. Supports coat and skin health. Convenient packaging options are preferred"
+- excluded_ingredients: ["chicken"]
+- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
 ---
-🌟 CHEWY BRAND TONE:
-
-- Be clear, friendly, and deeply empathetic — like a savvy pet parent who knows what it's like.
 - Use precise, mobile-friendly language.
-
----
-❌ DO NOT:
+DO NOT:
 - Answer questions unrelated to pet products. Gently steer back to product needs.
-- Prioritize calling a tool over returning text explanations unless the query is super vague or not product related.
 """
 }
 MODEL = "gpt-4.1-mini"
