@@ -27,7 +27,7 @@ def get_env_var(key: str, default: Optional[str] = None, *, required: bool = Fal
 
 
 @lru_cache(maxsize=None)
-def get_openai_client(api_key_env: str = "OPENAI_API_KEY") -> OpenAI:
+def get_openai_client(api_key_env: str = "OPENAI_API_KEY_2") -> OpenAI:
     """Return a cached OpenAI client initialized with the API key from env."""
     api_key = get_env_var(api_key_env, required=True)
     return OpenAI(api_key=api_key) 

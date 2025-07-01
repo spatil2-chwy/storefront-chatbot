@@ -43,7 +43,7 @@ def compare_products(user_question: str, products: List[Dict[str, Any]]) -> str:
         return "Please select at least 2 products to compare them."
     
     # Generate the comparison prompt
-    prompt = get_comparison_prompt(user_question, products)
+    prompt = get_comparison_prompt(products, user_question)
     
     # Get response from OpenAI (not in JSON mode for natural language response)
     response = get_openai_response(prompt, json_mode=False)
