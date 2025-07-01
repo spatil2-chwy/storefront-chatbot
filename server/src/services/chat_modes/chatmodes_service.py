@@ -1,16 +1,8 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
+from src.config.env import get_openai_client
 from typing import List, Dict, Any
 from src.services.prompts.prompts import get_comparison_prompt, get_ask_about_product_prompt
 
-load_dotenv()
-
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-
-client = OpenAI(api_key=api_key)
+client = get_openai_client()
 
 def get_openai_response(query: str, json_mode: bool = True) -> str:
     """

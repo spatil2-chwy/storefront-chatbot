@@ -1,16 +1,9 @@
-from openai import OpenAI
-from dotenv import load_dotenv
+from src.config.env import get_openai_client
 import json
 import time
-from os import getenv
-import time
 from typing import List, Dict, Any, Optional, Union, cast
-load_dotenv()
 from src.services.search.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY_2")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-client = OpenAI(api_key=api_key)
+
 # refactor needed, tools, system prompt, model, etc should be in a separate file
 tools = [
     {
@@ -210,7 +203,7 @@ Use search_products when:
 
 Use search_products_based_on_followup when:
 - The user answers a follow-up that refines the same topic — like size, texture, ingredients, sourcing, or diet preference.
-- The refinement is based on existing recommendations (e.g. “she's under 10 lbs”, “only if it's grain-free”).
+- The refinement is based on existing recommendations (e.g. "she's under 10 lbs", "only if it's grain-free").
 
 IMPORTANT: If the conversation history shows we've already searched for products and the user is adding preferences or refinements, use search_products_based_on_followup.
 
@@ -245,6 +238,9 @@ DO NOT:
 """
 }
 MODEL = "gpt-4.1-mini"
+
+# Initialize OpenAI client once for this module
+client = get_openai_client("OPENAI_API_KEY_2")
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.

@@ -3,22 +3,15 @@ from functools import lru_cache
 import time
 import math
 import json
-from openai import OpenAI
-from dotenv import load_dotenv
 from typing import cast, Any
-import os
 
-load_dotenv()
+from src.config.env import get_openai_client
+
+import os  # kept for file paths but not for env loading
 
 client = chromadb.PersistentClient(path="./../scripts/databases/chroma_db")
 PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
-
-def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY_2")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-    return OpenAI(api_key=api_key)
 
 def build_where_clause(required_ingredients: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
