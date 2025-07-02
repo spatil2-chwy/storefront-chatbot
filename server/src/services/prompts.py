@@ -75,6 +75,8 @@ PRODUCT INFORMATION:
 USER QUESTION: {user_question}
 
 Answer in short, concise sentences.
+
+If the product information is not enough to answer the question, use the web search to find more information.
 """
 
 def format_single_product_details(product):
