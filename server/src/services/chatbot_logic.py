@@ -23,13 +23,13 @@ tools = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients like chicken or grain in search query since they have seperate filters"""
+                    "description": """Structured, product-focused search query. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients information like "chicken" or "salmon" here since they have seperate filters"""
                 },
                 "required_ingredients": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must be present in the product, e.g. 'chicken', 'peas'. 'protein'/'grain' is NOT an ingredient"
+                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
                     },
                     "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
@@ -37,7 +37,7 @@ tools = [
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must not be present in the product, e.g. 'corn', 'soy'. 'protein'/'grain' is NOT an ingredient"
+                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
                     },
                     "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
@@ -64,21 +64,11 @@ tools = [
                     "items": {
                         "type": "string",
                         "enum": [
-                            "Chicken-Free",
-                            "Natural",
-                            "Gluten Free",
-                            "Limited Ingredient Diet",
-                            "High Fiber",
-                            "Human-Grade",
-                            "Veterinary Diet",
-                            "Rawhide-Free",
-                            "No Corn No Wheat No Soy",
-                            "Raw",
-                            "Organic",
-                            "Weight Control",
-                            "With Grain",
-                            "Non-GMO",
                             "Grain-Free",
+                            "No Corn No Wheat No Soy",
+                            "Limited Ingredient Diet",
+                            "Natural",
+                            "With Grain",
                             "High-Protein",
                         ],
                         "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
@@ -86,7 +76,7 @@ tools = [
                     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
                 },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "category_level_2", "special_diet_tags"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
@@ -113,24 +103,26 @@ tools = [
 system_message = {
     "role": "system",
     "content": """
-You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
+You are a helpful, fast, emotionally intelligent shopping assistant for pet parents on Chewy.
 
-Your mission is to guide pet parents toward the best products for their pet's specific needs and provide helpful pet care advice. You have access to two main tools:
+Your job is to help users find the best products for their pet's specific needs and to provide helpful pet care advice.
 
-1. Product search - for finding specific products when users want to shop
-2. Article search - for providing pet care advice, tips, and general information
+You have two tools:
+1. Product search - when users are shopping or describing product needs. Refer to entire chat history to understand the user's needs and preferences.
+2. Article search - for general pet care advice or behavioral questions. When users ask for general pet advice (like "I just got a new puppy!" or pet care questions), use the article search tool to find relevant expert content. After providing helpful advice from articles, suggest relevant products they might need.
 
-When users ask for general pet advice (like "I just got a new puppy!" or pet care questions), use the article search tool to find relevant expert content. After providing helpful advice from articles, suggest relevant products they might need.
-
-When users have specific product needs, use the product search tool.
-
-- Use precise, mobile-friendly language.
-- Be helpful and knowledgeable about both products and pet care.
-- When sharing article content, provide actionable tips and suggest relevant products.
+Key rules:
+- Be concise and mobile-friendly.
+- Only ask clarifying questions when absolutely necessary.
+- Never include abstract terms like “protein”, “grain”, or “nutrients” in ingredient fields — only use real food items (e.g. chicken, peas).
+- Convert vague user language into precise, Chewy-relevant product types.
+- If a user mentions a concern (like allergies, picky eater, etc.), tailor the product query accordingly.
+- Do NOT suggest articles when the user is clearly shopping, and vice versa.
+- Avoid repetitive follow-up questions unless the user response is unclear.
 """
 
 }
-MODEL = "gpt-4o"
+MODEL = "gpt-4.1"
 
 def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
@@ -154,6 +146,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
+
     ranked_products, followup_questions = rank_products(results, user_query=query, previous_questions=None)
     print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
@@ -228,7 +221,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
     # Create system message with user context if provided
     system_msg = system_message.copy()
     if user_context:
-        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations. Ask if they're shopping for their specific pets to refine searches."
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
     
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
@@ -239,6 +232,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
         model=MODEL,
         input=full_history,
         tools=cast(Any, tools),
+        temperature=0.1,
     )   
     print(f"First response received in {time.time() - start_time:.4f} seconds")
     # print(response)
@@ -296,6 +290,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
                         model=MODEL,
                         input=full_history,
                         # tools=[]  # No tools for this follow-up
+                        temperature=0.1,
                     )
 
                     full_history.append({

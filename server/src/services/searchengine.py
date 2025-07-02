@@ -124,6 +124,8 @@ def generate_followup_questions(top_products, user_query, previous_questions=Non
 
         for item in review_data
     ])
+
+    print(f"Reviews text: {reviews_text}")
     
     prompt = f"""You're a friendly but efficient Chewy assistant helping a pet parent decide between products based on real customer reviews.
 
@@ -135,6 +137,7 @@ Instructions:
 - Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
 - If one product clearly stands out for a specific use case, you can make a helpful statement instead of asking a question.
 - If all reviews are overwhelmingly positive and there are no key differentiators or concerns, say: "These look like great options based on the reviews — go with what fits your style or budget!"
+- Only user review-data to generate follow-ups.
 
 You're not being chatty — you're being helpful, warm, and efficient.
 
@@ -191,8 +194,6 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
         n_results=300,
         where=where_clause,
     )
-
-    print(f"Number of results: {len(results['metadatas'][0])}")
     
     # Handle case where no results are returned
     if not results or not results['metadatas'] or not results['metadatas'][0]:
@@ -204,19 +205,38 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
             'distances': [[]],
         }
     
+    print(f"Number of results: {len(results['metadatas'][0])}")
+    
     # Filter out excluded ingredients
     if excluded_ingredients:
         filtered_metadatas = []
         filtered_documents = []
         filtered_ids = []
         filtered_distances = []
-        for i in range(len(results['documents'][0])):
-            metadata = results['metadatas'][0][i]
-            if not any(f"ingredienttag:{ingredient.lower().strip()}" in metadata for ingredient in excluded_ingredients):
+        documents = (results.get('documents') or [[]])[0] or []
+        metadatas = (results.get('metadatas') or [[]])[0] or []
+        ids = (results.get('ids') or [[]])[0] or []
+        distances = (results.get('distances') or [[]])[0] or []
+        
+        for i in range(len(documents)):
+            metadata = metadatas[i] if i < len(metadatas) else {}
+            # Check if any excluded ingredient appears as a substring in any ingredient tag
+            has_excluded_ingredient = False
+            for ingredient in excluded_ingredients:
+                ingredient_lower = ingredient.lower().strip()
+                # Check all metadata keys that start with "ingredienttag:"
+                for key in metadata.keys():
+                    if key.startswith("ingredienttag:") and ingredient_lower in key.lower():
+                        has_excluded_ingredient = True
+                        break
+                if has_excluded_ingredient:
+                    break
+            
+            if not has_excluded_ingredient:
                 filtered_metadatas.append(metadata)
-                filtered_documents.append(results['documents'][0][i])
-                filtered_ids.append(results['ids'][0][i])
-                filtered_distances.append(results['distances'][0][i])
+                filtered_documents.append(documents[i] if i < len(documents) else '')
+                filtered_ids.append(ids[i] if i < len(ids) else '')
+                filtered_distances.append(distances[i] if i < len(distances) else 0.0)
         results = {
             'metadatas': [filtered_metadatas],
             'documents': [filtered_documents],
@@ -297,7 +317,19 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
 #             filtered_distances = []
 #             for i in range(len(review_results['documents'][0])):
 #                 metadata = review_results['metadatas'][0][i]
-#                 if not any(f"ingredienttag:{ingredient}" in metadata for ingredient in excluded_ingredients):
+#                 # Check if any excluded ingredient appears as a substring in any ingredient tag
+#                 has_excluded_ingredient = False
+#                 for ingredient in excluded_ingredients:
+#                     ingredient_lower = ingredient.lower().strip()
+#                     # Check all metadata keys that start with "ingredienttag:"
+#                     for key in metadata.keys():
+#                         if key.startswith("ingredienttag:") and ingredient_lower in key.lower():
+#                             has_excluded_ingredient = True
+#                             break
+#                     if has_excluded_ingredient:
+#                         break
+#                 
+#                 if not has_excluded_ingredient:
 #                     filtered_metadatas.append(metadata)
 #                     filtered_documents.append(review_results['documents'][0][i])
 #                     filtered_ids.append(review_results['ids'][0][i])
@@ -357,19 +389,8 @@ def rank_products(results, user_query=None, previous_questions=None):
     products_with_both = 0
     
     for metadata in results['metadatas'][0]:
-        # Check review synthesis flag and parse JSON content
-        review_synthesis_flag = metadata.get('review_synthesis_flag', False)
-        review_synthesis_json = metadata.get('review_synthesis', '{}')
-        
-        # Parse review synthesis JSON to check for actual content
-        try:
-            review_data = json.loads(review_synthesis_json)
-            has_review_content = (
-                review_synthesis_flag and 
-                review_data.get('should_you_buy_it', '') != "Insufficient reviews! No review synthesis"
-            )
-        except:
-            has_review_content = review_synthesis_flag
+        # Check review synthesis content using the flag
+        has_review_content = metadata.get('review_synthesis_flag', False)
         
         answered_faqs = metadata.get('answered_faqs', '') or ''
         
@@ -429,19 +450,8 @@ def rank_products(results, user_query=None, previous_questions=None):
         """
         score = 0.0
         
-        # Check review synthesis flag and parse JSON content
-        review_synthesis_flag = metadata.get('review_synthesis_flag', False)
-        review_synthesis_json = metadata.get('review_synthesis', '{}')
-        
-        # Parse review synthesis JSON to check for actual content
-        try:
-            review_data = json.loads(review_synthesis_json)
-            has_review_content = (
-                review_synthesis_flag and 
-                review_data.get('should_you_buy_it', '') != "Insufficient reviews! No review synthesis"
-            )
-        except:
-            has_review_content = review_synthesis_flag
+        # Check review synthesis content using the flag
+        has_review_content = metadata.get('review_synthesis_flag', False)
         
         # Synthesized reviews presence bonus (0.3 points for having review content)
         if has_review_content:
@@ -502,9 +512,26 @@ def rank_products(results, user_query=None, previous_questions=None):
     final_results = [(metadata, document, product_id, distance) 
                     for metadata, document, product_id, distance, score in sorted_results]
 
-    # get top 10
-    top_10_results = final_results[:10]
+    # get top 10 products with reviews or FAQs
+    top_10_results = []
+    for result in final_results:
+        metadata = result[0]
+        
+        # Check for review synthesis content using the flag
+        has_review_content = metadata.get('review_synthesis_flag', False)
+        
+        # Check for answered FAQs
+        answered_faqs = metadata.get('answered_faqs', '') or ''
+        has_faqs = bool(answered_faqs and answered_faqs.strip())
+        
+        # Include products that have either reviews or FAQs
+        if has_review_content or has_faqs:
+            top_10_results.append(result)
+            if len(top_10_results) >= 10:
+                break
     
+    print(f"Found {len(top_10_results)} products with reviews or FAQs for follow-up questions")
+
     print(f"Products ranked with advanced scoring in {time.time() - start_time:.4f} seconds")
     
     # Generate follow-up questions based on top 10 products

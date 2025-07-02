@@ -60,6 +60,13 @@ with open(REVIEW_SYNTH_PATH, "r") as f:
 
 print(f"📊 Review synthesis data loaded: {len(review_map)} entries")
 
+# === Step 3.5: Define Default Synthesis ===
+default_synth = {
+    "what_customers_love": ["Insufficient reviews! No review synthesis"],
+    "what_to_watch_out_for": ["Insufficient reviews! No review synthesis"],
+    "should_you_buy_it": "Insufficient reviews! No review synthesis"
+}
+
 # === Step 4: Filter for Parent Products ===
 product_df = df[df['TYPE'] == 'Product'].fillna({
     "NAME": "",
@@ -175,27 +182,14 @@ for row in product_rows:
         "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
+        "ATTR_SPECIAL_DIET": row["ATTR_SPECIAL_DIET"],
+        "INGREDIENTS": row["INGREDIENTS"],
+        "items": json.dumps(items_dict.get(product_id, [])),
+        "review_synthesis": json.dumps(review_map.get(part_number, default_synth)),
+        "review_synthesis_flag": has_review_synthesis,
         "unanswered_faqs": row["Unanswered FAQs"] or "",
         "answered_faqs": answered_faqs,
-        "has_review_synthesis": has_review_synthesis,
     }
-
-    # Add review synthesis data to metadata if available
-    if has_review_synthesis:
-        review_data = review_map[part_number]
-        metadata["review_synthesis"] = json.dumps(review_data)
-        metadata["what_customers_love"] = json.dumps(review_data.get('what_customers_love', []))
-        metadata["what_to_watch_out_for"] = json.dumps(review_data.get('what_to_watch_out_for', []))
-        metadata["should_you_buy_it"] = review_data.get('should_you_buy_it', '')
-    else:
-        metadata["review_synthesis"] = json.dumps({
-            "what_customers_love": ["No review synthesis available"],
-            "what_to_watch_out_for": ["No review synthesis available"],
-            "should_you_buy_it": "No review synthesis available"
-        })
-        metadata["what_customers_love"] = json.dumps(["No review synthesis available"])
-        metadata["what_to_watch_out_for"] = json.dumps(["No review synthesis available"])
-        metadata["should_you_buy_it"] = "No review synthesis available"
 
     # Add special diet tags
     if row["ATTR_SPECIAL_DIET"]:
