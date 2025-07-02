@@ -258,9 +258,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         try {
           let aiResponse: ChatMessage;
 
+          // Prepare chat history for all endpoints
+          const chatHistory = messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }));
+
           // If in comparison mode and we have products to compare, call the backend
           if (isInComparisonMode && comparingProducts.length >= 2) {
-            const response = await api.compareProducts(initialQuery, comparingProducts);
+            const response = await api.compareProducts(initialQuery, comparingProducts, chatHistory);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response,
@@ -269,7 +275,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             };
           } else if (currentContext.type === 'product' && currentContext.product) {
             // If in product context, call the backend for product-specific questions
-            const response = await api.askAboutProduct(initialQuery, currentContext.product);
+            const response = await api.askAboutProduct(initialQuery, currentContext.product, chatHistory);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response,
@@ -278,11 +284,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             };
           } else {
             // Use backend chatbot endpoint for general chat mode
-            const chatHistory = messages.map(msg => ({
-              role: msg.sender === 'user' ? 'user' : 'assistant',
-              content: msg.content
-            }));
-            
             // Skip products if this is the initial query from search bar (products already loaded)
             const skipProducts = initialQuery === processedQueryRef.current;
             const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key, skipProducts);
@@ -341,9 +342,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     try {
       let aiResponse: ChatMessage;
 
+      // Prepare chat history for all endpoints
+      const chatHistory = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+
       // If in comparison mode and we have at least 2 products to compare, call the backend
       if (isInComparisonMode && comparingProducts.length >= 2) {
-        const response = await api.compareProducts(messageToSend, comparingProducts);
+        const response = await api.compareProducts(messageToSend, comparingProducts, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -352,7 +359,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
-        const response = await api.askAboutProduct(messageToSend, currentContext.product);
+        const response = await api.askAboutProduct(messageToSend, currentContext.product, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -361,7 +368,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // If in comparison context, call the backend for product comparison
-        const response = await api.compareProducts(messageToSend, currentContext.products);
+        const response = await api.compareProducts(messageToSend, currentContext.products, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -370,11 +377,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else {
         // Use backend chatbot endpoint for general chat mode
-        const chatHistory = messages.map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        }));
-        
         const response = await api.chatbot(messageToSend, chatHistory, user?.customer_key);
         aiResponse = {
           id: (Date.now() + 1).toString(),
