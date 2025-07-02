@@ -138,7 +138,8 @@ class ProductBase(BaseModel):
     deal: Optional[bool]
     description: str
     inStock: Optional[bool]
-    category: str
+    category_level_1: str
+    category_level_2: str
     keywords: list
     search_matches: Optional[List[SearchMatch]] = None
     what_customers_love: Optional[str]

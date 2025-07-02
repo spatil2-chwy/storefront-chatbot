@@ -25,7 +25,6 @@ class ChatRequest(BaseModel):
     message: str
     history: list
     customer_key: Optional[int] = None
-    skip_products: Optional[bool] = False  # Flag to skip product loading for search queries
 
 class ComparisonRequest(BaseModel):
     message: str
@@ -52,8 +51,7 @@ async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
     reply = chat(
         user_input=request.message,
         history=request.history,
-        user_context=user_context,
-        skip_products=request.skip_products or False
+        user_context=user_context
     )
 
     return {"response": reply}

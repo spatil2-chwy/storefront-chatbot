@@ -28,7 +28,8 @@ class Product(BaseModel):
     deal: Optional[bool] = None  # Not available, can be False
     description: Optional[str] = None  # DESCRIPTION_LONG
     inStock: Optional[bool] = None  # Not available, can be True
-    category: Optional[str] = None  # CATEGORY_LEVEL1
+    category_level_1: Optional[str] = None  # CATEGORY_LEVEL1
+    category_level_2: Optional[str] = None  # CATEGORY_LEVEL2
     keywords: Optional[List[str]] = None  # specialdiettag/ingredienttag
     search_matches: Optional[List[SearchMatch]] = None  # New field for search match analysis
     what_customers_love: Optional[str] = None  # what_customers_love

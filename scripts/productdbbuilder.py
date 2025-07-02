@@ -171,7 +171,17 @@ for row in product_rows:
     if row["INGREDIENTS"]:
         for tag in map(str.strip, row["INGREDIENTS"].split(',')):
             if tag:
-                metadata[f"ingredienttag:{tag}"] = True
+                metadata[f"ingredienttag:{tag.lower()}"] = True
+
+    # Add category tags
+    if row["CATEGORY_LEVEL1"]:
+        tag = row["CATEGORY_LEVEL1"].strip()
+        if tag:
+            metadata[f"categorytag1:{tag}"] = True
+    if row["CATEGORY_LEVEL2"]:
+        tag = row["CATEGORY_LEVEL2"].strip()
+        if tag:
+            metadata[f"categorytag2:{tag}"] = True
 
     documents.append(clean_name)
     metadatas.append(metadata)

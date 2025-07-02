@@ -31,7 +31,8 @@ export interface Product {
   deal?: boolean; // Not available, can be false
   description?: string; // DESCRIPTION_LONG
   inStock?: boolean; // Not available, can be true
-  category?: string; // CATEGORY_LEVEL1
+  category_level_1?: string; // CATEGORY_LEVEL1
+  category_level_2?: string; // CATEGORY_LEVEL2
   keywords?: string[]; // specialdiettag/ingredienttag
   search_matches?: SearchMatch[]; // New field for search match analysis
   what_customers_love?: string; // what_customers_love

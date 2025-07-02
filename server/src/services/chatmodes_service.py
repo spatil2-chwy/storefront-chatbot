@@ -84,7 +84,8 @@ def get_product_comparison_data(products: List[Dict[str, Any]]) -> Dict[str, Any
             "rating": product.get("rating"),
             "description": product.get("description"),
             "keywords": product.get("keywords", []),
-            "category": product.get("category"),
+            "category_level_1": product.get("category_level_1"),
+            "category_level_2": product.get("category_level_2"),
             "unanswered_faqs": product.get("unanswered_faqs"),
             "answered_faqs": product.get("answered_faqs"),
         }
@@ -116,7 +117,8 @@ def get_product_data(product: Dict[str, Any]) -> Dict[str, Any]:
         "rating": product.get("rating"),
         "description": product.get("description"),
         "keywords": product.get("keywords", []),
-        "category": product.get("category"),
+        "category_level_1": product.get("category_level_1"),
+        "category_level_2": product.get("category_level_2"),
         "unanswered_faqs": product.get("unanswered_faqs"),
         "answered_faqs": product.get("answered_faqs"),
     }
