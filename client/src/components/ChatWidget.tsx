@@ -21,16 +21,20 @@ interface ChatWidgetProps {
 const formatMessageContent = (content: string): string => {
   let formattedContent = content;
   
+  // Convert [text](url) links to <a> tags
+  formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="break-all">$1</a>');
+  
   // Convert **bold** to <strong>
-  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
   // Convert *italic* to <em>
-  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
   
   // Convert numbered lists (1. item) to proper HTML lists
   if (/^\d+\.\s/m.test(formattedContent)) {
     const lines = formattedContent.split('\n');
     let inList = false;
+    let listType = '';
     const processedLines: string[] = [];
     
     lines.forEach(line => {
@@ -38,30 +42,35 @@ const formatMessageContent = (content: string): string => {
       const numberListMatch = trimmedLine.match(/^(\d+)\.\s(.+)$/);
       
       if (numberListMatch) {
-        if (!inList) {
-          processedLines.push('<ol class="list-decimal list-inside space-y-1 my-2">');
+        if (!inList || listType !== 'ol') {
+          if (inList) processedLines.push(`</${listType}>`);
+          processedLines.push('<ol>');
           inList = true;
+          listType = 'ol';
         }
-        processedLines.push(`<li class="leading-relaxed">${numberListMatch[2]}</li>`);
+        processedLines.push(`<li>${numberListMatch[2]}</li>`);
       } else if (trimmedLine.startsWith('- ')) {
-        if (!inList) {
-          processedLines.push('<ul class="list-disc list-inside space-y-1 my-2">');
+        if (!inList || listType !== 'ul') {
+          if (inList) processedLines.push(`</${listType}>`);
+          processedLines.push('<ul>');
           inList = true;
+          listType = 'ul';
         }
-        processedLines.push(`<li class="leading-relaxed">${trimmedLine.substring(2)}</li>`);
+        processedLines.push(`<li>${trimmedLine.substring(2)}</li>`);
       } else {
         if (inList) {
-          processedLines.push(inList ? '</ol>' : '</ul>');
+          processedLines.push(`</${listType}>`);
           inList = false;
+          listType = '';
         }
         if (trimmedLine) {
-          processedLines.push(`<p class="leading-relaxed my-2">${trimmedLine}</p>`);
+          processedLines.push(`<p>${trimmedLine}</p>`);
         }
       }
     });
     
     if (inList) {
-      processedLines.push('</ol>');
+      processedLines.push(`</${listType}>`);
     }
     
     formattedContent = processedLines.join('');
@@ -70,7 +79,7 @@ const formatMessageContent = (content: string): string => {
     const paragraphs = formattedContent.split('\n\n');
     formattedContent = paragraphs
       .filter(p => p.trim())
-      .map(p => `<p class="leading-relaxed my-2">${p.trim().replace(/\n/g, '<br class="my-1" />')}</p>`)
+      .map(p => `<p>${p.trim().replace(/\n/g, '<br>')}</p>`)
       .join('');
   }
   
@@ -521,7 +530,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
             >
               <div
-                className={`max-w-[75%] px-4 py-3 text-sm rounded-lg leading-relaxed ${
+                className={`max-w-[75%] px-4 py-3 text-sm rounded-lg leading-relaxed break-words overflow-wrap-anywhere break-all min-w-0 ${
                   message.sender === 'user'
                     ? 'bg-chewy-blue text-white'
                     : isTransitionMessage(message)
@@ -741,7 +750,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                                                   <div
-                          className={`max-w-[80%] px-4 py-3 rounded-lg font-work-sans text-sm leading-relaxed ${
+                          className={`max-w-[80%] px-4 py-3 rounded-lg font-work-sans text-sm leading-relaxed break-words overflow-wrap-anywhere break-all min-w-0 ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
                               : isTransitionMessage(message)
