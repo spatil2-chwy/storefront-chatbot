@@ -141,7 +141,26 @@ export const api = {
     };
   },
 
-  //   const data = await response.json();
-  //   return data.response;
-  // }
-}; 
+  async getPersonalizedGreeting(customer_key?: number): Promise<{greeting: string}> {
+    const payload = {
+      customer_key,
+    };
+    
+    const response = await fetch(`${API_BASE_URL}/chats/personalized_greeting`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to get personalized greeting: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+  },
+};
