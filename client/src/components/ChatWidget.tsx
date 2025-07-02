@@ -77,6 +77,45 @@ const formatMessageContent = (content: string): string => {
   return formattedContent;
 };
 
+// Helper function to get transition message styling based on type
+const getTransitionStyling = (message: ChatMessage): string => {
+  // Handle new transition messages with explicit types
+  if (message.isTransition) {
+    switch (message.transitionType) {
+      case 'product':
+        return 'bg-green-50 border border-green-200 text-green-700';
+      case 'comparison':
+        return 'bg-purple-50 border border-purple-200 text-purple-700';
+      case 'general':
+        return 'bg-blue-50 border border-blue-200 text-blue-700';
+      default:
+        return 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue';
+    }
+  }
+  
+  // Handle legacy messages based on content
+  if (message.content.includes('Now comparing:')) {
+    return 'bg-purple-50 border border-purple-200 text-purple-700';
+  }
+  if (message.content.includes('Now discussing:')) {
+    return 'bg-green-50 border border-green-200 text-green-700';
+  }
+  if (message.content.includes('Returned to') || message.content.includes('Exited')) {
+    return 'bg-blue-50 border border-blue-200 text-blue-700';
+  }
+  
+  return '';
+};
+
+// Helper function to check if a message is a transition (new or legacy)
+const isTransitionMessage = (message: ChatMessage): boolean => {
+  return message.isTransition || 
+         message.content.includes('Now comparing:') || 
+         message.content.includes('Now discussing:') || 
+         message.content.includes('Returned to') || 
+         message.content.includes('Exited');
+};
+
 export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
   const { 
     messages, 
@@ -476,13 +515,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           )}
           
           {messages
-            .filter(message => {
-              // Filter out comparison messages when there are 0 products
-              if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                return false;
-              }
-              return true;
-            })
             .map((message) => (
             <div
               key={message.id}
@@ -492,10 +524,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 className={`max-w-[75%] px-3 py-2 text-sm rounded-lg ${
                   message.sender === 'user'
                     ? 'bg-chewy-blue text-white'
-                    : message.isTransition || message.content.includes('Now comparing:') || message.content.includes('Now discussing:') || message.content.includes('Returned to') || message.content.includes('Exited')
-                    ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                    : isTransitionMessage(message)
+                    ? getTransitionStyling(message)
                     : 'bg-white text-gray-900 border border-gray-200'
-                } ${message.sender === 'ai' && !message.isTransition && !message.content.includes('Now comparing:') && !message.content.includes('Now discussing:') ? 'prose prose-sm prose-gray' : ''}`}
+                } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
               >
                 {message.content.includes('Now comparing:') ? (
                   <div className="space-y-2">
@@ -666,26 +698,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       >
                         Clear chat
                       </button>
-                      {/* Show exit button for product discussion mode when not on product detail page */}
-                      {currentContext.type === 'product' && !chatContext && (
-                        <button
-                          onClick={handleExitToGeneralChat}
-                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                          Exit to general chat
-                        </button>
-                      )}
-                      {/* Show exit button for comparison mode */}
-                      {currentContext.type === 'comparison' && (
-                        <button
-                          onClick={handleExitToGeneralChat}
-                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                          Exit to general chat
-                        </button>
-                      )}
+
                     </div>
                   )}
                 </div>
@@ -718,13 +731,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       )}
                       
                       {messages
-                        .filter(message => {
-                          // Filter out comparison messages when there are 0 products
-                          if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                            return false;
-                          }
-                          return true;
-                        })
                         .map((message) => (
                         <div
                           key={message.id}
@@ -734,10 +740,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           className={`max-w-[80%] px-3 py-2 rounded-lg font-work-sans text-sm ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
-                              : message.isTransition || message.content.includes('Now comparing:') || message.content.includes('Now discussing:') || message.content.includes('Returned to') || message.content.includes('Exited')
-                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                              : isTransitionMessage(message)
+                              ? getTransitionStyling(message)
                               : 'bg-gray-100 text-gray-900'
-                          } ${message.sender === 'ai' && !message.isTransition && !message.content.includes('Now comparing:') && !message.content.includes('Now discussing:') ? 'prose prose-sm prose-gray' : ''}`}
+                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
@@ -963,26 +969,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   >
                     Clear chat
                   </button>
-                  {/* Show exit button for product discussion mode when not on product detail page */}
-                  {currentContext.type === 'product' && !chatContext && (
-                    <button
-                      onClick={handleExitToGeneralChat}
-                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      Exit to general chat
-                    </button>
-                  )}
-                  {/* Show exit button for comparison mode */}
-                  {currentContext.type === 'comparison' && (
-                    <button
-                      onClick={handleExitToGeneralChat}
-                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      Exit to general chat
-                    </button>
-                  )}
+
                 </div>
               )}
             </div>
@@ -1016,13 +1003,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   )}
                   
                   {messages
-                    .filter(message => {
-                      // Filter out comparison messages when there are 0 products
-                      if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                        return false;
-                      }
-                      return true;
-                    })
                     .map((message) => (
                     <div
                       key={message.id}
@@ -1032,10 +1012,10 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           className={`max-w-[75%] px-3 py-2 rounded-lg font-work-sans text-sm ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
-                              : message.isTransition || message.content.includes('Now comparing:') || message.content.includes('Now discussing:') || message.content.includes('Returned to') || message.content.includes('Exited')
-                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                              : isTransitionMessage(message)
+                              ? getTransitionStyling(message)
                               : 'bg-gray-100 text-gray-900'
-                          } ${message.sender === 'ai' && !message.isTransition && !message.content.includes('Now comparing:') && !message.content.includes('Now discussing:') ? 'prose prose-sm prose-gray' : ''}`}
+                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">

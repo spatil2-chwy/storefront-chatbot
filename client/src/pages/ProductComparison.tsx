@@ -28,10 +28,10 @@ export default function ProductComparison() {
       const previousContext = currentContext;
       const newContext = { type: 'comparison' as const, products: comparingProducts };
       
-      // Add transition message if context is changing
+      // Add transition message if context is changing (only when increasing products or first time)
       if (previousContext.type !== 'comparison' || 
           !previousContext.products || 
-          previousContext.products.length !== comparingProducts.length) {
+          previousContext.products.length < comparingProducts.length) {
         addTransitionMessage(previousContext, newContext);
       }
       
@@ -49,8 +49,14 @@ export default function ProductComparison() {
   }, [comparingProducts.length, setLocation]);
 
   const handleExitComparison = () => {
+    // Add transition message before clearing comparison
+    const previousContext = currentContext;
+    const newContext = { type: 'general' as const };
+    addTransitionMessage(previousContext, newContext);
+    
+    // Clear comparison and set context
     clearComparison();
-    setCurrentContext({ type: 'general' });
+    setCurrentContext(newContext);
     setLocation('/');
   };
 

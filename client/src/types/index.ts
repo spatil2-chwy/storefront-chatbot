@@ -51,6 +51,7 @@ export interface ChatMessage {
   productTitle?: string; // For product discussion messages to store product title
   comparisonProducts?: Product[]; // For comparison messages to store full product data
   isTransition?: boolean; // For transition messages between contexts
+  transitionType?: 'general' | 'product' | 'comparison'; // Type of transition for styling
 }
 
 export interface ChatContext {
