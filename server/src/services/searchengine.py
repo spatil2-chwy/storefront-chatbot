@@ -11,7 +11,6 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-
 def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
     if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:

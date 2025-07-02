@@ -56,7 +56,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const renderImage = () => {
     if (!product.image || product.image === '') {
       return (
-        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+        <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500">Image not available</p>
@@ -138,13 +138,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Product Image */}
           <div className="relative w-full h-48 bg-gray-50">
             {renderImage()}
-            {/* Fallback image (hidden by default) */}
-            <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden absolute inset-0">
-              <div className="text-center">
-                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Image not available</p>
-              </div>
-            </div>
           </div>
           
           <CardContent className="p-4 flex-1 flex flex-col">

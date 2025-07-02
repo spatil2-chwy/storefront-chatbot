@@ -29,10 +29,12 @@ class ChatRequest(BaseModel):
 class ComparisonRequest(BaseModel):
     message: str
     products: List[dict]
+    history: Optional[list] = []  # Add conversation history
 
 class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
+    history: Optional[list] = []  # Add conversation history
 
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
@@ -65,7 +67,7 @@ async def compare_products_endpoint(request: ComparisonRequest):
     Handle product comparison requests.
     """
     try:
-        response = compare_products(request.message, request.products)
+        response = compare_products(request.message, request.products, request.history)
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
@@ -77,7 +79,7 @@ async def ask_about_product_endpoint(request: AskAboutProductRequest):
     Handle product question requests
     """
     try:
-        response = ask_about_product(request.message, request.product)
+        response = ask_about_product(request.message, request.product, request.history)
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Product question failed: {str(e)}")

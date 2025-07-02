@@ -7,6 +7,8 @@ interface GlobalChatContextType {
   addMessage: (message: ChatMessage) => void;
   insertMessageAt: (message: ChatMessage, index: number) => void;
   clearMessages: () => void;
+  // New method for context transitions
+  addTransitionMessage: (fromContext: ChatContextType, toContext: ChatContextType) => void;
   currentContext: ChatContextType;
   setCurrentContext: (context: ChatContextType) => void;
   isOpen: boolean;
@@ -64,6 +66,9 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   
   // Hide main chat when product modal is active
   const [isMainChatHidden, setIsMainChatHidden] = useState<boolean>(false);
+  
+  // Track if a transition message was recently added to prevent duplicates
+  const [lastTransitionTime, setLastTransitionTime] = useState<number>(0);
 
   // Compute comparison mode based on number of products (need 2+ to compare)
   const isInComparisonMode = useMemo(() => {
@@ -85,6 +90,50 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
+
+  // New method to handle context transitions with appropriate messages
+  const addTransitionMessage = useCallback((fromContext: ChatContextType, toContext: ChatContextType) => {
+    // Prevent duplicate transitions within 1 second
+    const now = Date.now();
+    if (now - lastTransitionTime < 1000) {
+      return;
+    }
+    
+    let transitionContent = '';
+    let transitionType: 'general' | 'product' | 'comparison' | undefined = undefined;
+    
+    if (toContext.type === 'product' && toContext.product) {
+      transitionContent = `Now discussing: ${toContext.product.brand} ${toContext.product.title}`;
+      transitionType = 'product';
+    } else if (toContext.type === 'comparison' && toContext.products && toContext.products.length > 0) {
+      transitionContent = `Now comparing: ${toContext.products.length} products`;
+      transitionType = 'comparison';
+    } else if (toContext.type === 'general') {
+      if (fromContext.type === 'product') {
+        transitionContent = 'Returned to general chat';
+        transitionType = 'general';
+      } else if (fromContext.type === 'comparison') {
+        transitionContent = 'Returned to general chat';
+        transitionType = 'general';
+      }
+    }
+
+    if (transitionContent && transitionType) {
+      setLastTransitionTime(now);
+      const transitionMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: transitionContent,
+        sender: 'ai',
+        timestamp: new Date(),
+        isTransition: true,
+        transitionType: transitionType,
+        // Store comparison data for historical preservation
+        comparisonProductCount: transitionType === 'comparison' && toContext.products ? toContext.products.length : undefined,
+        comparisonProducts: transitionType === 'comparison' && toContext.products ? toContext.products : undefined,
+      };
+      addMessage(transitionMessage);
+    }
+  }, [addMessage, lastTransitionTime]);
 
   const addToComparison = useCallback((product: Product) => {
     setComparingProducts(prev => {
@@ -116,6 +165,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         addMessage,
         insertMessageAt,
         clearMessages,
+        addTransitionMessage,
         currentContext,
         setCurrentContext,
         isOpen,

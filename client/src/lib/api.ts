@@ -51,10 +51,11 @@ export const api = {
     return response.json();
   },
 
-  async compareProducts(message: string, products: Product[]): Promise<string> {
+  async compareProducts(message: string, products: Product[], history: any[] = []): Promise<string> {
     const payload = {
       message,
       products,
+      history,
     };
     
     const response = await fetch(`${API_BASE_URL}/chats/compare`, {
@@ -75,10 +76,11 @@ export const api = {
     return data.response;
   },
 
-  async askAboutProduct(message: string, product: Product): Promise<string> {
+  async askAboutProduct(message: string, product: Product, history: any[] = []): Promise<string> {
     const payload = {
       message,
       product,
+      history,
     };
     
     const response = await fetch(`${API_BASE_URL}/chats/ask_about_product`, {

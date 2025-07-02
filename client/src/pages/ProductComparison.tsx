@@ -14,27 +14,32 @@ export default function ProductComparison() {
   const { 
     comparingProducts, 
     currentSearchQuery,
+    currentContext,
     setCurrentContext,
     setIsOpen,
     setShouldAutoOpen,
     clearComparison,
-    clearMessages
+    addTransitionMessage
   } = useGlobalChat();
 
-  // Auto-open chat when component mounts (context is set via ChatWidget chatContext prop)
+  // Auto-open chat when component mounts and set comparison context
   useEffect(() => {
     if (comparingProducts.length > 0) {
-      // Clear messages when entering comparison page
-      clearMessages();
+      const previousContext = currentContext;
+      const newContext = { type: 'comparison' as const, products: comparingProducts };
+      
+      // Add transition message if context is changing (only when increasing products or first time)
+      if (previousContext.type !== 'comparison' || 
+          !previousContext.products || 
+          previousContext.products.length < comparingProducts.length) {
+        addTransitionMessage(previousContext, newContext);
+      }
+      
+      setCurrentContext(newContext);
       setIsOpen(true);
       setShouldAutoOpen(true);
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [comparingProducts, setIsOpen, setShouldAutoOpen, clearMessages]);
+  }, [comparingProducts, setIsOpen, setShouldAutoOpen, setCurrentContext, addTransitionMessage, currentContext]);
 
   // Redirect back if no products to compare
   useEffect(() => {
@@ -44,8 +49,14 @@ export default function ProductComparison() {
   }, [comparingProducts.length, setLocation]);
 
   const handleExitComparison = () => {
+    // Add transition message before clearing comparison
+    const previousContext = currentContext;
+    const newContext = { type: 'general' as const };
+    addTransitionMessage(previousContext, newContext);
+    
+    // Clear comparison and set context
     clearComparison();
-    setCurrentContext({ type: 'general' });
+    setCurrentContext(newContext);
     setLocation('/');
   };
 

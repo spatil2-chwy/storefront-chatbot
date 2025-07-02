@@ -8,6 +8,8 @@ import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { ResizableBox } from 'react-resizable';
+import Draggable from 'react-draggable';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -22,6 +24,9 @@ interface ChatWidgetProps {
 const formatMessageContent = (content: string): string => {
   let formattedContent = content;
   
+  // Convert [text](url) links to <a> tags
+  formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="break-all">$1</a>');
+  
   // Convert **bold** to <strong>
   formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
@@ -32,6 +37,7 @@ const formatMessageContent = (content: string): string => {
   if (/^\d+\.\s/m.test(formattedContent)) {
     const lines = formattedContent.split('\n');
     let inList = false;
+    let listType = '';
     const processedLines: string[] = [];
     
     lines.forEach(line => {
@@ -39,21 +45,26 @@ const formatMessageContent = (content: string): string => {
       const numberListMatch = trimmedLine.match(/^(\d+)\.\s(.+)$/);
       
       if (numberListMatch) {
-        if (!inList) {
+        if (!inList || listType !== 'ol') {
+          if (inList) processedLines.push(`</${listType}>`);
           processedLines.push('<ol>');
           inList = true;
+          listType = 'ol';
         }
         processedLines.push(`<li>${numberListMatch[2]}</li>`);
       } else if (trimmedLine.startsWith('- ')) {
-        if (!inList) {
+        if (!inList || listType !== 'ul') {
+          if (inList) processedLines.push(`</${listType}>`);
           processedLines.push('<ul>');
           inList = true;
+          listType = 'ul';
         }
         processedLines.push(`<li>${trimmedLine.substring(2)}</li>`);
       } else {
         if (inList) {
-          processedLines.push('</ol>');
+          processedLines.push(`</${listType}>`);
           inList = false;
+          listType = '';
         }
         if (trimmedLine) {
           processedLines.push(`<p>${trimmedLine}</p>`);
@@ -62,7 +73,7 @@ const formatMessageContent = (content: string): string => {
     });
     
     if (inList) {
-      processedLines.push('</ol>');
+      processedLines.push(`</${listType}>`);
     }
     
     formattedContent = processedLines.join('');
@@ -71,11 +82,50 @@ const formatMessageContent = (content: string): string => {
     const paragraphs = formattedContent.split('\n\n');
     formattedContent = paragraphs
       .filter(p => p.trim())
-      .map(p => `<p>${p.trim()}</p>`)
+      .map(p => `<p>${p.trim().replace(/\n/g, '<br>')}</p>`)
       .join('');
   }
   
   return formattedContent;
+};
+
+// Helper function to get transition message styling based on type
+const getTransitionStyling = (message: ChatMessage): string => {
+  // Handle new transition messages with explicit types
+  if (message.isTransition) {
+    switch (message.transitionType) {
+      case 'product':
+        return 'bg-green-50 border border-green-200 text-green-700';
+      case 'comparison':
+        return 'bg-purple-50 border border-purple-200 text-purple-700';
+      case 'general':
+        return 'bg-blue-50 border border-blue-200 text-blue-700';
+      default:
+        return 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue';
+    }
+  }
+  
+  // Handle legacy messages based on content
+  if (message.content.includes('Now comparing:')) {
+    return 'bg-purple-50 border border-purple-200 text-purple-700';
+  }
+  if (message.content.includes('Now discussing:')) {
+    return 'bg-green-50 border border-green-200 text-green-700';
+  }
+  if (message.content.includes('Returned to') || message.content.includes('Exited')) {
+    return 'bg-blue-50 border border-blue-200 text-blue-700';
+  }
+  
+  return '';
+};
+
+// Helper function to check if a message is a transition (new or legacy)
+const isTransitionMessage = (message: ChatMessage): boolean => {
+  return message.isTransition || 
+         message.content.includes('Now comparing:') || 
+         message.content.includes('Now discussing:') || 
+         message.content.includes('Returned to') || 
+         message.content.includes('Exited');
 };
 
 export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext, preloadedChatResponse }: ChatWidgetProps) {
@@ -84,7 +134,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setMessages, 
     addMessage, 
     insertMessageAt,
-    clearMessages, 
+    clearMessages,
+    addTransitionMessage,
     currentContext, 
     setCurrentContext, 
     isOpen, 
@@ -186,77 +237,36 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
     // Product chat is now handled by the ProductChatModal component
 
-  // Handle chat context changes
+  // Handle chat context changes from props
   useEffect(() => {
     if (chatContext) {
-      const previousContext = currentContext;
       setCurrentContext(chatContext);
       
-      // Only auto-open chatbot if there's an explicit shouldOpen trigger
-      // Don't auto-open on context changes alone
-      
-      // Product context set - no message needed, will be handled by modal
-      
-      // If switching to comparison context, add a comparison message (don't duplicate what useEffect handles)
+      // Set comparison ref for comparison mode
       if (chatContext.type === 'comparison' && chatContext.products && chatContext.products.length >= 2) {
-        // Set the ref to indicate we're in comparison mode, but let the useEffect handle the message
         comparisonStartIndexRef.current = 1;
       }
-      
-      // Removed transition message - no longer showing "Transitioned to general chat"
     }
-  }, [chatContext?.type, chatContext?.product?.id, currentContext.type]);
+  }, [chatContext?.type, chatContext?.product?.id, setCurrentContext]);
 
-  // Handle global context changes (for when context is set from ProductCard)
+  // Reset comparison start index when switching contexts
   useEffect(() => {
-    // Only handle context changes if we're not already processing a chatContext prop change
-    if (!chatContext && currentContext.type === 'product' && currentContext.product) {
-      // Reset comparison start index when transitioning to product mode
-      // This prevents the "Transitioned to general chat" message from appearing
+    if (currentContext.type !== 'comparison') {
       comparisonStartIndexRef.current = -1;
-      
-      // Add a message indicating we're now discussing this specific product
-      const productMessage: ChatMessage = {
-        id: Date.now().toString(),
-        content: `Now discussing: ${currentContext.product.brand} ${currentContext.product.title}`,
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-      addMessage(productMessage);
     }
-  }, [currentContext.type, currentContext.product?.id, chatContext, addMessage]);
+  }, [currentContext.type]);
 
-  // Handle comparison mode changes - simplified to avoid infinite loops
+  // Handle comparison mode changes - now handled by page components with proper transitions
   useEffect(() => {
-    // Only add comparison message when first entering comparison mode (2+ products)
+    // Set comparison start index when we're in comparison mode
     if (isInComparisonMode && comparingProducts.length >= 2 && comparisonStartIndexRef.current === -1) {
-      // Check if we already have a comparison message to avoid duplicates
-      const hasComparisonMessage = messages.some(msg => msg.content.includes('Now comparing:'));
-      if (!hasComparisonMessage && comparingProducts.length >= 2) { // Double-check we have 2+ products
-        comparisonStartIndexRef.current = 1; // Mark that we've added the comparison message
-        
-        const comparisonMessage: ChatMessage = {
-          id: Date.now().toString(),
-          content: `Now comparing: ${comparingProducts.length} products`,
-          sender: 'ai',
-          timestamp: new Date(),
-          comparisonProductIds: comparingProducts.map(p => p.id).filter((id): id is number => id !== undefined),
-          comparisonProductCount: comparingProducts.length,
-          comparisonProducts: [...comparingProducts],
-        };
-        addMessage(comparisonMessage);
-      } else {
-        comparisonStartIndexRef.current = 1; // Mark as handled even if message exists
-      }
+      comparisonStartIndexRef.current = 1;
     }
-    // When exiting comparison mode (no products left) - only if we were actually in comparison mode
-    else if (!isInComparisonMode && comparingProducts.length === 0 && comparisonStartIndexRef.current !== -1) {
-      // Reset the comparison start index
+    // Reset when exiting comparison mode
+    else if (!isInComparisonMode && comparingProducts.length === 0) {
       comparisonStartIndexRef.current = -1;
-      
-      // Removed transition message - no longer showing "Transitioned to general chat"
     }
-  }, [isInComparisonMode, comparingProducts.length, messages, currentContext.type]);
+  }, [isInComparisonMode, comparingProducts.length]);
 
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
@@ -266,10 +276,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   };
 
   const handleExitToGeneralChat = () => {
+    const previousContext = currentContext;
+    const newContext = { type: 'general' as const };
+    
     clearComparison();
     comparisonStartIndexRef.current = -1; // Reset comparison start index
-    setCurrentContext({ type: 'general' });
-    // Removed transition message - no longer showing "Transitioned to general chat"
+    
+    // Add transition message when exiting to general chat
+    addTransitionMessage(previousContext, newContext);
+    setCurrentContext(newContext);
   };
 
   useEffect(() => {
@@ -363,9 +378,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         try {
           let aiResponse: ChatMessage;
 
+          // Prepare chat history for all endpoints
+          const chatHistory = messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }));
+
           // If in comparison mode and we have products to compare, call the backend
           if (isInComparisonMode && comparingProducts.length >= 2) {
-            const response = await api.compareProducts(initialQuery, comparingProducts);
+            const response = await api.compareProducts(initialQuery, comparingProducts, chatHistory);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response,
@@ -374,7 +395,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             };
           } else if (currentContext.type === 'product' && currentContext.product) {
             // If in product context, call the backend for product-specific questions
-            const response = await api.askAboutProduct(initialQuery, currentContext.product);
+            const response = await api.askAboutProduct(initialQuery, currentContext.product, chatHistory);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response,
@@ -497,9 +518,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     try {
       let aiResponse: ChatMessage;
 
+      // Prepare chat history for all endpoints
+      const chatHistory = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+
       // If in comparison mode and we have at least 2 products to compare, call the backend
       if (isInComparisonMode && comparingProducts.length >= 2) {
-        const response = await api.compareProducts(messageToSend, comparingProducts);
+        const response = await api.compareProducts(messageToSend, comparingProducts, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -508,7 +535,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
-        const response = await api.askAboutProduct(messageToSend, currentContext.product);
+        const response = await api.askAboutProduct(messageToSend, currentContext.product, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -517,7 +544,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // If in comparison context, call the backend for product comparison
-        const response = await api.compareProducts(messageToSend, currentContext.products);
+        const response = await api.compareProducts(messageToSend, currentContext.products, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -526,11 +553,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         };
       } else {
         // Use backend chatbot endpoint for general chat mode
-        const chatHistory = messages.map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        }));
-        
         const response = await api.chatbot(messageToSend, chatHistory, user?.customer_key);
         aiResponse = {
           id: (Date.now() + 1).toString(),
@@ -685,31 +707,28 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           )}
           
           {messages
-            .filter(message => {
-              // Filter out comparison messages when there are 0 products
-              if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                return false;
-              }
-              return true;
-            })
             .map((message) => (
             <div
               key={message.id}
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
             >
               <div
-                className={`max-w-[75%] px-3 py-2 text-sm rounded-lg ${
+                className={`max-w-[75%] px-4 py-3 text-sm rounded-lg leading-relaxed break-words overflow-wrap-anywhere break-all min-w-0 ${
                   message.sender === 'user'
                     ? 'bg-chewy-blue text-white'
-                    : message.content.includes('Now comparing:')
-                    ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
+                    : isTransitionMessage(message)
+                    ? getTransitionStyling(message)
+                    : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+                } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray max-w-none' : ''}`}
               >
                 {message.content.includes('Now comparing:') ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                      <div className="font-semibold">
+                        {message.comparisonProductCount 
+                          ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                          : message.content}
+                      </div>
                       <button
                         onClick={() => {
                           clearComparison();
@@ -720,9 +739,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    {comparingProducts.length > 0 && (
+                    {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        {comparingProducts.map((product) => (
+                        {message.comparisonProducts.map((product) => (
                           <div key={product.id} className="flex items-center space-x-2">
                             <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                               {product.image ? (
@@ -878,26 +897,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       >
                         Clear chat
                       </button>
-                      {/* Show exit button for product discussion mode when not on product detail page */}
-                      {currentContext.type === 'product' && !chatContext && (
-                        <button
-                          onClick={handleExitToGeneralChat}
-                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                          Exit to general chat
-                        </button>
-                      )}
-                      {/* Show exit button for comparison mode */}
-                      {currentContext.type === 'comparison' && (
-                        <button
-                          onClick={handleExitToGeneralChat}
-                          className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                          Exit to general chat
-                        </button>
-                      )}
+
                     </div>
                   )}
                 </div>
@@ -930,31 +930,28 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       )}
                       
                       {messages
-                        .filter(message => {
-                          // Filter out comparison messages when there are 0 products
-                          if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                            return false;
-                          }
-                          return true;
-                        })
                         .map((message) => (
                         <div
                           key={message.id}
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                                                   <div
-                          className={`max-w-[80%] px-3 py-2 rounded-lg font-work-sans text-sm ${
+                          className={`max-w-[80%] px-4 py-3 rounded-lg font-work-sans text-sm leading-relaxed break-words overflow-wrap-anywhere break-all min-w-0 ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
-                              : message.content.includes('Now comparing:')
-                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
-                              : 'bg-gray-100 text-gray-900'
-                          } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
+                              : isTransitionMessage(message)
+                              ? getTransitionStyling(message)
+                              : 'bg-gray-100 text-gray-900 shadow-sm'
+                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray max-w-none' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                                  <div className="font-semibold">
+                                    {message.comparisonProductCount 
+                                      ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                                      : message.content}
+                                  </div>
                                   <button
                                     onClick={() => {
                                       clearComparison();
@@ -966,9 +963,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                {comparingProducts.length > 0 && (
+                                {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                                   <div className="mt-3 space-y-2">
-                                    {comparingProducts.map((product) => (
+                                    {message.comparisonProducts.map((product) => (
                                       <div key={product.id} className="flex items-center space-x-2">
                                         <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                                           {product.image ? (
@@ -1110,8 +1107,16 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       {/* Chat Modal */}
       {isOpen && (
-        <Card className="absolute bottom-16 right-0 w-80 h-[450px] shadow-2xl rounded-lg border-0">
-          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg">
+        <Draggable handle=".drag-handle">
+                <ResizableBox
+                width={320}
+                height={450}
+                minConstraints={[280, 300]}
+                resizeHandles={['nw']}
+                className="absolute bottom-16 right-0 shadow-2xl rounded-lg border bg-white flex flex-col"
+              >
+      
+          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -1178,32 +1183,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   >
                     Clear chat
                   </button>
-                  {/* Show exit button for product discussion mode when not on product detail page */}
-                  {currentContext.type === 'product' && !chatContext && (
-                    <button
-                      onClick={handleExitToGeneralChat}
-                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      Exit to general chat
-                    </button>
-                  )}
-                  {/* Show exit button for comparison mode */}
-                  {currentContext.type === 'comparison' && (
-                    <button
-                      onClick={handleExitToGeneralChat}
-                      className="text-xs text-chewy-blue hover:text-blue-700 font-work-sans underline flex items-center space-x-1"
-                    >
-                      <ArrowLeft className="w-3 h-3" />
-                      Exit to general chat
-                    </button>
-                  )}
+
                 </div>
               )}
             </div>
           </CardHeader>
 
-          <CardContent className="flex flex-col h-80 p-0 bg-gray-50">
+          <CardContent className="flex flex-col flex-1 p-0 bg-gray-50 overflow-hidden">
             {/* AI Chat Mode */}
             {!isLiveAgent && (
               <>
@@ -1231,13 +1217,6 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   )}
                   
                   {messages
-                    .filter(message => {
-                      // Filter out comparison messages when there are 0 products
-                      if (message.content.includes('Now comparing:') && comparingProducts.length === 0) {
-                        return false;
-                      }
-                      return true;
-                    })
                     .map((message) => (
                     <div
                       key={message.id}
@@ -1247,15 +1226,19 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           className={`max-w-[75%] px-3 py-2 rounded-lg font-work-sans text-sm ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
-                              : message.content.includes('Now comparing:')
-                              ? 'bg-chewy-light-blue border border-chewy-blue text-chewy-blue'
+                              : isTransitionMessage(message)
+                              ? getTransitionStyling(message)
                               : 'bg-gray-100 text-gray-900'
-                          } ${message.sender === 'ai' && !message.content.includes('Now comparing:') ? 'prose prose-sm prose-gray' : ''}`}
+                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                                  <div className="font-semibold">
+                                    {message.comparisonProductCount 
+                                      ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                                      : message.content}
+                                  </div>
                                   <button
                                     onClick={() => {
                                       clearComparison();
@@ -1267,9 +1250,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                {comparingProducts.length > 0 && (
+                                {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                                   <div className="mt-3 space-y-2">
-                                    {comparingProducts.map((product) => (
+                                    {message.comparisonProducts.map((product) => (
                                       <div key={product.id} className="flex items-center space-x-2">
                                         <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                                           {product.image ? (
@@ -1397,7 +1380,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               </div>
             )}
           </CardContent>
-        </Card>
+        </ResizableBox>
+        </Draggable>
       )}
     </div>
   );

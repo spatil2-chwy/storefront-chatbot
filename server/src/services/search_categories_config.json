@@ -1,0 +1,104 @@
+{
+  "categories": {
+    "Pet Type": {
+      "keywords": [
+        "dog", "cat", "puppy", "kitten", "canine", "feline", "pet", "dogs", "cats", "puppies", "kittens",
+        "bird", "fish", "rabbit", "hamster", "guinea pig", "ferret", "reptile", "small animal"
+      ],
+      "metadata_fields": ["ATTR_PET_TYPE", "CATEGORY_LEVEL1"],
+      "confidence_weight": 0.9
+    },
+    "Life Stage": {
+      "keywords": [
+        "puppy", "kitten", "senior", "adult", "young", "old", "aging", "elderly", "mature",
+        "baby", "junior", "all life stages", "all ages", "growth", "geriatric"
+      ],
+      "metadata_fields": ["CATEGORY_LEVEL2", "CATEGORY_LEVEL3"],
+      "confidence_weight": 0.8
+    },
+    "Diet Type": {
+      "keywords": [
+        "grain-free", "organic", "natural", "raw", "limited ingredient", "LID",
+        "high protein", "low fat", "weight control", "sensitive", "hypoallergenic",
+        "gluten-free", "vegetarian", "vegan", "holistic", "premium", "human-grade",
+        "freeze-dried", "dehydrated", "prescription", "veterinary", "therapeutic"
+      ],
+      "metadata_fields": ["specialdiettag"],
+      "confidence_weight": 0.9
+    },
+    "Included Ingredients": {
+      "keywords": [
+        "chicken", "beef", "fish", "salmon", "turkey", "lamb", "duck", "venison", "bison",
+        "rice", "potato", "sweet potato", "pumpkin", "carrot", "peas", "spinach",
+        "blueberries", "cranberries", "apple", "banana", "oatmeal", "barley", "quinoa",
+        "probiotics", "omega", "glucosamine", "chondroitin", "taurine", "antioxidants"
+      ],
+      "metadata_fields": ["ingredienttag", "INGREDIENTS"],
+      "confidence_weight": 0.8
+    },
+    "Brand": {
+      "keywords": [
+        "hill's", "royal canin", "blue buffalo", "purina", "wellness", "merrick", "orijen",
+        "acana", "taste of the wild", "fromm", "nutro", "iams", "pedigree", "science diet",
+        "pro plan", "diamond", "canidae", "solid gold", "earthborn", "nature's variety"
+      ],
+      "metadata_fields": ["PURCHASE_BRAND"],
+      "confidence_weight": 0.7
+    },
+    "Product Category": {
+      "keywords": [
+        "food", "treats", "toys", "supplies", "health", "grooming", "training", "dental",
+        "kibble", "wet food", "canned", "dry food", "snacks", "supplements", "vitamins",
+        "shampoo", "brush", "collar", "leash", "bed", "carrier", "litter", "scratching post"
+      ],
+      "metadata_fields": ["CATEGORY_LEVEL1", "CATEGORY_LEVEL2", "CATEGORY_LEVEL3"],
+      "confidence_weight": 0.8
+    },
+    "Food Form": {
+      "keywords": [
+        "dry", "wet", "canned", "freeze-dried", "dehydrated", "kibble", "pate", "chunks",
+        "gravy", "broth", "stew", "morsels", "shredded", "minced", "loaf", "pouches"
+      ],
+      "metadata_fields": ["ATTR_FOOD_FORM"],
+      "confidence_weight": 0.7
+    },
+    "Health Concerns": {
+      "keywords": [
+        "digestive", "skin", "coat", "joint", "dental", "urinary", "kidney", "heart",
+        "weight management", "allergies", "sensitive stomach", "hairball", "immune",
+        "mobility", "anxiety", "stress", "cognitive", "hip", "arthritis", "inflammation"
+      ],
+      "metadata_fields": ["specialdiettag", "DESCRIPTION_LONG"],
+      "confidence_weight": 0.85
+    },
+    "Size/Breed": {
+      "keywords": [
+        "small breed", "large breed", "giant breed", "toy breed", "medium breed",
+        "miniature", "standard", "extra large", "petite", "big dog", "little dog",
+        "under 25 lbs", "over 50 lbs", "breed specific"
+      ],
+      "metadata_fields": ["CATEGORY_LEVEL2", "CATEGORY_LEVEL3", "specialdiettag"],
+      "confidence_weight": 0.75
+    }
+  },
+  "negative_indicators": [
+    "no", "without", "free", "exclude", "avoid", "not", "non", "never", "zero",
+    "doesn't contain", "does not contain", "minus", "except", "excluding"
+  ],
+  "confidence_thresholds": {
+    "high": 0.8,
+    "medium": 0.6,
+    "low": 0.4
+  },
+  "category_priorities": {
+    "Pet Type": 1.0,
+    "Diet Type": 0.95,
+    "Health Concerns": 0.9,
+    "Life Stage": 0.85,
+    "Included Ingredients": 0.8,
+    "Product Category": 0.75,
+    "Brand": 0.7,
+    "Food Form": 0.65,
+    "Size/Breed": 0.6
+  }
+} 

@@ -1,6 +1,8 @@
 COMPARISON_PROMPT_TEMPLATE = """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice, specializing in product comparisons.
 
+{conversation_history}
+
 Number of products to compare: {num_products}
 
 PRODUCT INFORMATION:
@@ -54,20 +56,32 @@ def format_product_details(products):
     
     return "\n".join(formatted_details)
 
-def get_comparison_prompt(user_question: str, products: list) -> str:
+def get_comparison_prompt(user_question: str, products: list, history: list = None) -> str:
     """
     Generate a comparison prompt for the given user question and products.
     """
     product_details = format_product_details(products)
     
+    # Format conversation history
+    conversation_history = ""
+    if history and len(history) > 0:
+        conversation_history = "CONVERSATION HISTORY:\n"
+        for msg in history:
+            role = "User" if msg.get('role') == 'user' else "Assistant"
+            conversation_history += f"{role}: {msg.get('content', '')}\n"
+        conversation_history += "\n"
+    
     return COMPARISON_PROMPT_TEMPLATE.format(
+        conversation_history=conversation_history,
         num_products=len(products),
         product_details=product_details,
         user_question=user_question
-    ) 
+    )
 
 ASK_ABOUT_PRODUCT_PROMPT_TEMPLATE = """
 You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice, specializing in answering questions about specific products.
+
+{conversation_history}
 
 PRODUCT INFORMATION:
 {product_details}
@@ -117,13 +131,23 @@ def format_single_product_details(product):
     
     return details
 
-def get_ask_about_product_prompt(user_question: str, product_data: dict) -> str:
+def get_ask_about_product_prompt(user_question: str, product_data: dict, history: list = None) -> str:
     """
     Generate a prompt for the given user question and product data.
     """
     product_details = format_single_product_details(product_data)
     
+    # Format conversation history
+    conversation_history = ""
+    if history and len(history) > 0:
+        conversation_history = "CONVERSATION HISTORY:\n"
+        for msg in history:
+            role = "User" if msg.get('role') == 'user' else "Assistant"
+            conversation_history += f"{role}: {msg.get('content', '')}\n"
+        conversation_history += "\n"
+    
     return ASK_ABOUT_PRODUCT_PROMPT_TEMPLATE.format(
+        conversation_history=conversation_history,
         user_question=user_question,
         product_details=product_details
     )

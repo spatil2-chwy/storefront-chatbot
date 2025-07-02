@@ -6,7 +6,7 @@ from .prompts import get_comparison_prompt, get_ask_about_product_prompt
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY_2")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 
@@ -45,15 +45,15 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
         else:
             return f"Sorry, I encountered an error: {error_message}"
 
-def compare_products(user_question: str, products: List[Dict[str, Any]]) -> str:
+def compare_products(user_question: str, products: List[Dict[str, Any]], history: List[Dict[str, Any]] = None) -> str:
     """
     Compare products based on user question using OpenAI.
     """
     if not products or len(products) < 2:
         return "Please select at least 2 products to compare them."
     
-    # Generate the comparison prompt
-    prompt = get_comparison_prompt(user_question, products)
+    # Generate the comparison prompt with conversation history
+    prompt = get_comparison_prompt(user_question, products, history or [])
     
     # Get response from OpenAI (not in JSON mode for natural language response)
     response = get_openai_response(prompt, json_mode=False)
@@ -96,13 +96,12 @@ def get_product_comparison_data(products: List[Dict[str, Any]]) -> Dict[str, Any
     return comparison_data 
     
 
-def ask_about_product(user_question: str, product: Dict[str, Any]) -> str:
+def ask_about_product(user_question: str, product: Dict[str, Any], history: List[Dict[str, Any]] = None) -> str:
     """
     Ask about a product based on user question using OpenAI.
     """
     product_data = get_product_data(product)
-
-    prompt = get_ask_about_product_prompt(user_question, product_data)
+    prompt = get_ask_about_product_prompt(user_question, product_data, history or [])
     response = get_openai_response(prompt, json_mode=False)
     return response
 
