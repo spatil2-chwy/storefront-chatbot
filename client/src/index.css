@@ -1,6 +1,10 @@
+/* React Resizable CSS */
+@import 'react-resizable/css/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 :root {
   --background: hsl(0, 0%, 100%);

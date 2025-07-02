@@ -8,6 +8,7 @@ import { useGlobalChat } from '../contexts/ChatContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { ResizableBox } from 'react-resizable';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -921,7 +922,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       {/* Chat Modal */}
       {isOpen && (
-        <Card className="absolute bottom-16 right-0 w-80 h-[450px] shadow-2xl rounded-lg border-0">
+                <ResizableBox
+                width={320}
+                height={450}
+                minConstraints={[280, 300]}
+                resizeHandles={['nw']}
+                className="absolute bottom-16 right-0 shadow-2xl rounded-lg border bg-white flex flex-col"
+              >
+      
           <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -992,7 +1000,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             </div>
           </CardHeader>
 
-          <CardContent className="flex flex-col h-80 p-0 bg-gray-50">
+          <CardContent className="flex flex-col flex-1 p-0 bg-gray-50 overflow-hidden">
             {/* AI Chat Mode */}
             {!isLiveAgent && (
               <>
@@ -1183,7 +1191,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               </div>
             )}
           </CardContent>
-        </Card>
+        </ResizableBox>
       )}
     </div>
   );
