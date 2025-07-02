@@ -12,16 +12,14 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
+def build_where_clause(required_ingredients: list, category_level_1: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:
+    if len(category_level_1) + len(required_ingredients) + len(special_diet_tags) == 0:
         where_clause = {}
-    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 1:
+    elif len(category_level_1) + len(required_ingredients) + len(special_diet_tags) == 1:
         # if only one special diet or ingredient, use a single condition
         if len(category_level_1) == 1:
             where_clause = {f"categorytag1:{category_level_1[0]}": {"$eq": True}}
-        elif len(category_level_2) == 1:
-            where_clause = {f"categorytag2:{category_level_2[0]}": {"$eq": True}}
         elif len(special_diet_tags) == 1:
             where_clause = {f"specialdiettag:{special_diet_tags[0]}": {"$eq": True}}
         else:
@@ -34,12 +32,6 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
                         "$eq": True
                     }
                 } for category in category_level_1
-            ] + [
-                {
-                    f"categorytag2:{category}": {
-                        "$eq": True
-                    }
-                } for category in category_level_2
             ] + [
                 {
                     f"ingredienttag:{ingredient.lower()}": {
@@ -59,10 +51,10 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
 
 @lru_cache(maxsize=128)
-def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple, special_diet_tags: tuple):
+def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, special_diet_tags: tuple):
     print(query_products.cache_info())
     start_time = time.time()
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)
+    where_clause = build_where_clause(required_ingredients, category_level_1, special_diet_tags)
     if where_clause == {}:
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 

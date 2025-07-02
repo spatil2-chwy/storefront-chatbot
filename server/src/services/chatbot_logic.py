@@ -50,15 +50,16 @@ tools = [
                     },
                     "description": "The first level category of the product, e.g. 'Dog', 'Cat'.. if applicable. Leave empty if no category is required."
                 },
-                "category_level_2": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": ['Chicken', 'Litter & Nesting', 'Beds, Crates & Gear', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
-                        "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable."
-                    },
-                    "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
-                },
+                # "category_level_2": {
+                #     "type": "array",
+                #     "items": {
+                #         "type": "string",
+                #         # "enum": ['Chicken', 'Litter & Nesting', 'Beds, Crates & Gear', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
+                #         "enum": ['Chicken', 'Litter & Nesting', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
+                #         "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable."
+                #     },
+                #     "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
+                # },
                 "special_diet_tags": {
                     "type": "array",
                     "items": {
@@ -76,7 +77,7 @@ tools = [
                     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
                 },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "special_diet_tags"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
@@ -119,12 +120,16 @@ Key rules:
 - If a user mentions a concern (like allergies, picky eater, etc.), tailor the product query accordingly.
 - Do NOT suggest articles when the user is clearly shopping, and vice versa.
 - Avoid repetitive follow-up questions unless the user response is unclear.
+- After products are loaded, you will receive a list of products with review synthesis and FAQs. Use this information to generate highly specific, helpful follow-up questions or statements that help the user narrow their choice.
+- Provide the user with follow up questions rather than product suggestions unless the user asks about it.
+- Do not suggest any products unless the user explicitly asks for them.
+- Be vary conservative with your output length. If you have a lot of information, focus on the most relevant points and ask if the user wants to see more. We do not want to overwhelm users with too much information at once.
 """
 
 }
 MODEL = "gpt-4.1"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -142,7 +147,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2), tuple(special_diet_tags))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(special_diet_tags))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
