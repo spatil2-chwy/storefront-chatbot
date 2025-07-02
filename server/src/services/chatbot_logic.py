@@ -114,7 +114,7 @@ You have two tools:
 Key rules:
 - Be concise and mobile-friendly.
 - Only ask clarifying questions when absolutely necessary.
-- Never include abstract terms like “protein”, “grain”, or “nutrients” in ingredient fields — only use real food items (e.g. chicken, peas).
+- Never include abstract terms like "protein", "grain", or "nutrients" in ingredient fields — only use real food items (e.g. chicken, peas).
 - Convert vague user language into precise, Chewy-relevant product types.
 - If a user mentions a concern (like allergies, picky eater, etc.), tailor the product query accordingly.
 - Do NOT suggest articles when the user is clearly shopping, and vice versa.
@@ -132,7 +132,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
         excluded_ingredients (list): List of ingredients that must not be present in the product
         special_diet_tags (list): List of special diet tags that the product must adhere to
     Returns:
-        tuple: A tuple containing a list of products and follow-up questions
+        list: A list of products
     """
     start = time.time()
     
@@ -146,14 +146,11 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
-
-    ranked_products, followup_questions = rank_products(results, user_query=query, previous_questions=None)
+    ranked_products = rank_products(results)
     print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
     if not ranked_products:
-        return [], ""
-
-    # Convert raw ranked results to Product objects using ProductService
+        return []
     conversion_start = time.time()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
@@ -168,7 +165,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
 
     print(f"Total search_products time: {time.time() - start:.4f} seconds")
-    return products, followup_questions
+    return products
 
 # Initialize ArticleService instance
 article_service = ArticleService()
@@ -215,7 +212,50 @@ def call_function(name, args):
     raise ValueError(f"Unknown function: {name}")
 
 
-def chat(user_input: str, history: list, user_context: str = "", skip_products: bool = False):
+def format_products_for_llm(products, limit=10):
+    """Format products for LLM with review synthesis and FAQ data for follow-up generation"""
+    if not products:
+        return "No products found."
+    
+    # Get top 10 products with reviews or FAQs (similar to old logic)
+    products_with_content = []
+    for product in products:
+        # Check if product has review synthesis or answered FAQs
+        has_review_content = hasattr(product, 'what_customers_love') and product.what_customers_love
+        has_faqs = hasattr(product, 'answered_faqs') and product.answered_faqs
+        
+        if has_review_content or has_faqs:
+            products_with_content.append(product)
+            if len(products_with_content) >= limit:
+                break
+    
+    if not products_with_content:
+        # Fallback to top 5 products if none have reviews/FAQs
+        products_with_content = products[:5]
+    
+    lines = []
+    for i, p in enumerate(products_with_content):
+        # Basic product info
+        product_line = f"{i+1}. {p.title}"
+        
+        # Add review synthesis if available
+        if hasattr(p, 'what_customers_love') and p.what_customers_love:
+            product_line += f"\n   What customers love: {p.what_customers_love}"
+        
+        if hasattr(p, 'what_to_watch_out_for') and p.what_to_watch_out_for:
+            product_line += f"\n   What to watch out for: {p.what_to_watch_out_for}"
+        
+        # Add FAQ info if available
+        if hasattr(p, 'answered_faqs') and p.answered_faqs:
+            product_line += f"\n   Answered FAQs: {p.answered_faqs[:200]}..."
+        
+        lines.append(product_line)
+    
+    print(f"Formatted products for LLM: {lines}")
+    return "Here are the top product recommendations with customer insights:\n\n" + "\n\n".join(lines)
+
+
+def chat(user_input: str, history: list, user_context: str = ""):
     start_time = time.time()
     
     # Create system message with user context if provided
@@ -237,7 +277,6 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
     print(f"First response received in {time.time() - start_time:.4f} seconds")
     # print(response)
     products = []
-    followup_questions = ""
     assistant_reply = ""
 
     print(response.output)
@@ -248,7 +287,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
     else:
         function_start = time.time()
         print(f"Function call start after {function_start - start_time:.4f} seconds from start")
-        
+
         # Handle function call response
         for output_item in response.output:
             if output_item.type == "function_call":
@@ -302,11 +341,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
                     
                     continue  # Continue to next tool call or final response
                 else:
-                    # Handle product search
-
-                    result = call_function(tool_call.name, args)
-                    products, followup_questions = result
-                    
+                    products = call_function(tool_call.name, args)
                     print(f"Function call returned in {time.time() - start_time:.4f} seconds")
                     function_end = time.time()
                     print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
@@ -315,12 +350,37 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
                     full_history.append({
                         "type": "function_call_output",
                         "call_id": tool_call.call_id,
-                        "output": str(result)
+                        "output": f"{len(products)} products returned"
                     })
+                    
+  
+                    # Format and inject product context for LLM
+                    product_context = format_products_for_llm(products)
+                    full_history.append({
+                        "role": "user",
+                        "content": f"""
+- Carefully read the review theme synthesis to identify product trade-offs, standout features, or pain points across products.
+- Ask 1-3 short, highly specific follow-up questions or make short statements that help the user narrow their choice.
+- Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
+- Only user review-data to generate follow-ups.
+- Do not repeat already answered or previously asked questions. Say "These look like great options based on the reviews — go with what fits your style or budget!" if no more questions or clarifications are left to be asked or made.
 
+Product Reviews: {product_context}
+
+You're not being chatty — you're being helpful, warm, and efficient."""
+                    })
+                    # Now let the LLM generate the final message
+                    final_response = client.responses.create(
+                        model=MODEL,
+                        input=full_history,
+                        temperature=0.1,
+                    )
+                    final_reply = final_response.output[0].content[0].text
+                    
+                    assistant_reply = final_reply
     print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
     return {
-        "message": str(assistant_reply) + "\n\n" + (followup_questions or ""),
+        "message": str(assistant_reply),
         "history": full_history[1:],  # Exclude system message
         "products": products,
     }

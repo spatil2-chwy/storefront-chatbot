@@ -2,13 +2,8 @@ import chromadb
 from functools import lru_cache
 import time
 import math
-import json
-from openai import OpenAI
-from dotenv import load_dotenv
 from typing import cast, Any
-import os
 
-load_dotenv()
 
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 # PRODUCT_COLLECTION_NAME = "products"
@@ -16,11 +11,6 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-    return OpenAI(api_key=api_key)
 
 def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     # build where clause for special diet and ingredients tags
@@ -67,113 +57,6 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
     return where_clause
 
-def generate_followup_questions(top_products, user_query, previous_questions=None):
-    """
-    Generate follow-up questions based on review synthesis of top products
-    
-    Args:
-        top_products: List of top 10 ranked products with metadata
-        user_query: Original user query
-        previous_questions: List of previously asked questions (for follow-up mode)
-    
-    Returns:
-        str: Generated follow-up questions
-    """
-    if not top_products or len(top_products) == 0:
-        return "These look like great options based on the reviews — go with what fits your style or budget!"
-    
-    # Extract review synthesis from top 10 products
-    review_data = []
-    for i, (metadata, document, product_id, distance) in enumerate(top_products[:10]):
-        try:
-            # Parse review synthesis
-            review_synthesis_json = metadata.get('review_synthesis', '{}')
-            review_data_parsed = json.loads(review_synthesis_json)
-            
-            # Extract what customers love and what to watch out for
-            what_customers_love = review_data_parsed.get('what_customers_love', [])
-            what_to_watch_out_for = review_data_parsed.get('what_to_watch_out_for', [])
-            
-            # Convert lists to strings
-            love_str = ' '.join(what_customers_love) if isinstance(what_customers_love, list) else str(what_customers_love)
-            watch_str = ' '.join(what_to_watch_out_for) if isinstance(what_to_watch_out_for, list) else str(what_to_watch_out_for)
-            
-            product_name = metadata.get('CLEAN_NAME', f'Product {product_id}')
-            
-            review_data.append({
-                'product_name': product_name,
-                'what_customers_love': love_str,
-                'what_to_watch_out_for': watch_str,
-            })
-        except Exception as e:
-            print(f"Error parsing review synthesis for product {product_id}: {e}")
-            continue
-    
-    if not review_data:
-        return "These look like great options based on the reviews — go with what fits your style or budget!"
-    
-    # Create prompt for follow-up questions
-    previous_questions_str = ""
-    if previous_questions:
-        previous_questions_str = f"\nPreviously Asked Questions: {', '.join(previous_questions)}"
-    
-    reviews_text = "\n\n".join([
-        f"Product: {item['product_name']}\n"
-        f"What customers love: {item['what_customers_love']}\n"
-        f"What to watch out for: {item['what_to_watch_out_for']}\n"
-
-        for item in review_data
-    ])
-
-    print(f"Reviews text: {reviews_text}")
-    
-    prompt = f"""You're a friendly but efficient Chewy assistant helping a pet parent decide between products based on real customer reviews.
-
-Your job is to surface quick, review-based clarifications that help the pet parent choose what's best for their situation.
-
-Instructions:
-- Carefully read the review theme synthesis to identify product trade-offs, standout features, or pain points across products.
-- Ask 1-3 short, highly specific follow-up questions or make short statements that help the user narrow their choice. Do not repeat already answered or previously asked questions.
-- Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
-- If one product clearly stands out for a specific use case, you can make a helpful statement instead of asking a question.
-- If all reviews are overwhelmingly positive and there are no key differentiators or concerns, say: "These look like great options based on the reviews — go with what fits your style or budget!"
-- Only user review-data to generate follow-ups.
-
-You're not being chatty — you're being helpful, warm, and efficient.
-
-User Query: {user_query}
-Product Reviews: {reviews_text}
-Previous Questions: {previous_questions_str}
-
-Output Format:
-Sure! Just a couple of questions to help you out:
-- [question or statement 1]
-- [question or statement 2]
-(etc.)
-- or just a statement if nothing to add, if there's no constructive follow up questions to ask."""
-
-    try:
-        client = get_openai_client()
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": "You are a helpful Chewy assistant that generates follow-up questions based on product reviews."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=200,
-            temperature=0.2
-        )
-        
-        content = response.choices[0].message.content
-        if content is None:
-            content = ""
-        followup_questions = content.strip()
-        print(f"Generated follow-up questions: {followup_questions}")
-        return followup_questions
-        
-    except Exception as e:
-        print(f"Error generating follow-up questions: {e}")
-        return "These look like great options based on the reviews — go with what fits your style or budget!"
 
 @lru_cache(maxsize=128)
 def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple, special_diet_tags: tuple):
@@ -378,7 +261,7 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
 #         print(f"Error in follow-up search: {e}, falling back to original results")
 #         return original_results
 
-def rank_products(results, user_query=None, previous_questions=None):
+def rank_products(results):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""
     start_time = time.time()
     
@@ -511,38 +394,8 @@ def rank_products(results, user_query=None, previous_questions=None):
     # Return without scores for compatibility
     final_results = [(metadata, document, product_id, distance) 
                     for metadata, document, product_id, distance, score in sorted_results]
-
-    # get top 10 products with reviews or FAQs
-    top_10_results = []
-    for result in final_results:
-        metadata = result[0]
-        
-        # Check for review synthesis content using the flag
-        has_review_content = metadata.get('review_synthesis_flag', False)
-        
-        # Check for answered FAQs
-        answered_faqs = metadata.get('answered_faqs', '') or ''
-        has_faqs = bool(answered_faqs and answered_faqs.strip())
-        
-        # Include products that have either reviews or FAQs
-        if has_review_content or has_faqs:
-            top_10_results.append(result)
-            if len(top_10_results) >= 10:
-                break
-    
-    print(f"Found {len(top_10_results)} products with reviews or FAQs for follow-up questions")
-
     print(f"Products ranked with advanced scoring in {time.time() - start_time:.4f} seconds")
-    
-    # Generate follow-up questions based on top 10 products
-    followup_questions = None
-    if user_query and len(top_10_results) > 0:
-        followup_start = time.time()
-        followup_questions = generate_followup_questions(top_10_results, user_query, previous_questions)
-        print(f"Follow-up questions generated in {time.time() - followup_start:.4f} seconds")
-    
-    # Return both products and follow-up questions
-    return final_results, followup_questions
+    return final_results
 
 # testing
 if __name__ == "__main__":

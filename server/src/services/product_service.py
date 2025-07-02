@@ -240,7 +240,7 @@ class ProductService:
             print(f"  🔍 Database search took: {search_time:.3f}s")
             
             ranking_start = time.time()
-            ranked_products, followup_questions = rank_products(results)
+            ranked_products = rank_products(results)
             ranking_time = time.time() - ranking_start
             print(f"  📊 Ranking took: {ranking_time:.3f}s")
             
@@ -248,7 +248,6 @@ class ProductService:
                 print(f"❌ No products found for query: '{query}'")
                 return {
                     "products": [],
-                    "reply": f"No products found for '{query}'"
                 }
             
             # Convert ranked results to Product objects with search match analysis
@@ -274,14 +273,12 @@ class ProductService:
             
             return {
                 "products": products,
-                "reply": f"Followup questions: {followup_questions}"
             }
             
         except Exception as e:
             print(f"❌ Error searching products: {e}")
             return {
                 "products": [],
-                "reply": f"Search failed: {str(e)}"
             }
 
     async def get_product(self, product_id: int) -> Optional[Product]:

@@ -24,6 +24,7 @@ export default function ProductListing() {
   const [selectedMatchFilters, setSelectedMatchFilters] = useState<string[]>([]);
   const [minMatchCount, setMinMatchCount] = useState<number>(0);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
+  const [preloadedChatResponse, setPreloadedChatResponse] = useState<any>(null);
   const isMobile = useIsMobile();
   const { user } = useAuth();
 
@@ -181,7 +182,7 @@ export default function ProductListing() {
     const searchStartTime = performance.now();
 
     try {
-      // Use the new searchAndChat method that calls both APIs
+      // Use the updated searchAndChat method that only calls the chat endpoint
       const customer_key = user?.customer_key;
       const { searchResults: searchData, chatResponse } = await api.searchAndChat(trimmedQuery, customer_key);
       
@@ -199,6 +200,7 @@ export default function ProductListing() {
 
       // Handle chat response - set it for the chat widget to use
       if (chatResponse && chatResponse.message) {
+        setPreloadedChatResponse(chatResponse);
         setChatQuery(trimmedQuery);
         setShouldOpenChat(true);
         console.log(`💬 Chat response: ${chatResponse.message}`);
@@ -206,6 +208,7 @@ export default function ProductListing() {
         // Reset the trigger after a delay
         setTimeout(() => {
           setShouldOpenChat(false);
+          setPreloadedChatResponse(null); // Clear the preloaded response
         }, 1000);
       }
       
@@ -457,6 +460,7 @@ export default function ProductListing() {
         shouldOpen={shouldOpenChat}
         shouldClearChat={hasSearched}
         onClearChat={handleClearChat}
+        preloadedChatResponse={preloadedChatResponse}
       />
 
       <ComparisonFooter />

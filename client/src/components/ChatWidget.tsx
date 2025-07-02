@@ -15,6 +15,7 @@ interface ChatWidgetProps {
   shouldClearChat?: boolean;
   onClearChat?: () => void;
   chatContext?: ChatContext;
+  preloadedChatResponse?: {message: string, history: any[], products: any[]};
 }
 
 // Simple markdown to HTML converter for chat messages
@@ -77,7 +78,7 @@ const formatMessageContent = (content: string): string => {
   return formattedContent;
 };
 
-export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
+export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext, preloadedChatResponse }: ChatWidgetProps) {
   const { 
     messages, 
     setMessages, 
@@ -229,12 +230,32 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // Create and add user message immediately (don't wait for shouldOpen)
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
-        content: initialQuery,
+        content: preloadedChatResponse ? `Searching for: ${initialQuery}` : initialQuery,
         sender: 'user',
         timestamp: new Date(),
       };
       
       addMessage(userMessage);
+      
+      // If we have a preloaded chat response, use it instead of making an API call
+      if (preloadedChatResponse) {
+        const aiResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: preloadedChatResponse.message,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        
+        addMessage(aiResponse);
+        
+        // Update global search state with the products from the response
+        if (preloadedChatResponse.products && preloadedChatResponse.products.length > 0) {
+          setSearchResults(preloadedChatResponse.products);
+          setCurrentSearchQuery(initialQuery);
+          setHasSearched(true);
+        }
+        return;
+      }
       
       setIsLoading(true);
       
@@ -268,9 +289,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               content: msg.content
             }));
             
-            // Skip products if this is the initial query from search bar (products already loaded)
-            const skipProducts = initialQuery === processedQueryRef.current;
-            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key, skipProducts);
+            // NEW LOGIC: Always get products from chat endpoint for search queries
+            // The backend will show "Searching for: {query}" and return products + follow-ups
+            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response.message,
@@ -278,8 +299,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
             
-            // Update global search state with the products from the response only if we didn't skip them
-            if (!skipProducts && response.products && response.products.length > 0) {
+            // Update global search state with the products from the response
+            if (response.products && response.products.length > 0) {
               setSearchResults(response.products);
               setCurrentSearchQuery(initialQuery);
               setHasSearched(true);
@@ -303,7 +324,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
