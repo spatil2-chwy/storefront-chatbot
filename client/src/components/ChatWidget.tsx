@@ -17,6 +17,7 @@ interface ChatWidgetProps {
   shouldClearChat?: boolean;
   onClearChat?: () => void;
   chatContext?: ChatContext;
+  preloadedChatResponse?: {message: string, history: any[], products: any[]};
 }
 
 // Simple markdown to HTML converter for chat messages
@@ -127,7 +128,7 @@ const isTransitionMessage = (message: ChatMessage): boolean => {
          message.content.includes('Exited');
 };
 
-export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext }: ChatWidgetProps) {
+export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, onClearChat, chatContext, preloadedChatResponse }: ChatWidgetProps) {
   const { 
     messages, 
     setMessages, 
@@ -155,6 +156,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveAgent, setIsLiveAgent] = useState(false);
+  const [greetingShown, setGreetingShown] = useState(false);
+  const [searchGreetingShown, setSearchGreetingShown] = useState(false); // Track if greeting shown for search context
+  const [preloadedGreeting, setPreloadedGreeting] = useState<string | null>(null); // Store greeting fetched on page load
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
   const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
@@ -179,6 +183,57 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       setShouldAutoOpen(false); // Reset auto-open trigger
     }
   }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
+
+  // Fetch personalized greeting when component mounts (page loads)
+  useEffect(() => {
+    const fetchGreetingOnLoad = async () => {
+      if (user && !preloadedGreeting) {
+        console.log('Fetching personalized greeting for user:', user.customer_key);
+        try {
+          const response = await api.getPersonalizedGreeting(user.customer_key);
+          console.log('Received greeting response:', response);
+          setPreloadedGreeting(response.greeting);
+        } catch (error) {
+          console.error('Failed to preload personalized greeting:', error);
+          // Set fallback greeting
+          setPreloadedGreeting("Hey there! What can I help you find for your furry friends today?");
+        }
+      }
+    };
+
+    fetchGreetingOnLoad();
+  }, [user, preloadedGreeting]);
+
+  // Display preloaded greeting when chat opens for the first time
+  // Display preloaded greeting when chat opens for the first time
+  useEffect(() => {
+    const displayGreeting = () => {
+      console.log('Display greeting check:', {
+        isOpen,
+        hasUser: !!user,
+        greetingShown,
+        messagesLength: messages.length,
+        currentContextType: currentContext.type,
+        hasInitialQuery: !!initialQuery,
+        hasPreloadedGreeting: !!preloadedGreeting,
+        preloadedGreeting
+      });
+      
+      if (isOpen && user && !greetingShown && messages.length === 0 && (!currentContext.type || currentContext.type === 'general') && !initialQuery && preloadedGreeting) {
+        console.log('Adding greeting message to chat:', preloadedGreeting);
+        const greetingMessage: ChatMessage = {
+          id: `greeting-${Date.now()}`,
+          content: preloadedGreeting,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(greetingMessage);
+        setGreetingShown(true);
+      }
+    };
+
+    displayGreeting();
+  }, [isOpen, user, greetingShown, messages.length, currentContext.type, initialQuery, preloadedGreeting, addMessage]);
 
     // Product chat is now handled by the ProductChatModal component
 
@@ -244,17 +299,80 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // Create and add user message immediately (don't wait for shouldOpen)
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
-        content: initialQuery,
+        content: preloadedChatResponse ? `Searching for: ${initialQuery}` : initialQuery,
         sender: 'user',
         timestamp: new Date(),
       };
       
       addMessage(userMessage);
       
+      // If we have a preloaded chat response, use it instead of making an API call
+      if (preloadedChatResponse) {
+        const aiResponse: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: preloadedChatResponse.message,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        
+        addMessage(aiResponse);
+        
+        // Update global search state with the products from the response
+        if (preloadedChatResponse.products && preloadedChatResponse.products.length > 0) {
+          setSearchResults(preloadedChatResponse.products);
+          setCurrentSearchQuery(initialQuery);
+          setHasSearched(true);
+        }
+        return;
+      }
+      
       setIsLoading(true);
       
       // Generate AI response
       const generateResponse = async () => {
+        // Show personalized greeting for search queries if user is logged in and it's general chat mode
+        const shouldShowSearchGreeting = (
+          user && 
+          !searchGreetingShown && 
+          (!currentContext.type || currentContext.type === 'general') &&
+          !preloadedChatResponse // Don't show greeting for preloaded responses
+        );
+
+        if (shouldShowSearchGreeting) {
+          if (preloadedGreeting) {
+            const greetingMessage: ChatMessage = {
+              id: `search-greeting-${Date.now()}`,
+              content: preloadedGreeting,
+              sender: 'ai',
+              timestamp: new Date(),
+            };
+            addMessage(greetingMessage);
+            setSearchGreetingShown(true);
+            
+            // Add a small delay so the greeting appears before the main response
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            // Fallback if greeting not preloaded
+            try {
+              const response = await api.getPersonalizedGreeting(user.customer_key);
+              const greetingMessage: ChatMessage = {
+                id: `search-greeting-${Date.now()}`,
+                content: response.greeting,
+                sender: 'ai',
+                timestamp: new Date(),
+              };
+              addMessage(greetingMessage);
+              setSearchGreetingShown(true);
+              
+              // Add a small delay so the greeting appears before the main response
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+              console.error('Failed to fetch personalized search greeting:', error);
+              // Continue without greeting if it fails
+            }
+          }
+        }
+
         try {
           let aiResponse: ChatMessage;
 
@@ -284,9 +402,14 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             };
           } else {
             // Use backend chatbot endpoint for general chat mode
-            // Skip products if this is the initial query from search bar (products already loaded)
-            const skipProducts = initialQuery === processedQueryRef.current;
-            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key, skipProducts);
+            const chatHistory = messages.map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+            
+            // NEW LOGIC: Always get products from chat endpoint for search queries
+            // The backend will show "Searching for: {query}" and return products + follow-ups
+            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key);
             aiResponse = {
               id: (Date.now() + 1).toString(),
               content: response.message,
@@ -294,8 +417,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
             
-            // Update global search state with the products from the response only if we didn't skip them
-            if (!skipProducts && response.products && response.products.length > 0) {
+            // Update global search state with the products from the response
+            if (response.products && response.products.length > 0) {
               setSearchResults(response.products);
               setCurrentSearchQuery(initialQuery);
               setHasSearched(true);
@@ -319,7 +442,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -338,6 +461,55 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     addMessage(userMessage);
     setInputValue(''); // Always clear input after sending
     setIsLoading(true);
+
+    // Check if we should show a personalized greeting before the response
+    // Show greeting if: in general chat mode, user is logged in, and this appears to be a search-related follow-up
+    const shouldShowGreeting = (
+      user && 
+      !searchGreetingShown && 
+      currentContext.type === 'general' && 
+      messages.length > 0 && // There are existing messages
+      (messageToSend.toLowerCase().includes('search') || 
+       messageToSend.toLowerCase().includes('find') || 
+       messageToSend.toLowerCase().includes('looking for') ||
+       messageToSend.toLowerCase().includes('need') ||
+       messageToSend.toLowerCase().includes('want'))
+    );
+
+    if (shouldShowGreeting) {
+      if (preloadedGreeting) {
+        const greetingMessage: ChatMessage = {
+          id: `search-greeting-${Date.now()}`,
+          content: preloadedGreeting,
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(greetingMessage);
+        setSearchGreetingShown(true);
+        
+        // Add a small delay so the greeting appears before the main response
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        // Fallback if greeting not preloaded
+        try {
+          const response = await api.getPersonalizedGreeting(user.customer_key);
+          const greetingMessage: ChatMessage = {
+            id: `search-greeting-${Date.now()}`,
+            content: response.greeting,
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          addMessage(greetingMessage);
+          setSearchGreetingShown(true);
+          
+          // Add a small delay so the greeting appears before the main response
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error('Failed to fetch personalized search greeting:', error);
+          // Continue without greeting if it fails
+        }
+      }
+    }
 
     try {
       let aiResponse: ChatMessage;
@@ -454,6 +626,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   setInputValue('');
                   processedQueryRef.current = '';
                   comparisonStartIndexRef.current = -1;
+                  setGreetingShown(false);
+                  setSearchGreetingShown(false);
+                  setPreloadedGreeting(null); // Reset preloaded greeting so it can be refreshed
                   onClearChat?.();
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
@@ -709,6 +884,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           setInputValue('');
                           processedQueryRef.current = '';
                           comparisonStartIndexRef.current = -1; // Reset comparison start index
+                          setGreetingShown(false);
+                          setSearchGreetingShown(false);
+                          setPreloadedGreeting(null); // Reset preloaded greeting so it can be refreshed
                           onClearChat?.();
                         }}
                         className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
@@ -992,6 +1170,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       setInputValue('');
                       processedQueryRef.current = '';
                       comparisonStartIndexRef.current = -1; // Reset comparison start index
+                      setGreetingShown(false);
+                      setSearchGreetingShown(false);
+                      setPreloadedGreeting(null); // Reset preloaded greeting so it can be refreshed
                       onClearChat?.();
                     }}
                     className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"

@@ -67,8 +67,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     return (
       <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
-        <img
-          src={product.image}
+        <img 
+          src={product.image} 
           alt={product.title}
           className="max-w-full max-h-full object-contain"
           onError={(e) => {
@@ -77,13 +77,6 @@ export default function ProductCard({ product }: ProductCardProps) {
             target.nextElementSibling?.classList.remove('hidden');
           }}
         />
-        {/* Fallback image (hidden by default) */}
-        <div className="w-full h-48 bg-gray-50 flex items-center justify-center hidden">
-          <div className="text-center">
-            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">Image not available</p>
-          </div>
-        </div>
       </div>
     );
   };
@@ -143,7 +136,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
         <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
           {/* Product Image */}
-          <div className="relative w-full h-48">
+          <div className="relative w-full h-48 bg-gray-50">
             {renderImage()}
           </div>
           

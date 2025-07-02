@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 export const api = {
-  async searchProducts(query: string, limit: number = 10): Promise<{products: Product[], reply: string}> {
+  async searchProducts(query: string, limit: number = 10): Promise<{products: Product[]}> {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('limit', limit.toString());
@@ -101,12 +101,11 @@ export const api = {
     return data.response;
   },
 
-  async chatbot(message: string, history: any[] = [], customer_key?: number, skip_products?: boolean): Promise<{message: string, history: any[], products: any[]}> {
+  async chatbot(message: string, history: any[] = [], customer_key?: number): Promise<{message: string, history: any[], products: any[]}> {
     const payload = {
       message,
       history,
       customer_key,
-      skip_products: skip_products || false,
     };
     
     const response = await fetch(`${API_BASE_URL}/chats/chatbot`, {
@@ -128,19 +127,42 @@ export const api = {
   },
 
   async searchAndChat(query: string, customer_key?: number): Promise<{searchResults: {products: Product[], reply: string}, chatResponse: {message: string, history: any[], products: any[]}}> {
-    // Make both calls in parallel
-    const [searchResults, chatResponse] = await Promise.all([
-      this.searchProducts(query, 30),
-      this.chatbot(query, [], customer_key, true) // skip_products = true
-    ]);
+    // COMMENTED OUT: Old approach that called both search and chat endpoints
+    // const [searchResults, chatResponse] = await Promise.all([
+    //   this.searchProducts(query, 30),
+    //   this.chatbot(query, [], customer_key, true) // skip_products = true
+    // ]);
+
+    // NEW APPROACH: Only use chat endpoint for search queries
+    // This will show "Searching for: {query}" and return products + follow-ups
+    const chatResponse = await this.chatbot(query, [], customer_key);
 
     return {
-      searchResults,
+      searchResults: { products: chatResponse.products || [], reply: "" },
       chatResponse
     };
   },
 
-  //   const data = await response.json();
-  //   return data.response;
-  // }
-}; 
+  async getPersonalizedGreeting(customer_key?: number): Promise<{greeting: string}> {
+    const payload = {
+      customer_key,
+    };
+    
+    const response = await fetch(`${API_BASE_URL}/chats/personalized_greeting`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to get personalized greeting: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+  },
+};

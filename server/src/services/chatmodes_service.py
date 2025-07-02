@@ -19,18 +19,20 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
     try:
         if json_mode:
             response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+                model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": query}],
                 response_format={"type": "json_object"},
                 temperature=0.2
             )
         else:
             response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+                model="gpt-4o-search-preview",
+                web_search_options={},
                 messages=[{"role": "user", "content": query}],
-                temperature=0.2
+                # temperature=0.2
             )
 
+        print(response)
         content = response.choices[0].message.content
         return content if content is not None else "Sorry, I couldn't generate a response at this time."
     
@@ -84,14 +86,15 @@ def get_product_comparison_data(products: List[Dict[str, Any]]) -> Dict[str, Any
             "rating": product.get("rating"),
             "description": product.get("description"),
             "keywords": product.get("keywords", []),
-            "category": product.get("category"),
+            "category_level_1": product.get("category_level_1"),
+            "category_level_2": product.get("category_level_2"),
             "unanswered_faqs": product.get("unanswered_faqs"),
             "answered_faqs": product.get("answered_faqs"),
         }
         comparison_data["products"].append(product_data)
     
     return comparison_data 
-
+    
 
 def ask_about_product(user_question: str, product: Dict[str, Any], history: List[Dict[str, Any]] = None) -> str:
     """
@@ -116,7 +119,8 @@ def get_product_data(product: Dict[str, Any]) -> Dict[str, Any]:
         "rating": product.get("rating"),
         "description": product.get("description"),
         "keywords": product.get("keywords", []),
-        "category": product.get("category"),
+        "category_level_1": product.get("category_level_1"),
+        "category_level_2": product.get("category_level_2"),
         "unanswered_faqs": product.get("unanswered_faqs"),
         "answered_faqs": product.get("answered_faqs"),
     }

@@ -25,7 +25,6 @@ class ChatRequest(BaseModel):
     message: str
     history: list
     customer_key: Optional[int] = None
-    skip_products: Optional[bool] = False  # Flag to skip product loading for search queries
 
 class ComparisonRequest(BaseModel):
     message: str
@@ -36,6 +35,9 @@ class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
     history: Optional[list] = []  # Add conversation history
+
+class PersonalizedGreetingRequest(BaseModel):
+    customer_key: Optional[int] = None
 
 @router.post("/chatbot")
 async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
@@ -54,8 +56,7 @@ async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
     reply = chat(
         user_input=request.message,
         history=request.history,
-        user_context=user_context,
-        skip_products=request.skip_products or False
+        user_context=user_context
     )
 
     return {"response": reply}
@@ -86,3 +87,19 @@ async def ask_about_product_endpoint(request: AskAboutProductRequest):
 @router.post("/", response_model=ChatSchema)
 def create_chat_message(payload: ChatSchema, db: Session = Depends(get_db)):
     return chat_svc.create_message(db, ChatMessage(**payload.dict()))
+
+@router.post("/personalized_greeting")
+async def personalized_greeting(request: PersonalizedGreetingRequest, db: Session = Depends(get_db)):
+    """
+    Generate a personalized greeting for a customer based on their profile and pets.
+    """
+    try:
+        from src.services.greeting_service import generate_personalized_greeting
+        
+        greeting = generate_personalized_greeting(db, request.customer_key)
+        return {"response": {"greeting": greeting}}
+    except Exception as e:
+        print(f"Error generating personalized greeting: {e}")
+        # Fallback greeting
+        greeting = "Hey there! What can I help you find for your furry friends today?"
+        return {"response": {"greeting": greeting}}

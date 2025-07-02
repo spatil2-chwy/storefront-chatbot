@@ -7,6 +7,7 @@ import time
 from typing import List, Dict, Any, Optional, Union, cast
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
+from src.services.article_service import ArticleService
 api_key = getenv("OPENAI_API_KEY_2")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
@@ -16,180 +17,84 @@ tools = [
     {
         "type": "function",
         "name": "search_products",
-        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags.",
+        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein. should i switch to salmon? idk'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags. ",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Extract structured, product-focused information from the user's natural-language input to power Chewy's personalized product search. Map the situation to **specific, search-friendly product types** that Chewy likely sells. Do NOT repeat the emotional or behavioral language unless it's part of a recognized product label or tag. Favor concrete product terms: formats (treats, kibble, diffusers), features (low-calorie, long-lasting), or function (digestive aid, calming aid)."""
+                    "description": """Structured, product-focused search query. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients information like "chicken" or "salmon" here since they have seperate filters"""
                 },
                 "required_ingredients": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must be present in the product, e.g. 'Chicken', 'Peas'"
+                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
                     },
-                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required."
+                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
                 },
                 "excluded_ingredients": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "description": "Ingredients that must not be present in the product, e.g. 'Corn', 'Soy'"
+                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
                     },
-                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded."
+                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
+                },
+                "category_level_1": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ['Farm', 'Bird', 'Cat', 'Dog', 'Fish', 'Wild Bird', 'Reptile', 'Horse', 'Small Pet', 'Gifts & Books', 'Pharmacy', 'Gift Cards', 'Virtual Bundle', 'Services', 'ARCHIVE', 'Programs'],
+                        "description": "The category of the product, e.g. 'Dog', 'Cat'.. if applicable"
+                    },
+                    "description": "The first level category of the product, e.g. 'Dog', 'Cat'.. if applicable. Leave empty if no category is required."
+                },
+                "category_level_2": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ['Chicken', 'Litter & Nesting', 'Beds, Crates & Gear', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
+                        "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable."
+                    },
+                    "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
                 },
                 "special_diet_tags": {
                     "type": "array",
                     "items": {
                         "type": "string",
                         "enum": [
-                            'Chicken-Free',
-                            'Flax-Free',
-                            'Gluten Free',
-                            'Grain-Free',
-                            'High Calcium',
-                            'High Calorie',
-                            'High Fat',
-                            'High Fiber',
-                            'High-Protein',
-                            'Human-Grade',
-                            'Hydrolyzed Protein',
-                            'Indoor',
-                            'Limited Ingredient Diet',
-                            'Low Calorie',
-                            'Low Fat',
-                            'Low Glycemic',
-                            'Low NSC',
-                            'Low Phosphorus',
-                            'Low Sodium',
-                            'Low Starch',
-                            'Low Sugar',
-                            'Low-Protein',
-                            'Medicated',
-                            'Molasses-Free',
-                            'Natural',
-                            'No Corn No Wheat No Soy',
-                            'Non-GMO',
-                            'Odor-Free',
-                            'Organic',
-                            'Pea-Free',
-                            'Plant Based',
-                            'Premium',
-                            'Raw',
-                            'Rawhide-Free',
-                            'Sensitive Digestion',
-                            'Soy Free',
-                            'Starch Free',
-                            'Sugar Free',
-                            'Vegan',
-                            'Vegetarian',
-                            'Veterinary Diet',
-                            'Weight Control',
-                            'With Grain',
-                            'Yeast Free'
+                            "Grain-Free",
+                            "No Corn No Wheat No Soy",
+                            "Limited Ingredient Diet",
+                            "Natural",
+                            "With Grain",
+                            "High-Protein",
                         ],
                         "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
                     },
                     "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
                 },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "special_diet_tags"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "special_diet_tags"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
     },
-
-        {
+    {
         "type": "function",
-        "name": "search_products_based_on_followup",
-        "description": "Use this when the user answers a follow-up question that helps refine their preferences. This function re-ranks a previously shown list of products using semantic similarity between user input and product reviews + titles. This is for personalization and streamlining the search — not for starting a new search.",
+        "name": "search_articles",
+        "description": "Use this tool when the user asks for general pet care advice, tips, or information that doesn't directly involve shopping for products. Examples: 'I just got a new puppy', 'my dog has separation anxiety', 'how to train my cat', 'puppy care tips'. This searches through Chewy's expert articles and advice content.",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Refine the original query using the user's conversational input. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Preserve original product focus unless the follow-up changes direction."
-                },
-                "original_query": {
-                    "type": "string",
-                    "description": "The original search query that was used to find the initial products. This is used to retrieve the cached results for re-ranking."
-                },
-                "required_ingredients": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "description": "Ingredients that must be present in the product, e.g. 'Chicken', 'Peas'"
-                    },
-                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required."
-                },
-                "excluded_ingredients": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "description": "Ingredients that must not be present in the product, e.g. 'Corn', 'Soy'"
-                    },
-                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded."
-                },
-                "special_diet_tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            'Chicken-Free',
-                            'Flax-Free',
-                            'Gluten Free',
-                            'Grain-Free',
-                            'High Calcium',
-                            'High Calorie',
-                            'High Fat',
-                            'High Fiber',
-                            'High-Protein',
-                            'Human-Grade',
-                            'Hydrolyzed Protein',
-                            'Indoor',
-                            'Limited Ingredient Diet',
-                            'Low Calorie',
-                            'Low Fat',
-                            'Low Glycemic',
-                            'Low NSC',
-                            'Low Phosphorus',
-                            'Low Sodium',
-                            'Low Starch',
-                            'Low Sugar',
-                            'Low-Protein',
-                            'Medicated',
-                            'Molasses-Free',
-                            'Natural',
-                            'No Corn No Wheat No Soy',
-                            'Non-GMO',
-                            'Odor-Free',
-                            'Organic',
-                            'Pea-Free',
-                            'Plant Based',
-                            'Premium',
-                            'Raw',
-                            'Rawhide-Free',
-                            'Sensitive Digestion',
-                            'Soy Free',
-                            'Starch Free',
-                            'Sugar Free',
-                            'Vegan',
-                            'Vegetarian',
-                            'Veterinary Diet',
-                            'Weight Control',
-                            'With Grain',
-                            'Yeast Free'
-                        ],
-                        "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
-                    },
-                    "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
-                },
+                    "description": "Search query for pet care articles and advice. Use natural language describing the pet situation, concern, or topic the user is asking about."
+                }
             },
-            "required": ["query", "original_query", "required_ingredients", "excluded_ingredients", "special_diet_tags"],
-            "additionalProperties": False,
-            # "strict": True # although openai recommended, this seems to make things worse
+            "required": ["query"],
+            "additionalProperties": False
         }
     }
 ]
@@ -198,55 +103,33 @@ tools = [
 system_message = {
     "role": "system",
     "content": """
-You are a helpful, warm, emotionally intelligent assistant speaking in Chewy's brand voice.
+You are a helpful, fast, emotionally intelligent shopping assistant for pet parents on Chewy.
 
-Your mission is to guide pet parents toward the best products for their pet's specific needs. You can either ask a follow-up question if the query is too vague or respond through *action* by using one of the tools available to you.
+Your job is to help users find the best products for their pet's specific needs and to provide helpful pet care advice.
 
----
-TOOL SELECTION RULES - Pick as per the chat history:
-Use search_products when:
-- It's a new topic, or a user starts with a need, product request, or pet issue.
-- The user switches to a different concern (e.g. from food to toys, anxiety to allergies).
+You have two tools:
+1. Product search - when users are shopping or describing product needs. Refer to entire chat history to understand the user's needs and preferences.
+2. Article search - for general pet care advice or behavioral questions. When users ask for general pet advice (like "I just got a new puppy!" or pet care questions), use the article search tool to find relevant expert content. After providing helpful advice from articles, suggest relevant products they might need.
 
-Use search_products_based_on_followup when:
-- The user answers a follow-up that refines the same topic — like size, texture, ingredients, sourcing, or diet preference.
-- The refinement is based on existing recommendations (e.g. “she's under 10 lbs”, “only if it's grain-free”).
-
-IMPORTANT: If the conversation history shows we've already searched for products and the user is adding preferences or refinements, use search_products_based_on_followup.
-
-EXAMPLE:
-User Query 1: My dog has a chicken allergy and needs high-protein food.
-Assistant:
-- Tool: search_products
-- Query: "dog food"
-- excluded_ingredients: ["chicken"]
-- special_diet_tags: ["High-Protein", "Chicken-Free"]
-
-Based on follow-up questions presented to the user, say the user responds with...
-User Query 2: Also, grain-free is a must and it would be great if it supports coat and skin health.
-Assistant:
-- Tool: search_products_based_on_followup
-- Query: "grain-free dog food. Supports coat and skin health"
-- original_query: "dog food"
-- excluded_ingredients: ["chicken"]
-- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
-
-User Query 3: Something that helps with sensitive digestion and the packaging should be convenient.
-Assistant:
-- Tool: search_products_based_on_followup
-- Query: "grain-free dog food for dogs with sensitive stomachs. Supports coat and skin health. Convenient packaging options are preferred"
-- original_query: "dog food"
-- excluded_ingredients: ["chicken"]
-- special_diet_tags: ["High-Protein", "Chicken-Free", "Grain-Free"]
----
-- Use precise, mobile-friendly language.
-DO NOT:
-- Answer questions unrelated to pet products. Gently steer back to product needs.
+Key rules:
+- Be concise and mobile-friendly.
+- Only ask clarifying questions when absolutely necessary.
+- Never include abstract terms like "protein", "grain", or "nutrients" in ingredient fields — only use real food items (e.g. chicken, peas).
+- Convert vague user language into precise, Chewy-relevant product types.
+- If a user mentions a concern (like allergies, picky eater, etc.), tailor the product query accordingly.
+- Do NOT suggest articles when the user is clearly shopping, and vice versa.
+- Avoid repetitive follow-up questions unless the user response is unclear.
+- After products are loaded, you will receive a list of products with review synthesis and FAQs. Use this information to generate highly specific, helpful follow-up questions or statements that help the user narrow their choice.
+- Provide the user with follow up questions rather than product suggestions unless the user asks about it.
+- Do not suggest any products unless the user explicitly asks for them.
+- Be vary conservative with your output length. If you have a lot of information, focus on the most relevant points and ask if the user wants to see more. We do not want to overwhelm users with too much information at once.
+- Its better to call the product search tool more often than not, rather than trying to get clarification for pet info. That can be included in the follow up.
 """
-}
-MODEL = "gpt-4.1-mini"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list):
+}
+MODEL = "gpt-4.1"
+
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -254,7 +137,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
         excluded_ingredients (list): List of ingredients that must not be present in the product
         special_diet_tags (list): List of special diet tags that the product must adhere to
     Returns:
-        tuple: A tuple containing a list of products and follow-up questions
+        list: A list of products
     """
     start = time.time()
     
@@ -264,17 +147,15 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2), tuple(special_diet_tags))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
-    ranked_products, followup_questions = rank_products(results, user_query=query, previous_questions=None)
+    ranked_products = rank_products(results)
     print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
     if not ranked_products:
-        return [], ""
-
-    # Convert raw ranked results to Product objects using ProductService
+        return []
     conversion_start = time.time()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
@@ -289,62 +170,35 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
 
     print(f"Total search_products time: {time.time() - start:.4f} seconds")
-    return products, followup_questions
+    return products
 
-def search_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
-    """Searches for pet products based on user's follow-up response to previous questions.
+# Initialize ArticleService instance
+article_service = ArticleService()
+
+def search_articles(query: str):
+    """Searches for relevant pet care articles and advice content.
     Parameters:
-        query (str): User's follow-up response/refinement
-        required_ingredients (list): List of ingredients that must be present in the product
-        excluded_ingredients (list): List of ingredients that must not be present in the product
-        special_diet_tags (list): List of special diet tags that the product must adhere to
-        original_query (str): The original query to retrieve cached results from
+        query (str): User's question or topic about pet care, training, health, etc.
     Returns:
-        tuple: A tuple containing a list of products and follow-up questions
+        str: Formatted article content for the LLM to reference
     """
-    from src.services.searchengine import query_products_with_followup
     start = time.time()
     
-    # Use ProductService to convert raw results to properly formatted Product objects
-    from .product_service import ProductService
-    product_service = ProductService()
+    # Search for relevant articles
+    articles = article_service.search_articles(query, n_results=3)
     
-    # Use query_products_with_followup for refined searches
-    # This will retrieve the cached results from the original query and re-rank them
-    results = query_products_with_followup(query, required_ingredients, excluded_ingredients, special_diet_tags, original_query)
-    print(f"Follow-up query executed in {time.time() - start:.4f} seconds")
+    print(f"Article search completed in {time.time() - start:.4f} seconds")
     
-    ranking_start = time.time()
-    # For follow-up mode, we need to track previous questions to avoid repetition
-    # This should be extracted from conversation history in a production system
-    previous_questions = []  # TODO: Extract from conversation history
-    ranked_products, followup_questions = rank_products(results, user_query=query, previous_questions=previous_questions)
-    print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
+    if not articles:
+        return "No relevant articles found for this topic."
     
-    if not ranked_products:
-        return [], ""
-
-    # Convert raw ranked results to Product objects using ProductService
-    conversion_start = time.time()
-    products = []
-    for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products for display
-        try:
-            product = product_service._ranked_result_to_product(ranked_result, query)
-            products.append(product)
-        except Exception as e:
-            print(f"⚠️ Error converting ranked result to product: {e}")
-            continue
-    
-    conversion_time = time.time() - conversion_start
-    print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
-
-    print(f"Total search_products_with_followup time: {time.time() - start:.4f} seconds")
-    return products, followup_questions
+    # Format articles for LLM consumption
+    return article_service.get_article_summary_for_llm(articles)
 
 
 function_mapping = {
     "search_products": search_products,
-    "search_products_based_on_followup": search_products_with_followup
+    "search_articles": search_articles,
 }
 
 
@@ -363,13 +217,56 @@ def call_function(name, args):
     raise ValueError(f"Unknown function: {name}")
 
 
-def chat(user_input: str, history: list, user_context: str = "", skip_products: bool = False):
+def format_products_for_llm(products, limit=10):
+    """Format products for LLM with review synthesis and FAQ data for follow-up generation"""
+    if not products:
+        return "No products found."
+    
+    # Get top 10 products with reviews or FAQs (similar to old logic)
+    products_with_content = []
+    for product in products:
+        # Check if product has review synthesis or answered FAQs
+        has_review_content = hasattr(product, 'what_customers_love') and product.what_customers_love
+        has_faqs = hasattr(product, 'answered_faqs') and product.answered_faqs
+        
+        if has_review_content or has_faqs:
+            products_with_content.append(product)
+            if len(products_with_content) >= limit:
+                break
+    
+    if not products_with_content:
+        # Fallback to top 5 products if none have reviews/FAQs
+        products_with_content = products[:5]
+    
+    lines = []
+    for i, p in enumerate(products_with_content):
+        # Basic product info
+        product_line = f"{i+1}. {p.title}"
+        
+        # Add review synthesis if available
+        if hasattr(p, 'what_customers_love') and p.what_customers_love:
+            product_line += f"\n   What customers love: {p.what_customers_love}"
+        
+        if hasattr(p, 'what_to_watch_out_for') and p.what_to_watch_out_for:
+            product_line += f"\n   What to watch out for: {p.what_to_watch_out_for}"
+        
+        # Add FAQ info if available
+        if hasattr(p, 'answered_faqs') and p.answered_faqs:
+            product_line += f"\n   Answered FAQs: {p.answered_faqs[:200]}..."
+        
+        lines.append(product_line)
+    
+    print(f"Formatted products for LLM: {lines}")
+    return "Here are the top product recommendations with customer insights:\n\n" + "\n\n".join(lines)
+
+
+def chat(user_input: str, history: list, user_context: str = ""):
     start_time = time.time()
     
     # Create system message with user context if provided
     system_msg = system_message.copy()
     if user_context:
-        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations. Ask if they're shopping for their specific pets to refine searches."
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
     
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
@@ -380,11 +277,11 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
         model=MODEL,
         input=full_history,
         tools=cast(Any, tools),
+        temperature=0.1,
     )   
     print(f"First response received in {time.time() - start_time:.4f} seconds")
     # print(response)
     products = []
-    followup_questions = ""
     assistant_reply = ""
 
     print(response.output)
@@ -395,7 +292,7 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
     else:
         function_start = time.time()
         print(f"Function call start after {function_start - start_time:.4f} seconds from start")
-        
+
         # Handle function call response
         for output_item in response.output:
             if output_item.type == "function_call":
@@ -412,38 +309,83 @@ def chat(user_input: str, history: list, user_context: str = "", skip_products: 
                 }
                 full_history.append(tool_call_dict)
                 
-                # Determine if this is a new search or follow-up
-                is_followup = tool_call.name == "search_products_based_on_followup"
-                
-                if tool_call.name not in ["search_products", "search_products_based_on_followup"]:
+                if tool_call.name not in ["search_products", "search_articles"]:
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
                 args = json.loads(tool_call.arguments)
                 print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
                 
-                # No need to clear buffer anymore - we use caching instead
-                if not is_followup:
-                    print("🔄 New search - will use caching for follow-up queries")
-                else:
-                    print("🔄 Follow-up search - re-ranking existing results")
-
-                result = call_function(tool_call.name, args)
-                products, followup_questions = result
+                if tool_call.name == "search_articles":
+                    # Handle article search differently - no products returned
+                    result = call_function(tool_call.name, args)
+                    article_content = result
                     
-                print(f"Function call returned in {time.time() - start_time:.4f} seconds")
-                function_end = time.time()
-                print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
-                
-                # Add function result to history
-                full_history.append({
-                    "type": "function_call_output",
-                    "call_id": tool_call.call_id,
-                    "output": str(result)
-                })
+                    print(f"Article search returned in {time.time() - start_time:.4f} seconds")
+                    
+                    # Add function result to history
+                    full_history.append({
+                        "type": "function_call_output",
+                        "call_id": tool_call.call_id,
+                        "output": article_content
+                    })
 
+                    # generate a response
+                    second_response = client.responses.create(
+                        model=MODEL,
+                        input=full_history,
+                        # tools=[]  # No tools for this follow-up
+                        temperature=0.1,
+                    )
+
+                    full_history.append({
+                        "role": "assistant",
+                        "content": second_response.output[0].content[0].text
+                    })
+                    assistant_reply = second_response.output[0].content[0].text
+
+                    
+                    continue  # Continue to next tool call or final response
+                else:
+                    products = call_function(tool_call.name, args)
+                    print(f"Function call returned in {time.time() - start_time:.4f} seconds")
+                    function_end = time.time()
+                    print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
+                    
+                    # Add function result to history
+                    full_history.append({
+                        "type": "function_call_output",
+                        "call_id": tool_call.call_id,
+                        "output": f"{len(products)} products returned"
+                    })
+                    
+  
+                    # Format and inject product context for LLM
+                    product_context = format_products_for_llm(products)
+                    full_history.append({
+                        "role": "user",
+                        "content": f"""
+- Carefully read the review theme synthesis to identify product trade-offs, standout features, or pain points across products.
+- Ask 1-3 short, highly specific follow-up questions or make short statements that help the user narrow their choice.
+- Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
+- Only user review-data to generate follow-ups.
+- Do not repeat already answered or previously asked questions. Say "These look like great options based on the reviews — go with what fits your style or budget!" if no more questions or clarifications are left to be asked or made.
+
+Product Reviews: {product_context}
+
+You're not being chatty — you're being helpful, warm, and efficient."""
+                    })
+                    # Now let the LLM generate the final message
+                    final_response = client.responses.create(
+                        model=MODEL,
+                        input=full_history,
+                        temperature=0.1,
+                    )
+                    final_reply = final_response.output[0].content[0].text
+                    
+                    assistant_reply = final_reply
     print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
     return {
-        "message": str(assistant_reply) + "\n\n" + (followup_questions or ""),
+        "message": str(assistant_reply),
         "history": full_history[1:],  # Exclude system message
         "products": products,
     }
