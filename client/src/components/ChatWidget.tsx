@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { ResizableBox } from 'react-resizable';
+import Draggable from 'react-draggable';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -922,6 +923,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       {/* Chat Modal */}
       {isOpen && (
+        <Draggable handle=".drag-handle">
                 <ResizableBox
                 width={320}
                 height={450}
@@ -930,7 +932,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 className="absolute bottom-16 right-0 shadow-2xl rounded-lg border bg-white flex flex-col"
               >
       
-          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg">
+          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -1192,6 +1194,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             )}
           </CardContent>
         </ResizableBox>
+        </Draggable>
       )}
     </div>
   );
