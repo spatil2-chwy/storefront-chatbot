@@ -236,7 +236,8 @@ class SearchAnalyzer:
         print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result
-    
+
+
     def _matches_query(self, term: str, query_lower: str, query_words: Set[str]) -> bool:
         """Check if a metadata term matches the user's query"""
         term_lower = term.lower()
@@ -312,11 +313,14 @@ class SearchAnalyzer:
         
         for category, criteria_list in categorized_criteria.items():
             for criterion in criteria_list:
-                if self._criterion_matches_product_metadata(criterion, product_metadata, category):
+                match_result = self._criterion_matches_product_metadata(criterion, product_metadata, category)
+                if match_result.get('matched', False):
+                    # Calculate confidence based on match quality
+                    confidence = self._calculate_match_confidence(criterion, product_metadata, category, match_result)
                     matches.append(SearchMatch(
                         field=f"{category}: {criterion}",
                         matched_terms=[criterion],
-                        confidence=0.8,
+                        confidence=confidence,
                         field_value=self._get_matched_metadata_value(criterion, product_metadata, category)
                     ))
         
@@ -326,25 +330,42 @@ class SearchAnalyzer:
         
         return matches
     
-    def _criterion_matches_product_metadata(self, criterion: str, metadata: dict, category: str) -> bool:
-        """Check if criterion matches product using metadata fields"""
+    def _criterion_matches_product_metadata(self, criterion: str, metadata: dict, category: str) -> dict:
+        """Check if criterion matches product using metadata fields and return match details"""
         criterion_lower = criterion.lower()
         
         # Brand matching - handle multi-value fields
         if category == 'Brands':
             brand_field = str(metadata.get('PURCHASE_BRAND', ''))
-            # Split on || and check each brand
             brand_parts = [part.strip().lower() for part in brand_field.split('||')]
-            return any(criterion_lower in brand for brand in brand_parts)
+            for brand in brand_parts:
+                if criterion_lower in brand:
+                    exact_match = criterion_lower == brand
+                    return {
+                        'matched': True,
+                        'exact_match': exact_match,
+                        'matched_value': brand,
+                        'field_type': 'brand'
+                    }
+            return {'matched': False}
         
         # Category matching
         elif category == 'Categories':
             categories = [
-                str(metadata.get('CATEGORY_LEVEL1', '')).lower(),
-                str(metadata.get('CATEGORY_LEVEL2', '')).lower(),
-                str(metadata.get('CATEGORY_LEVEL3', '')).lower()
+                ('CATEGORY_LEVEL1', str(metadata.get('CATEGORY_LEVEL1', '')).lower()),
+                ('CATEGORY_LEVEL2', str(metadata.get('CATEGORY_LEVEL2', '')).lower()),
+                ('CATEGORY_LEVEL3', str(metadata.get('CATEGORY_LEVEL3', '')).lower())
             ]
-            return any(criterion_lower in cat for cat in categories)
+            for field_name, cat in categories:
+                if criterion_lower in cat and cat:
+                    exact_match = criterion_lower == cat
+                    return {
+                        'matched': True,
+                        'exact_match': exact_match,
+                        'matched_value': cat,
+                        'field_type': field_name.lower()
+                    }
+            return {'matched': False}
         
         # Ingredient matching
         elif category == 'Ingredients':
@@ -352,8 +373,14 @@ class SearchAnalyzer:
                 if key.startswith('ingredienttag:'):
                     ingredient = key.split(':', 1)[1].lower()
                     if criterion_lower in ingredient or ingredient in criterion_lower:
-                        return True
-            return False
+                        exact_match = criterion_lower == ingredient
+                        return {
+                            'matched': True,
+                            'exact_match': exact_match,
+                            'matched_value': ingredient,
+                            'field_type': 'ingredient_tag'
+                        }
+            return {'matched': False}
         
         # Diet & health matching
         elif category == 'Diet & Health':
@@ -361,28 +388,114 @@ class SearchAnalyzer:
                 if key.startswith('specialdiettag:'):
                     diet_tag = key.split(':', 1)[1].lower()
                     if criterion_lower in diet_tag or diet_tag in criterion_lower:
-                        return True
-            return False
+                        exact_match = criterion_lower == diet_tag
+                        return {
+                            'matched': True,
+                            'exact_match': exact_match,
+                            'matched_value': diet_tag,
+                            'field_type': 'diet_tag'
+                        }
+            return {'matched': False}
         
         # Pet type matching
         elif category == 'Pet Types':
             pet_type = str(metadata.get('ATTR_PET_TYPE', '')).lower()
-            return criterion_lower in pet_type
+            if criterion_lower in pet_type and pet_type:
+                exact_match = criterion_lower == pet_type
+                return {
+                    'matched': True,
+                    'exact_match': exact_match,
+                    'matched_value': pet_type,
+                    'field_type': 'pet_type'
+                }
+            return {'matched': False}
         
         # Product form matching
         elif category == 'Product Forms':
             food_form = str(metadata.get('ATTR_FOOD_FORM', '')).lower()
-            return criterion_lower in food_form
+            if criterion_lower in food_form and food_form:
+                exact_match = criterion_lower == food_form
+                return {
+                    'matched': True,
+                    'exact_match': exact_match,
+                    'matched_value': food_form,
+                    'field_type': 'food_form'
+                }
+            return {'matched': False}
         
         # Default: search in product name and description
         else:
-            searchable_text = ' '.join([
-                str(metadata.get('CLEAN_NAME', '')),
-                str(metadata.get('NAME', '')),
-                str(metadata.get('DESCRIPTION_LONG', ''))
-            ]).lower()
-            return criterion_lower in searchable_text
-    
+            searchable_fields = [
+                ('name', str(metadata.get('CLEAN_NAME', ''))),
+                ('title', str(metadata.get('NAME', ''))),
+                ('description', str(metadata.get('DESCRIPTION_LONG', '')))
+            ]
+            
+            for field_name, field_value in searchable_fields:
+                field_lower = field_value.lower()
+                if criterion_lower in field_lower and field_value:
+                    # For text fields, exact match means the criterion is a complete word
+                    words = field_lower.split()
+                    exact_match = criterion_lower in words
+                    return {
+                        'matched': True,
+                        'exact_match': exact_match,
+                        'matched_value': field_value[:100],  # Truncate for display
+                        'field_type': field_name
+                    }
+            
+            return {'matched': False}
+
+    def _calculate_match_confidence(self, criterion: str, metadata: dict, category: str, match_result: dict) -> float:
+        """Calculate confidence score based on match quality and context"""
+        if not match_result.get('matched', False):
+            return 0.0
+        
+        # Base confidence scores by field type (how reliable the match is)
+        field_type_scores = {
+            'diet_tag': 0.95,        # Diet tags are very specific and reliable
+            'ingredient_tag': 0.9,   # Ingredient tags are highly reliable
+            'brand': 0.85,           # Brand matches are quite reliable
+            'pet_type': 0.85,        # Pet type is very specific
+            'food_form': 0.8,        # Food form is fairly specific
+            'category_level1': 0.75, # Top-level categories are less specific
+            'category_level2': 0.8,  # Mid-level categories are more specific
+            'category_level3': 0.85, # Detailed categories are quite specific
+            'name': 0.7,             # Product name matches are good but less structured
+            'title': 0.7,            # Product title matches are good but less structured
+            'description': 0.6       # Description matches are less reliable (noisy)
+        }
+        
+        # Category importance weights
+        category_weights = {
+            'Diet & Health': 1.0,    # Most important for pet health
+            'Pet Types': 0.95,       # Very important for targeting
+            'Ingredients': 0.9,      # Important for allergies/preferences
+            'Brands': 0.8,          # Important for brand loyalty
+            'Categories': 0.75,      # Useful for product type
+            'Product Forms': 0.7,    # Useful but less critical
+            'Life Stages': 0.85,     # Important for age-appropriate products
+            'Size/Weight': 0.8       # Important for breed-specific needs
+        }
+        
+        # Get base score from field type
+        field_type = match_result.get('field_type', 'unknown')
+        base_score = field_type_scores.get(field_type, 0.5)
+        
+        # Get category weight
+        category_weight = category_weights.get(category, 0.6)
+        
+        # Exact match bonus
+        exact_match_bonus = 0.1 if match_result.get('exact_match', False) else 0.0
+        
+        # Calculate final confidence
+        confidence = (base_score * category_weight) + exact_match_bonus
+        
+        # Ensure confidence is between 0.1 and 1.0
+        confidence = max(0.1, min(1.0, confidence))
+        
+        return round(confidence, 2)
+
     def _get_matched_metadata_value(self, criterion: str, metadata: dict, category: str) -> str:
         """Get the actual metadata value that was matched"""
         if category == 'Brands':
