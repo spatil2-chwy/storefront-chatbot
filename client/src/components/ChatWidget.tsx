@@ -22,10 +22,10 @@ const formatMessageContent = (content: string): string => {
   let formattedContent = content;
   
   // Convert **bold** to <strong>
-  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
   
   // Convert *italic* to <em>
-  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
   
   // Convert numbered lists (1. item) to proper HTML lists
   if (/^\d+\.\s/m.test(formattedContent)) {
@@ -39,23 +39,23 @@ const formatMessageContent = (content: string): string => {
       
       if (numberListMatch) {
         if (!inList) {
-          processedLines.push('<ol>');
+          processedLines.push('<ol class="list-decimal list-inside space-y-1 my-2">');
           inList = true;
         }
-        processedLines.push(`<li>${numberListMatch[2]}</li>`);
+        processedLines.push(`<li class="leading-relaxed">${numberListMatch[2]}</li>`);
       } else if (trimmedLine.startsWith('- ')) {
         if (!inList) {
-          processedLines.push('<ul>');
+          processedLines.push('<ul class="list-disc list-inside space-y-1 my-2">');
           inList = true;
         }
-        processedLines.push(`<li>${trimmedLine.substring(2)}</li>`);
+        processedLines.push(`<li class="leading-relaxed">${trimmedLine.substring(2)}</li>`);
       } else {
         if (inList) {
-          processedLines.push('</ol>');
+          processedLines.push(inList ? '</ol>' : '</ul>');
           inList = false;
         }
         if (trimmedLine) {
-          processedLines.push(`<p>${trimmedLine}</p>`);
+          processedLines.push(`<p class="leading-relaxed my-2">${trimmedLine}</p>`);
         }
       }
     });
@@ -70,7 +70,7 @@ const formatMessageContent = (content: string): string => {
     const paragraphs = formattedContent.split('\n\n');
     formattedContent = paragraphs
       .filter(p => p.trim())
-      .map(p => `<p>${p.trim()}</p>`)
+      .map(p => `<p class="leading-relaxed my-2">${p.trim().replace(/\n/g, '<br class="my-1" />')}</p>`)
       .join('');
   }
   
@@ -521,13 +521,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
             >
               <div
-                className={`max-w-[75%] px-3 py-2 text-sm rounded-lg ${
+                className={`max-w-[75%] px-4 py-3 text-sm rounded-lg leading-relaxed ${
                   message.sender === 'user'
                     ? 'bg-chewy-blue text-white'
                     : isTransitionMessage(message)
                     ? getTransitionStyling(message)
-                    : 'bg-white text-gray-900 border border-gray-200'
-                } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
+                    : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+                } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray max-w-none' : ''}`}
               >
                 {message.content.includes('Now comparing:') ? (
                   <div className="space-y-2">
@@ -741,13 +741,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                                                   <div
-                          className={`max-w-[80%] px-3 py-2 rounded-lg font-work-sans text-sm ${
+                          className={`max-w-[80%] px-4 py-3 rounded-lg font-work-sans text-sm leading-relaxed ${
                             message.sender === 'user'
                               ? 'bg-chewy-blue text-white'
                               : isTransitionMessage(message)
                               ? getTransitionStyling(message)
-                              : 'bg-gray-100 text-gray-900'
-                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray' : ''}`}
+                              : 'bg-gray-100 text-gray-900 shadow-sm'
+                          } ${message.sender === 'ai' && !isTransitionMessage(message) ? 'prose prose-sm prose-gray max-w-none' : ''}`}
                           >
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">

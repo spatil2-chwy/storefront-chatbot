@@ -56,7 +56,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const renderImage = () => {
     if (!product.image || product.image === '') {
       return (
-        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+        <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500">Image not available</p>
@@ -66,16 +66,25 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     return (
-      <img 
-        src={product.image} 
-        alt={product.title}
-        className="w-full h-48 object-cover"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.nextElementSibling?.classList.remove('hidden');
-        }}
-      />
+      <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
+        <img
+          src={product.image}
+          alt={product.title}
+          className="max-w-full max-h-full object-contain"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            target.nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+        {/* Fallback image (hidden by default) */}
+        <div className="w-full h-48 bg-gray-50 flex items-center justify-center hidden">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -136,13 +145,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Product Image */}
           <div className="relative w-full h-48">
             {renderImage()}
-            {/* Fallback image (hidden by default) */}
-            <div className="w-full h-48 bg-gray-100 flex items-center justify-center hidden">
-              <div className="text-center">
-                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Image not available</p>
-              </div>
-            </div>
           </div>
           
           <CardContent className="p-4 flex-1 flex flex-col">
@@ -168,14 +170,14 @@ export default function ProductCard({ product }: ProductCardProps) {
             
             <div className="space-y-1 mb-2 flex-shrink-0 min-h-[2.5rem]">
               <div className="flex items-center space-x-2">
-                <span className="text-lg font-semibold text-gray-900">${product.price}</span>
+                <span className="text-lg font-semibold text-gray-900">${product.price?.toFixed(2)}</span>
                 {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                  <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                  <span className="text-sm text-gray-500 line-through">${product.originalPrice.toFixed(2)}</span>
                 )}
               </div>
               {(product.autoshipPrice ?? 0) > 0 && (
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
+                  <span className="text-sm text-chewy-blue font-medium">${(product.autoshipPrice ?? 0).toFixed(2)}</span>
                   <div className="flex items-center space-x-1">
                     <RotateCcw className="w-3 h-3 text-chewy-blue" />
                     <span className="text-xs text-chewy-blue font-medium">Autoship</span>

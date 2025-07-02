@@ -446,6 +446,7 @@ class SearchAnalyzer:
             
             return {'matched': False}
 
+    # TODO: FIX HARDCODED CONFIDENCE VALUES, only reason is because of search match requiring confidence score
     def _calculate_match_confidence(self, criterion: str, metadata: dict, category: str, match_result: dict) -> float:
         """Calculate confidence score based on match quality and context"""
         if not match_result.get('matched', False):
