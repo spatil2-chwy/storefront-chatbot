@@ -127,6 +127,9 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         timestamp: new Date(),
         isTransition: true,
         transitionType: transitionType,
+        // Store comparison data for historical preservation
+        comparisonProductCount: transitionType === 'comparison' && toContext.products ? toContext.products.length : undefined,
+        comparisonProducts: transitionType === 'comparison' && toContext.products ? toContext.products : undefined,
       };
       addMessage(transitionMessage);
     }

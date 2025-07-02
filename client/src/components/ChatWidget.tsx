@@ -532,7 +532,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 {message.content.includes('Now comparing:') ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                      <div className="font-semibold">
+                        {message.comparisonProductCount 
+                          ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                          : message.content}
+                      </div>
                       <button
                         onClick={() => {
                           clearComparison();
@@ -543,9 +547,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    {comparingProducts.length > 0 && (
+                    {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        {comparingProducts.map((product) => (
+                        {message.comparisonProducts.map((product) => (
                           <div key={product.id} className="flex items-center space-x-2">
                             <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                               {product.image ? (
@@ -748,7 +752,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                                  <div className="font-semibold">
+                                    {message.comparisonProductCount 
+                                      ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                                      : message.content}
+                                  </div>
                                   <button
                                     onClick={() => {
                                       clearComparison();
@@ -760,9 +768,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                {comparingProducts.length > 0 && (
+                                {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                                   <div className="mt-3 space-y-2">
-                                    {comparingProducts.map((product) => (
+                                    {message.comparisonProducts.map((product) => (
                                       <div key={product.id} className="flex items-center space-x-2">
                                         <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                                           {product.image ? (
@@ -1020,7 +1028,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                             {message.content.includes('Now comparing:') ? (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <div className="font-semibold">Now comparing: {comparingProducts.length} product{comparingProducts.length !== 1 ? 's' : ''}</div>
+                                  <div className="font-semibold">
+                                    {message.comparisonProductCount 
+                                      ? `Now comparing: ${message.comparisonProductCount} product${message.comparisonProductCount !== 1 ? 's' : ''}` 
+                                      : message.content}
+                                  </div>
                                   <button
                                     onClick={() => {
                                       clearComparison();
@@ -1032,9 +1044,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                                     <X className="w-3 h-3" />
                                   </button>
                                 </div>
-                                {comparingProducts.length > 0 && (
+                                {message.comparisonProducts && message.comparisonProducts.length > 0 && (
                                   <div className="mt-3 space-y-2">
-                                    {comparingProducts.map((product) => (
+                                    {message.comparisonProducts.map((product) => (
                                       <div key={product.id} className="flex items-center space-x-2">
                                         <div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center flex-shrink-0">
                                           {product.image ? (
