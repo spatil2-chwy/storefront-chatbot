@@ -316,9 +316,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       // Generate AI response
       const generateResponse = async () => {
         // Show personalized greeting for search queries if user is logged in and it's general chat mode
+        // Only show if we haven't already shown the initial greeting
         const shouldShowSearchGreeting = (
           user && 
           !searchGreetingShown && 
+          !greetingShown && // Don't show search greeting if we already showed initial greeting
           (!currentContext.type || currentContext.type === 'general') &&
           !preloadedChatResponse // Don't show greeting for preloaded responses
         );
@@ -442,10 +444,12 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setIsLoading(true);
 
     // Check if we should show a personalized greeting before the response
-    // Show greeting if: in general chat mode, user is logged in, and this appears to be a search-related follow-up
+    // Show greeting if: in general chat mode, user is logged in, this appears to be a search-related follow-up,
+    // and we haven't already shown any greeting (initial or search)
     const shouldShowGreeting = (
       user && 
       !searchGreetingShown && 
+      !greetingShown && // Don't show search greeting if we already showed initial greeting
       currentContext.type === 'general' && 
       messages.length > 0 && // There are existing messages
       (messageToSend.toLowerCase().includes('search') || 
