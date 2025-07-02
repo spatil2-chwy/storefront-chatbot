@@ -50,6 +50,7 @@ export interface ChatMessage {
   comparisonProductCount?: number; // For comparison messages to store original product count
   productTitle?: string; // For product discussion messages to store product title
   comparisonProducts?: Product[]; // For comparison messages to store full product data
+  isTransition?: boolean; // For transition messages between contexts
 }
 
 export interface ChatContext {

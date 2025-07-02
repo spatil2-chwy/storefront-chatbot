@@ -25,7 +25,7 @@ export default function ProductDetail() {
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
   
   // Get search query from global state
-  const { currentSearchQuery, setShouldAutoOpen, setCurrentContext, clearMessages } = useGlobalChat();
+  const { currentSearchQuery, setShouldAutoOpen, currentContext, setCurrentContext, addTransitionMessage } = useGlobalChat();
 
   const currentPrice = product?.price || 0;
   const autoshipPrice = product?.autoshipPrice || 0;
@@ -34,11 +34,16 @@ export default function ProductDetail() {
   // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
     if (product) {
-      // Clear chat messages when entering product page
-      clearMessages();
+      const previousContext = currentContext;
+      const newContext = { type: 'product' as const, product: product };
+      
+      // Only add transition message if context is actually changing
+      if (previousContext.type !== 'product' || previousContext.product?.id !== product.id) {
+        addTransitionMessage(previousContext, newContext);
+      }
       
       // Set the global chat context to this product
-      setCurrentContext({ type: 'product', product: product });
+      setCurrentContext(newContext);
       
       // Check if user had closed the chatbot before
       const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
@@ -47,12 +52,7 @@ export default function ProductDetail() {
         localStorage.removeItem('chatClosed'); // Reset the flag
       }
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [product, setCurrentContext, setShouldAutoOpen, clearMessages]);
+  }, [product, setCurrentContext, setShouldAutoOpen, addTransitionMessage, currentContext]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {

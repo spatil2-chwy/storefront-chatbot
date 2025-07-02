@@ -38,15 +38,22 @@ export default function ProductListing() {
     setShouldAutoOpen,
     comparingProducts,
     isInComparisonMode,
-    clearMessages,
-    setCurrentContext
+    currentContext,
+    setCurrentContext,
+    addTransitionMessage
   } = useGlobalChat();
 
   // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    // Clear chat messages and set context to general
-    clearMessages();
-    setCurrentContext({ type: 'general' });
+    // Only add transition message if we're coming from a different context
+    const previousContext = currentContext;
+    const newContext = { type: 'general' as const };
+    
+    if (previousContext.type !== 'general') {
+      addTransitionMessage(previousContext, newContext);
+    }
+    
+    setCurrentContext(newContext);
     
     // Check if user had closed the chatbot before
     const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
@@ -54,12 +61,7 @@ export default function ProductListing() {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [setShouldAutoOpen, clearMessages, setCurrentContext]);
+  }, [setShouldAutoOpen, setCurrentContext, addTransitionMessage, currentContext]);
 
   useEffect(() => {
     // Listen for clear chat events

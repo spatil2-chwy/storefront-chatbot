@@ -7,7 +7,7 @@ import time
 from typing import List, Dict, Any, Optional, Union, cast
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
-api_key = getenv("OPENAI_API_KEY")
+api_key = getenv("OPENAI_API_KEY_2")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 client = OpenAI(api_key=api_key)

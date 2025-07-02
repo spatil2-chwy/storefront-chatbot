@@ -7,6 +7,8 @@ interface GlobalChatContextType {
   addMessage: (message: ChatMessage) => void;
   insertMessageAt: (message: ChatMessage, index: number) => void;
   clearMessages: () => void;
+  // New method for context transitions
+  addTransitionMessage: (fromContext: ChatContextType, toContext: ChatContextType) => void;
   currentContext: ChatContextType;
   setCurrentContext: (context: ChatContextType) => void;
   isOpen: boolean;
@@ -86,6 +88,34 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     setMessages([]);
   }, []);
 
+  // New method to handle context transitions with appropriate messages
+  const addTransitionMessage = useCallback((fromContext: ChatContextType, toContext: ChatContextType) => {
+    let transitionContent = '';
+    
+    if (toContext.type === 'product' && toContext.product) {
+      transitionContent = `Now discussing: ${toContext.product.brand} ${toContext.product.title}`;
+    } else if (toContext.type === 'comparison' && toContext.products) {
+      transitionContent = `Now comparing: ${toContext.products.length} products`;
+    } else if (toContext.type === 'general') {
+      if (fromContext.type === 'product') {
+        transitionContent = 'Returned to general chat';
+      } else if (fromContext.type === 'comparison') {
+        transitionContent = 'Exited product comparison';
+      }
+    }
+
+    if (transitionContent) {
+      const transitionMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: transitionContent,
+        sender: 'ai',
+        timestamp: new Date(),
+        isTransition: true,
+      };
+      addMessage(transitionMessage);
+    }
+  }, [addMessage]);
+
   const addToComparison = useCallback((product: Product) => {
     setComparingProducts(prev => {
       const exists = prev.find(p => p.id === product.id);
@@ -116,6 +146,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         addMessage,
         insertMessageAt,
         clearMessages,
+        addTransitionMessage,
         currentContext,
         setCurrentContext,
         isOpen,
