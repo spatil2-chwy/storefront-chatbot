@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
-import Header from '@/components/Header';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
-import SearchMatches from '@/components/SearchMatches';
-import { useProduct } from '@/hooks/useProducts';
+import Header from '@/layout/Header';
+import ChatWidget from '@/features/chat/components/ChatWidget';
+import ComparisonFooter from '@/features/product/components/ComparisonFooter';
+import SearchMatches from '@/features/product/components/SearchMatches';
+import { useProduct } from '@/features/product/hooks';
 import { Product } from '../types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import { Button } from '@/components/Buttons/Button';
+import { Card, CardContent } from '@/components/Cards/Card';
+import { RadioGroup, RadioGroupItem } from '@/components/RadioButtons/RadioGroup';
+import { Label } from '@/components/Input/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Selects/select';
+import { Badge } from '@/components/Display/Badge';
+import { useGlobalChat } from '@/features/chat/context';
 
 export default function ProductDetail() {
   const [match, params] = useRoute('/product/:id');
@@ -23,6 +23,7 @@ export default function ProductDetail() {
 
   // Use the custom hook to fetch product data
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
+  const contextInitialized = useRef(false);
   
   // Get search query from global state
   const { currentSearchQuery, setShouldAutoOpen, currentContext, setCurrentContext, addTransitionMessage } = useGlobalChat();
@@ -33,13 +34,12 @@ export default function ProductDetail() {
 
   // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    if (product) {
-      const previousContext = currentContext;
+    if (product && !contextInitialized.current) {
       const newContext = { type: 'product' as const, product: product };
       
       // Only add transition message if context is actually changing
-      if (previousContext.type !== 'product' || previousContext.product?.id !== product.id) {
-        addTransitionMessage(previousContext, newContext);
+      if (currentContext.type !== 'product' || currentContext.product?.id !== product.id) {
+        addTransitionMessage(currentContext, newContext);
       }
       
       // Set the global chat context to this product
@@ -51,8 +51,10 @@ export default function ProductDetail() {
         setShouldAutoOpen(true);
         localStorage.removeItem('chatClosed'); // Reset the flag
       }
+      
+      contextInitialized.current = true;
     }
-  }, [product, setCurrentContext, setShouldAutoOpen, addTransitionMessage, currentContext]);
+  }, [product, currentContext, setCurrentContext, setShouldAutoOpen, addTransitionMessage]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {

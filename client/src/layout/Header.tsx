@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Search, ChevronDown, Flag, Headphones, User, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/Buttons/Button';
+import { Input } from '@/components/Input/Input';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HeaderProps {

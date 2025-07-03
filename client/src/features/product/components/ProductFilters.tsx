@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/Cards/Card';
+import { Checkbox } from '@/components/Checkboxes/Checkbox';
+import { Label } from '@/components/Input/label';
+import { Slider } from '@/components/Input/slider';
+import { Badge } from '@/components/Display/Badge';
 
 interface ProductFiltersProps {
   onFilterChange: (filters: any) => void;

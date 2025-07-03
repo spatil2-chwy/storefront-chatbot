@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/Buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/Cards/Card';
+import { Badge } from '@/components/Display/Badge';
+import { Separator } from '@/components/Layout/separator';
 import { 
   User, 
   Mail, 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
-import { ChatMessage, ChatContext as ChatContextType, Product } from '../types';
+import { ChatMessage, ChatContext as ChatContextType, Product } from '../../types';
 
 interface GlobalChatContextType {
   messages: ChatMessage[];

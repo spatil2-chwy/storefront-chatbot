@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/Buttons/Button';
+import { Input } from '@/components/Input/Input';
+import { Label } from '@/components/Input/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/Cards/Card';
+import { Separator } from '@/components/Layout/separator';
 import { ChevronDown } from 'lucide-react';
 
 // 5 users who have pets - these will always be suggested

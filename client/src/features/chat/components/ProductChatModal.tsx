@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Product, ChatMessage } from '../types';
+import { Button } from '@/components/Buttons/Button';
+import { Input } from '@/components/Input/Input';
+import { Product, ChatMessage } from '../../../types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 

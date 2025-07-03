@@ -1,9 +1,9 @@
 import React from 'react';
 import { useLocation } from 'wouter';
 import { X, Package, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Product } from '../types';
-import { useGlobalChat } from '../contexts/ChatContext';
+import { Button } from '@/components/Buttons/Button';
+import { Product } from '../../../types';
+import { useGlobalChat } from '../../chat/context';
 
 export default function ComparisonFooter() {
   const [, setLocation] = useLocation();

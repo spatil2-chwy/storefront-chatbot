@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Package, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChatMessage, ChatContext, Product } from '../types';
-import { useGlobalChat } from '../contexts/ChatContext';
+import { Button } from '@/components/Buttons/Button';
+import { Input } from '@/components/Input/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/Cards/Card';
+import { ChatMessage, ChatContext, Product } from '../../../types';
+import { useGlobalChat } from '../context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';

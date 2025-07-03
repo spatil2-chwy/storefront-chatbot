@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
-import Header from '@/components/Header';
-import ProductCard from '@/components/ProductCard';
-import ProductFilters from '@/components/ProductFilters';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
+import Header from '@/layout/Header';
+import ProductCard from '@/features/product/components/ProductCard';
+import ProductFilters from '@/features/product/components/ProductFilters';
+import ChatWidget from '@/features/chat/components/ChatWidget';
+import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import { api } from '@/lib/api';
 import { Product } from '../types';
-import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/Cards/Card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Selects/select';
+import { Badge } from '@/components/Display/Badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import { useGlobalChat } from '@/features/chat/context';
 import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
@@ -25,6 +25,7 @@ export default function ProductListing() {
   const [minMatchCount, setMinMatchCount] = useState<number>(0);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const [preloadedChatResponse, setPreloadedChatResponse] = useState<any>(null);
+  const contextInitialized = useRef(false);
   const isMobile = useIsMobile();
   const { user } = useAuth();
 
@@ -46,12 +47,13 @@ export default function ProductListing() {
 
   // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
+    if (contextInitialized.current) return;
+    
     // Only add transition message if we're coming from a different context
-    const previousContext = currentContext;
     const newContext = { type: 'general' as const };
     
-    if (previousContext.type !== 'general') {
-      addTransitionMessage(previousContext, newContext);
+    if (currentContext.type !== 'general') {
+      addTransitionMessage(currentContext, newContext);
     }
     
     setCurrentContext(newContext);
@@ -62,7 +64,9 @@ export default function ProductListing() {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-  }, [setShouldAutoOpen, setCurrentContext, addTransitionMessage, currentContext]);
+    
+    contextInitialized.current = true;
+  }, [currentContext, addTransitionMessage, setCurrentContext, setShouldAutoOpen]);
 
   useEffect(() => {
     // Listen for clear chat events

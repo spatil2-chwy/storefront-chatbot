@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
-import Header from '@/components/Header';
-import ChatWidget from '@/components/ChatWidget';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import Header from '@/layout/Header';
+import ChatWidget from '@/features/chat/components/ChatWidget';
+import { Button } from '@/components/Buttons/Button';
+import { Card, CardContent } from '@/components/Cards/Card';
+import { Badge } from '@/components/Display/Badge';
+import { useGlobalChat } from '@/features/chat/context';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
   const [showAIOverview, setShowAIOverview] = useState<{show: boolean, product: any, position?: { top: number; left: number }}>({show: false, product: null});
+  const contextInitialized = useRef(false);
   const { 
     comparingProducts, 
     currentSearchQuery,
@@ -24,22 +25,23 @@ export default function ProductComparison() {
 
   // Auto-open chat when component mounts and set comparison context
   useEffect(() => {
-    if (comparingProducts.length > 0) {
-      const previousContext = currentContext;
+    if (comparingProducts.length > 0 && !contextInitialized.current) {
       const newContext = { type: 'comparison' as const, products: comparingProducts };
       
       // Add transition message if context is changing (only when increasing products or first time)
-      if (previousContext.type !== 'comparison' || 
-          !previousContext.products || 
-          previousContext.products.length < comparingProducts.length) {
-        addTransitionMessage(previousContext, newContext);
+      if (currentContext.type !== 'comparison' || 
+          !currentContext.products || 
+          currentContext.products.length < comparingProducts.length) {
+        addTransitionMessage(currentContext, newContext);
       }
       
       setCurrentContext(newContext);
       setIsOpen(true);
       setShouldAutoOpen(true);
+      
+      contextInitialized.current = true;
     }
-  }, [comparingProducts, setIsOpen, setShouldAutoOpen, setCurrentContext, addTransitionMessage, currentContext]);
+  }, [comparingProducts, currentContext, setIsOpen, setShouldAutoOpen, setCurrentContext, addTransitionMessage]);
 
   // Redirect back if no products to compare
   useEffect(() => {
