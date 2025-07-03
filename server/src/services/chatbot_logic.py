@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Union, cast
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
 from src.services.article_service import ArticleService
-api_key = getenv("OPENAI_API_KEY_2")
+api_key = getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 client = OpenAI(api_key=api_key)
@@ -124,6 +124,7 @@ Key rules:
 - Do not suggest any products unless the user explicitly asks for them.
 - Be vary conservative with your output length. If you have a lot of information, focus on the most relevant points and ask if the user wants to see more. We do not want to overwhelm users with too much information at once.
 - Its better to call the product search tool more often than not, rather than trying to get clarification for pet info. That can be included in the follow up.
+- For example, if the first message is for product search, run the product search and then follow up about specifics or the pet profile information.
 """
 
 }
