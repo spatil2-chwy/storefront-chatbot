@@ -134,6 +134,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setMessages, 
     addMessage, 
     insertMessageAt,
+    updateMessage,
     clearMessages,
     addTransitionMessage,
     currentContext, 
@@ -403,31 +404,68 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
           } else {
-            // Use backend chatbot endpoint for general chat mode
+            // Use streaming chatbot endpoint for general chat mode
             const chatHistory = messages.map(msg => ({
               role: msg.sender === 'user' ? 'user' : 'assistant',
               content: msg.content
             }));
             
-            // NEW LOGIC: Always get products from chat endpoint for search queries
-            // The backend will show "Searching for: {query}" and return products + follow-ups
-            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key);
-            aiResponse = {
-              id: (Date.now() + 1).toString(),
-              content: response.message,
+            const responseId = (Date.now() + 1).toString();
+            
+            // Create initial AI message for streaming
+            const streamingMessage: ChatMessage = {
+              id: responseId,
+              content: "",
               sender: 'ai',
               timestamp: new Date(),
             };
             
-            // Update global search state with the products from the response
-            if (response.products && response.products.length > 0) {
-              setSearchResults(response.products);
-              setCurrentSearchQuery(initialQuery);
-              setHasSearched(true);
-            }
+            addMessage(streamingMessage);
+            
+            // Use streaming API
+            await api.chatbotStream(
+              initialQuery, 
+              chatHistory, 
+              user?.customer_key,
+              // onChunk callback
+              (chunk: string) => {
+                // Update the message content with new chunk
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: msg.content + chunk
+                }));
+              },
+              // onComplete callback
+              (fullMessage: string, products?: any[]) => {
+                // Final update with complete message
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: fullMessage
+                }));
+                
+                console.log('ChatWidget received products:', products);
+                console.log('Products count in ChatWidget:', products?.length || 0);
+                
+                // Update global search state with the products from the response
+                if (products && products.length > 0) {
+                  console.log('Setting search results with products:', products);
+                  setSearchResults(products);
+                  setCurrentSearchQuery(initialQuery);
+                  setHasSearched(true);
+                }
+              },
+              // onError callback
+              (error: string) => {
+                console.error('Streaming error:', error);
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+                }));
+              }
+            );
+            
+            return; // Exit early since we handled the message in streaming
           }
-
-          addMessage(aiResponse);
         } catch (error) {
           // Handle API errors gracefully
           const errorMessage: ChatMessage = {
@@ -444,7 +482,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, updateMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -552,21 +590,62 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           timestamp: new Date(),
         };
       } else {
-        // Use backend chatbot endpoint for general chat mode
-        const response = await api.chatbot(messageToSend, chatHistory, user?.customer_key);
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          content: response.message,
+        // Use streaming chatbot endpoint for general chat mode
+        const responseId = (Date.now() + 1).toString();
+        
+        // Create initial AI message for streaming
+        const streamingMessage: ChatMessage = {
+          id: responseId,
+          content: "",
           sender: 'ai',
           timestamp: new Date(),
         };
         
-        // Update global search state with the products from the response
-        if (response.products && response.products.length > 0) {
-          setSearchResults(response.products);
-          setCurrentSearchQuery(messageToSend);
-          setHasSearched(true);
-        }
+        addMessage(streamingMessage);
+        
+        // Use streaming API
+        await api.chatbotStream(
+          messageToSend, 
+          chatHistory, 
+          user?.customer_key,
+          // onChunk callback
+          (chunk: string) => {
+            // Update the message content with new chunk
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: msg.content + chunk
+            }));
+          },
+          // onComplete callback
+          (fullMessage: string, products?: any[]) => {
+            // Final update with complete message
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: fullMessage
+            }));
+            
+            console.log('ChatWidget sendMessage received products:', products);
+            console.log('Products count in sendMessage:', products?.length || 0);
+            
+            // Update global search state with the products from the response
+            if (products && products.length > 0) {
+              console.log('Setting search results in sendMessage with products:', products);
+              setSearchResults(products);
+              setCurrentSearchQuery(messageToSend);
+              setHasSearched(true);
+            }
+          },
+          // onError callback
+          (error: string) => {
+            console.error('Streaming error:', error);
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+            }));
+          }
+        );
+        
+        return; // Exit early since we handled the message in streaming
       }
 
       addMessage(aiResponse);

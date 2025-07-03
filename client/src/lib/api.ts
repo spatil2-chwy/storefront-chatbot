@@ -126,6 +126,98 @@ export const api = {
     return data.response;
   },
 
+  async chatbotStream(
+    message: string, 
+    history: any[] = [], 
+    customer_key?: number,
+    onChunk?: (chunk: string) => void,
+    onComplete?: (fullMessage: string, products?: any[]) => void,
+    onError?: (error: string) => void
+  ): Promise<void> {
+    const payload = {
+      message,
+      history,
+      customer_key,
+    };
+    
+    const response = await fetch(`${API_BASE_URL}/chats/chatbot/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new ApiError(response.status, `Failed to get chatbot stream: ${response.statusText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('No response body for streaming');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullMessage = '';
+    let products: any[] = [];
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.chunk) {
+                fullMessage += data.chunk;
+                onChunk?.(data.chunk);
+              } else if (data.end) {
+                console.log('Streaming completed');
+                console.log('Calling onComplete with products:', products);
+                console.log('Products length in completion:', products?.length || 0);
+                onComplete?.(fullMessage, products);
+                return;
+              } else if (data.products) {
+                console.log('Received products event:', data);
+                console.log('Products count:', data.products?.length || 0);
+                console.log('Products type:', typeof data.products);
+                console.log('Products is array:', Array.isArray(data.products));
+                if (data.products && data.products.length > 0) {
+                  console.log('First product:', data.products[0]);
+                }
+                products = data.products || [];
+                console.log('Stored products array:', products);
+              } else if (data.error) {
+                console.error('Streaming error received:', data.error);
+                onError?.(data.error);
+                return;
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e, 'Line:', line);
+              console.error('Raw line content:', line);
+              // Try to extract the problematic part
+              if (line.length > 6) {
+                const jsonPart = line.slice(6);
+                console.error('JSON part that failed to parse:', jsonPart.substring(0, 200) + '...');
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
   async searchAndChat(query: string, customer_key?: number): Promise<{searchResults: {products: Product[], reply: string}, chatResponse: {message: string, history: any[], products: any[]}}> {
     // COMMENTED OUT: Old approach that called both search and chat endpoints
     // const [searchResults, chatResponse] = await Promise.all([

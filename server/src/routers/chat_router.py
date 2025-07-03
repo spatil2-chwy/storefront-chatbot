@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import ChatMessage as ChatSchema
 from src.models.chat import ChatMessage
 from src.services.chat_service import ChatService
 from src.services.user_service import UserService
-from src.services.chatbot_logic import chat
+from src.services.chatbot_logic import chat, chat_stream_with_products
 from src.services.chatmodes_service import compare_products, ask_about_product
+import json
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 chat_svc = ChatService()
@@ -103,3 +105,111 @@ async def personalized_greeting(request: PersonalizedGreetingRequest, db: Sessio
         # Fallback greeting
         greeting = "Hey there! What can I help you find for your furry friends today?"
         return {"response": {"greeting": greeting}}
+
+@router.post("/chatbot/stream")
+async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
+    """
+    Streaming version of the chatbot endpoint that returns Server-Sent Events.
+    """
+    user_context = ""
+    
+    # Get user context if customer_key is provided
+    if request.customer_key:
+        try:
+            user_context_data = user_svc.get_user_context_for_chat(db, request.customer_key)
+            if user_context_data:
+                user_context = user_svc.format_pet_context_for_ai(user_context_data)
+        except Exception as e:
+            print(f"Error getting user context for customer {request.customer_key}: {e}")
+    
+    def generate_stream():
+        try:
+            # Get the generator and products from chat_stream_with_products
+            stream_generator, products = chat_stream_with_products(
+                user_input=request.message,
+                history=request.history,
+                user_context=user_context
+            )
+            
+            print(f"Streaming response for: {request.message}")
+            print(f"Products found: {len(products) if products else 0}")
+            
+            # Stream the text chunks
+            for chunk in stream_generator:
+                print(f"Streaming chunk: {chunk[:50]}...")
+                # Format as Server-Sent Event
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            
+            # Send end signal with products
+            print(f"Sending end signal with {len(products) if products else 0} products")
+            # Convert Product objects to dictionaries for JSON serialization
+            products_dict = []
+            for product in (products or []):
+                try:
+                    # Product is a Pydantic model, use dict() method
+                    product_dict = product.dict()
+                    
+                    # Clean string values to prevent JSON serialization issues
+                    for key, value in product_dict.items():
+                        if isinstance(value, str):
+                            # Clean any problematic string values
+                            product_dict[key] = value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+                        elif isinstance(value, list):
+                            # Handle lists that might contain objects
+                            cleaned_list = []
+                            for item in value:
+                                if isinstance(item, str):
+                                    cleaned_list.append(item.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '))
+                                elif hasattr(item, 'dict'):
+                                    cleaned_list.append(item.dict())
+                                else:
+                                    cleaned_list.append(item)
+                            product_dict[key] = cleaned_list
+                    
+                    products_dict.append(product_dict)
+                except Exception as e:
+                    print(f"Error serializing product: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
+            
+            try:
+                # Send products first if there are any
+                if products_dict:
+                    products_data = {'products': products_dict}
+                    products_json = json.dumps(products_data, ensure_ascii=False)
+                    print(f"Products JSON length: {len(products_json)}")
+                    print(f"Products count: {len(products_dict)}")
+                    print(f"Sending products event")
+                    yield f"data: {products_json}\n\n"
+                else:
+                    print("No products to send")
+                
+                # Then send end signal
+                end_signal = {'end': True}
+                end_json = json.dumps(end_signal, ensure_ascii=False)
+                print(f"Sending end signal")
+                yield f"data: {end_json}\n\n"
+                
+            except Exception as e:
+                print(f"Error serializing end data: {e}")
+                import traceback
+                traceback.print_exc()
+                # Send end signal without products if serialization fails
+                yield f"data: {json.dumps({'end': True})}\n\n"
+        except Exception as e:
+            print(f"Error in streaming: {e}")
+            import traceback
+            traceback.print_exc()
+            # Send error signal
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )

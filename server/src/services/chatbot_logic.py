@@ -4,7 +4,7 @@ import json
 import time
 from os import getenv
 import time
-from typing import List, Dict, Any, Optional, Union, cast
+from typing import List, Dict, Any, Optional, Union, cast, Generator
 load_dotenv()
 from src.services.searchengine import query_products, rank_products
 from src.services.article_service import ArticleService
@@ -391,3 +391,179 @@ You're not being chatty — you're being helpful, warm, and efficient."""
         "history": full_history[1:],  # Exclude system message
         "products": products,
     }
+
+
+
+def chat_stream_with_products(user_input: str, history: list, user_context: str = ""):
+    """
+    Streaming version of the chat function that yields text chunks as they're generated.
+    Only streams the final response, not during function calls.
+    Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
+    """
+    start_time = time.time()
+    
+    # Create system message with user context if provided
+    system_msg = system_message.copy()
+    if user_context:
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
+    
+    full_history = (
+        [system_msg] + history + [{"role": "user", "content": user_input}]
+    )
+    
+    # Step 1: Get model response (non-streaming for function call detection)
+    response = client.responses.create(
+        model=MODEL,
+        input=full_history,
+        tools=tools,
+        temperature=0.1,
+    )   
+    print(f"First response received in {time.time() - start_time:.4f} seconds")
+    
+    products = []
+    assistant_reply = ""
+
+    print(response.output)
+    if len(response.output) == 1 and response.output[0].type == "message":
+        # Handle message response - stream the content
+        try:
+            assistant_reply = response.output[0].content[0].text
+        except AttributeError:
+            # Handle case where response doesn't have expected structure
+            assistant_reply = "I understand your question. Let me help you with that."
+        
+        full_history.append({"role": "assistant", "content": assistant_reply})
+        
+        # For simple message responses, yield the complete text
+        def simple_generator():
+            yield assistant_reply
+        
+        return simple_generator(), products
+    else:
+        function_start = time.time()
+        print(f"Function call start after {function_start - start_time:.4f} seconds from start")
+
+        # Handle function call response
+        for output_item in response.output:
+            if output_item.type == "function_call":
+                tool_call = output_item
+                print(f"🔧 LLM chose to use tool: {tool_call.name}")
+                
+                # Convert tool_call to dict for history
+                tool_call_dict = {
+                    "type": "function_call",
+                    "id": tool_call.id,
+                    "call_id": tool_call.call_id,
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments
+                }
+                full_history.append(tool_call_dict)
+                
+                if tool_call.name not in ["search_products", "search_articles"]:
+                    raise ValueError(f"Unexpected tool call: {tool_call.name}")
+                
+                args = json.loads(tool_call.arguments)
+                print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
+                
+                if tool_call.name == "search_articles":
+                    # Handle article search differently - no products returned
+                    result = call_function(tool_call.name, args)
+                    article_content = result
+                    
+                    print(f"Article search returned in {time.time() - start_time:.4f} seconds")
+                    
+                    # Add function result to history
+                    full_history.append({
+                        "type": "function_call_output",
+                        "call_id": tool_call.call_id,
+                        "output": article_content
+                    })
+
+                    # Generate streaming response for final message
+                    stream = client.responses.create(
+                        model=MODEL,
+                        input=full_history,
+                        temperature=0.1,
+                        stream=True,
+                    )
+                    
+                    # Stream the response
+                    def article_generator():
+                        try:
+                            for event in stream:
+                                if event.type == "response.output_text.delta":
+                                    chunk = event.delta
+                                    if chunk:
+                                        yield chunk
+                                elif event.type == "response.completed":
+                                    break
+                                elif event.type == "error":
+                                    raise Exception(f"Streaming error: {event.error}")
+                        except Exception as e:
+                            print(f"Error in article streaming: {e}")
+                            yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+                    
+                    return article_generator(), products
+                    
+                else:
+                    products = call_function(tool_call.name, args)
+                    print(f"Function call returned in {time.time() - start_time:.4f} seconds")
+                    function_end = time.time()
+                    print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
+                    
+                    # Add function result to history
+                    full_history.append({
+                        "type": "function_call_output",
+                        "call_id": tool_call.call_id,
+                        "output": f"{len(products)} products returned"
+                    })
+                    
+                    # Format and inject product context for LLM
+                    product_context = format_products_for_llm(products)
+                    full_history.append({
+                        "role": "user",
+                        "content": f"""
+- Carefully read the review theme synthesis to identify product trade-offs, standout features, or pain points across products.
+- Ask 1-3 short, highly specific follow-up questions or make short statements that help the user narrow their choice.
+- Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
+- Only user review-data to generate follow-ups.
+- Do not repeat already answered or previously asked questions. Say "These look like great options based on the reviews — go with what fits your style or budget!" if no more questions or clarifications are left to be asked or made.
+
+Product Reviews: {product_context}
+
+You're not being chatty — you're being helpful, warm, and efficient."""
+                    })
+                    
+                    # Now let the LLM generate the final message with streaming
+                    stream = client.responses.create(
+                        model=MODEL,
+                        input=cast(Any, full_history),
+                        temperature=0.1,
+                        stream=True,
+                    )
+                    
+                    # Stream the response
+                    def product_generator():
+                        try:
+                            for event in stream:
+                                if event.type == "response.output_text.delta":
+                                    chunk = event.delta
+                                    if chunk:
+                                        yield chunk
+                                elif event.type == "response.completed":
+                                    break
+                                elif event.type == "error":
+                                    raise Exception(f"Streaming error: {event.error}")
+                        except Exception as e:
+                            print(f"Error in product streaming: {e}")
+                            yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+                    
+                    return product_generator(), products
+    
+    print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
+    
+    # Fallback generator
+    def fallback_generator():
+        yield "Sorry, I couldn't process your request."
+    
+    return fallback_generator(), products
