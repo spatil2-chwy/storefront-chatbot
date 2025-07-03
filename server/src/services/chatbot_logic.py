@@ -125,6 +125,7 @@ Key rules:
 - Be vary conservative with your output length. If you have a lot of information, focus on the most relevant points and ask if the user wants to see more. We do not want to overwhelm users with too much information at once.
 - Its better to call the product search tool more often than not, rather than trying to get clarification for pet info. That can be included in the follow up.
 - For example, if the first message is for product search, run the product search and then follow up about specifics or the pet profile information.
+- Always provide article links when using the article tool.
 """
 
 }
