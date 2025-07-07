@@ -11,6 +11,7 @@ import { useGlobalChat } from '@/features/Chat/context';
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
   const [showAIOverview, setShowAIOverview] = useState<{show: boolean, product: any, position?: { top: number; left: number }}>({show: false, product: null});
+  const [expandedIngredients, setExpandedIngredients] = useState<{[key: number]: boolean}>({});
   const contextInitialized = useRef(false);
   const { 
     comparingProducts, 
@@ -48,6 +49,13 @@ export default function ProductComparison() {
     clearComparison();
     // Always go back to the main product listing page (which is at root "/")
     setLocation('/');
+  };
+
+  const toggleIngredients = (productId: number) => {
+    setExpandedIngredients(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }));
   };
 
   const renderStars = (rating: number) => {
@@ -272,281 +280,406 @@ export default function ProductComparison() {
           </div>
         </div>
 
-        {/* Product Comparison Grid */}
-        <div className={`grid gap-6 mb-6 comparison-grid ${
-          isChatSidebarOpen 
-            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3' // With sidebar: 1, 2, 3, 3 columns
-            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4'  // Without sidebar: 1, 2, 4, 4 columns
-        }`}>
-          {comparingProducts.map((product) => {
-            const matchedCategories = getMatchedCategories(product);
-            
-            return (
-              <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
-                <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
-                  {/* Product Image */}
-                  <div className="relative w-full h-32">
-                    {renderImage(product)}
-                  </div>
-                  
-                  <CardContent className="p-4 flex-1 flex flex-col">
-                    {/* Original Product Information */}
-                    <div className="mb-3">
-                      <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
-                        <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
-                        <span className="text-[13px] align-middle">{product.title}</span>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex items-center mb-2">
-                      <div className="flex items-center">
-                        <div className="flex text-sm">
-                          {renderStars(product.rating || 0)}
-                        </div>
-                        <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
-                        <span className="text-xs text-gray-500 ml-1">
-                          ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-semibold text-gray-900">${product.price?.toFixed(2)}</span>
-                        {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                          <span className="text-sm text-gray-500 line-through">${product.originalPrice?.toFixed(2)}</span>
-                        )}
-                      </div>
-                      {(product.autoshipPrice ?? 0) > 0 && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)}</span>
-                          <div className="flex items-center space-x-1">
-                            <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                            <span className="text-xs text-chewy-blue font-medium">Autoship</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Categories Matched Section - Show limited categories */}
-                    {matchedCategories.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
-                        <div className="flex flex-wrap gap-1">
-                          {matchedCategories.map((category, index) => (
-                            <Badge
-                              key={index}
-                              className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
-                            >
-                              {category}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Link>
-
-                {/* Should You Buy It Button - Top right corner */}
-                {product.should_you_buy_it && (
-                  <div className="absolute top-2 right-2">
-                    <button
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setShowAIOverview({
-                          show: true, 
-                          product,
-                          position: { top: rect.top, left: rect.left }
-                        });
-                      }}
-                      onMouseLeave={() => setShowAIOverview({show: false, product: null})}
-                      className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
-                      title="Should You Buy It?"
-                    >
-                      <Bot className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Add to Cart Button */}
-                <div className="px-4 pb-3">
-                  <Button
-                    onClick={() => handleAddToCart(product)}
-                    className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
-                  </Button>
-                </div>
-
-                {/* Bottom Controls - View Details button only */}
-                <div className="px-4 pb-4">
-                  <Link href={`/product/${product.id}`}>
-                    <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg h-9 text-sm">
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
         {/* Comparison Table */}
         {comparingProducts.length > 0 && (
           <div className="mt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Detailed Comparison</h2>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-200">
-                      Feature
-                    </th>
-                    {comparingProducts.map((product) => (
-                      <th key={product.id} className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-200 min-w-[200px]">
+            {/* <div className="flex items-center space-x-3 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-chewy-blue to-blue-600 rounded-lg flex items-center justify-center">
+                <Package className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Detailed Comparison</h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+            </div> */}
+            
+            {/* Featured Products Header
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 mb-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Comparing Products</h3>
+                <p className="text-sm text-gray-600">Side-by-side comparison of your selected items</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {comparingProducts.map((product, index) => (
+                  <div key={product.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                    <div className="relative mb-3">
+                      <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                        {product.image ? (
+                          <img 
+                            src={product.image} 
+                            alt={product.title}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <Package className="w-8 h-8 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        {index + 1}
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="font-bold text-sm text-gray-900 mb-1">{product.brand}</div>
+                      <div className="text-xs text-gray-600 line-clamp-2 mb-3 leading-relaxed">{product.title}</div>
+                      
+                      <div className="space-y-2">
+                        <div className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</div>
+                        
+                        {product.rating && (
+                          <div className="flex items-center justify-center space-x-1">
+                            <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                            <span className="text-xs font-medium text-gray-600">{product.rating.toFixed(1)}</span>
+                            <span className="text-xs text-gray-500">
+                              ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                            </span>
+                          </div>
+                        )}
+                        
+                        {(product.autoshipPrice ?? 0) > 0 && (
+                          <div className="flex items-center justify-center space-x-1">
+                            <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                            <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div> */}
+            
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px]">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                      <th className="px-6 py-4 text-left">
                         <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                            {product.image ? (
-                              <img 
-                                src={product.image} 
-                                alt={product.title}
-                                className="w-6 h-6 object-cover rounded"
-                              />
-                            ) : (
-                              <Package className="w-4 h-4 text-gray-400" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-bold text-xs text-gray-900">{product.brand}</div>
-                            <div className="text-xs text-gray-600 line-clamp-2">{product.title}</div>
-                          </div>
+                          <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
+                          <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Feature</span>
                         </div>
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {/* AI Synthesis Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      AI Synthesis
-                    </td>
-                    {comparingProducts.map((product) => (
-                      <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                        {product.should_you_buy_it ? (
-                          <div className="text-xs leading-relaxed">
-                            {product.should_you_buy_it}
+                      {comparingProducts.map((product, index) => (
+                        <th key={product.id} className="px-6 py-4 text-left min-w-[220px]">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                                {product.image ? (
+                                  <img 
+                                    src={product.image} 
+                                    alt={product.title}
+                                    className="w-10 h-10 object-cover rounded-lg"
+                                  />
+                                ) : (
+                                  <Package className="w-6 h-6 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-sm text-gray-900 mb-1">{product.brand}</div>
+                              <div className="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2">{product.title}</div>
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</span>
+                                {product.originalPrice && product.originalPrice > (product.price || 0) && (
+                                  <span className="text-xs text-gray-500 line-through">${product.originalPrice?.toFixed(2)}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {product.rating && (
+                                  <div className="flex items-center space-x-1">
+                                    <div className="flex text-xs">
+                                      {renderStars(product.rating)}
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-600">{product.rating.toFixed(1)}</span>
+                                    <span className="text-xs text-gray-500">
+                                      ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              {(product.autoshipPrice ?? 0) > 0 && (
+                                <div className="flex items-center space-x-1 mt-1">
+                                  <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                                  <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          <span className="text-gray-400 italic">Not available</span>
-                        )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {/* AI Synthesis Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <Bot className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">AI Synthesis</div>
+                            <div className="text-xs text-gray-500">Expert recommendation</div>
+                          </div>
+                        </div>
                       </td>
-                    ))}
-                  </tr>
-                  
-                  {/* Ingredients Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      Ingredients
-                    </td>
-                    {comparingProducts.map((product) => (
-                      <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                        {product.keywords && product.keywords.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {product.keywords.slice(0, 8).map((keyword, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
-                                {keyword}
-                              </Badge>
-                            ))}
-                            {product.keywords.length > 8 && (
-                              <span className="text-xs text-gray-500">+{product.keywords.length - 8} more</span>
+                      {comparingProducts.map((product) => (
+                        <td key={product.id} className="px-6 py-5">
+                          {product.should_you_buy_it ? (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                              <div className="text-sm leading-relaxed text-gray-700">
+                                {product.should_you_buy_it}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                <X className="w-4 h-4 text-gray-400" />
+                              </div>
+                              <span className="text-sm text-gray-400 italic">Not available</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Ingredients Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🥬</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Ingredients</div>
+                            <div className="text-xs text-gray-500">Key components</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const productId = product.id ?? 0;
+                        const isExpanded = expandedIngredients[productId] || false;
+                        const showCount = isExpanded ? product.keywords?.length || 0 : 4;
+                        const visibleKeywords = product.keywords?.slice(0, showCount) || [];
+                        const hasMore = (product.keywords?.length || 0) > 4;
+
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {product.keywords && product.keywords.length > 0 ? (
+                              <div className="space-y-3">
+                                {/* Ingredients container with consistent styling */}
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                  isExpanded ? 'max-h-96' : 'max-h-20'
+                                }`}>
+                                  <div className={`${isExpanded ? 'overflow-y-auto' : ''} ${isExpanded ? 'pr-2' : ''}`}>
+                                    <div className="flex flex-wrap gap-1.5 justify-center">
+                                      {visibleKeywords.map((keyword, index) => (
+                                        <div
+                                          key={index}
+                                          className="transform transition-all duration-300 ease-in-out"
+                                          style={{
+                                            transitionDelay: `${index > 3 ? (index - 4) * 50 : 0}ms`
+                                          }}
+                                        >
+                                          <Badge 
+                                            className="text-xs px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium hover:bg-green-100 transition-colors duration-200"
+                                          >
+                                            {keyword}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {hasMore && (
+                                  <div className="text-center">
+                                    <button
+                                      onClick={() => toggleIngredients(productId)}
+                                      className="inline-flex items-center space-x-1 text-xs text-chewy-blue hover:text-blue-700 font-medium transition-all duration-200 hover:scale-105"
+                                    >
+                                      <span>
+                                        {isExpanded 
+                                          ? `Show less` 
+                                          : `Show ${product.keywords.length - 4} more ingredients`
+                                        }
+                                      </span>
+                                      <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </div>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not available</span>
+                              </div>
                             )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Health Feature Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">❤️</span>
                           </div>
-                        ) : (
-                          <span className="text-gray-400 italic">Not available</span>
-                        )}
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Health Feature</div>
+                            <div className="text-xs text-gray-500">Special benefits</div>
+                          </div>
+                        </div>
                       </td>
-                    ))}
-                  </tr>
-                  
-                  {/* Health Feature Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      Health Feature
-                    </td>
-                    {comparingProducts.map((product) => {
-                      const healthFeature = getHealthFeature(product);
-                      return (
-                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                          {healthFeature ? (
-                            <span className="text-xs">{healthFeature}</span>
-                          ) : (
-                            <span className="text-gray-400 italic">Not specified</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                  
-                  {/* Special Diet Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      Special Diet
-                    </td>
-                    {comparingProducts.map((product) => {
-                      const specialDiet = getSpecialDiet(product);
-                      return (
-                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                          {specialDiet ? (
-                            <span className="text-xs">{specialDiet}</span>
-                          ) : (
-                            <span className="text-gray-400 italic">Not specified</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                  
-                  {/* Flavor Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      Flavor
-                    </td>
-                    {comparingProducts.map((product) => {
-                      const flavor = getFlavor(product);
-                      return (
-                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                          {flavor ? (
-                            <span className="text-xs">{flavor}</span>
-                          ) : (
-                            <span className="text-gray-400 italic">Not specified</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                  
-                  {/* Breed Size Row */}
-                  <tr>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
-                      Breed Size
-                    </td>
-                    {comparingProducts.map((product) => {
-                      const breedSize = getBreedSize(product);
-                      return (
-                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
-                          {breedSize ? (
-                            <span className="text-xs">{breedSize}</span>
-                          ) : (
-                            <span className="text-gray-400 italic">Not specified</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
+                      {comparingProducts.map((product) => {
+                        const healthFeature = getHealthFeature(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {healthFeature ? (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-red-800">{healthFeature}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Special Diet Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🥗</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Special Diet</div>
+                            <div className="text-xs text-gray-500">Dietary requirements</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const specialDiet = getSpecialDiet(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {specialDiet ? (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-blue-800">{specialDiet}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Flavor Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🍖</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Flavor</div>
+                            <div className="text-xs text-gray-500">Primary taste</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const flavor = getFlavor(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {flavor ? (
+                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-orange-800">{flavor}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Breed Size Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🐕</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Breed Size</div>
+                            <div className="text-xs text-gray-500">Target size range</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const breedSize = getBreedSize(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {breedSize ? (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-indigo-800">{breedSize}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Table Footer */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Package className="w-4 h-4" />
+                    <span>Comparing {comparingProducts.length} products side by side</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Scroll horizontally to view all details →
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
