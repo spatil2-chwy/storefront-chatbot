@@ -204,30 +204,47 @@
   transition: all 0.3s ease-in-out;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   /* Ensure entire page content is constrained when sidebar is open */
   .chat-sidebar-open {
     overflow-x: hidden;
   }
   
   .chat-sidebar-open [data-main-content] {
-    margin-right: 420px; /* 400px sidebar + 20px spacing */
+    margin-right: 400px; /* 400px sidebar width */
     padding-left: 1rem; /* Reduce left padding when sidebar is open */
     padding-right: 1rem; /* Reduce right padding when sidebar is open */
   }
   
+  /* Ensure body doesn't overflow when sidebar is open */
+  .chat-sidebar-open body {
+    overflow-x: hidden;
+  }
+  
+  .chat-sidebar-open .min-h-screen {
+    box-sizing: border-box;
+  }
+  
   /* Adjust header container when chat is open */
+  .chat-sidebar-open header {
+    width: calc(100vw - 400px);
+    max-width: calc(100vw - 400px);
+    transition: all 0.3s ease-in-out;
+  }
+  
   .chat-sidebar-open header .max-w-full {
-    margin-right: 420px; /* Adjust header container */
+    margin-right: 0;
     padding-left: 1rem;
     padding-right: 1rem;
+    max-width: 100%;
+    width: 100%;
     transition: all 0.3s ease-in-out;
   }
   
   /* Ensure main content area is properly constrained */
   .chat-sidebar-open main[data-main-content] {
-    width: calc(100vw - 420px);
-    max-width: calc(100vw - 420px);
+    width: calc(100vw - 400px);
+    max-width: calc(100vw - 400px);
     margin-right: 0;
     padding-right: 2rem;
     box-sizing: border-box;
@@ -235,8 +252,8 @@
   
   /* Force all content to stay within bounds */
   .chat-sidebar-open .min-h-screen {
-    width: calc(100vw - 420px);
-    max-width: calc(100vw - 420px);
+    width: calc(100vw - 400px);
+    max-width: calc(100vw - 400px);
   }
   
   /* Ensure grid containers have proper spacing */
@@ -252,13 +269,13 @@
 }
 
 /* Product grid adjustments when chat is open - optimized for Mac screens */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .chat-sidebar-open .product-grid {
     grid-template-columns: repeat(2, minmax(260px, 1fr)) !important; /* tablets: 2 cols */
   }
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1200px) {
   .chat-sidebar-open .product-grid {
     grid-template-columns: repeat(3, minmax(240px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
   }
@@ -271,13 +288,13 @@
 }
 
 /* Comparison grid adjustments when chat is open - optimized for Mac screens */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .chat-sidebar-open .comparison-grid {
     grid-template-columns: repeat(2, minmax(240px, 1fr)) !important; /* tablets: 2 cols */
   }
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1200px) {
   .chat-sidebar-open .comparison-grid {
     grid-template-columns: repeat(3, minmax(220px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
   }
@@ -289,9 +306,25 @@
   }
 }
 
-/* Mobile: no layout changes needed, just overlay */
-@media (max-width: 767px) {
+/* Mobile/Tablet: no layout changes needed, just overlay */
+@media (max-width: 1023px) {
+  .chat-sidebar-open header {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  
   .chat-sidebar-open header .max-w-full {
     transition: none;
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+  }
+  
+  /* Ensure mobile/tablet content doesn't adjust for sidebar (since it's overlay) */
+  .chat-sidebar-open [data-main-content] {
+    margin-right: 0;
+    width: 100%;
+    max-width: 100%;
   }
 }
+
