@@ -3,9 +3,9 @@ import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
 import Header from '@/layout/Header';
 import ChatWidget from '@/features/chat/components/ChatWidget';
-import { Button } from '@/components/Buttons/Button';
-import { Card, CardContent } from '@/components/Cards/Card';
-import { Badge } from '@/components/Display/Badge';
+import { Button } from '@/ui/Buttons/Button';
+import { Card, CardContent } from '@/ui/Cards/Card';
+import { Badge } from '@/ui/Display/Badge';
 import { useGlobalChat } from '@/features/chat/context';
 
 export default function ProductComparison() {

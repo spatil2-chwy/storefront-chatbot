@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'wouter';
 import { X, Package, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/Buttons/Button';
+import { Button } from '@/ui/Buttons/Button';
 import { Product } from '../../../types';
 import { useGlobalChat } from '../../chat/context';
 

@@ -7,12 +7,12 @@ import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import SearchMatches from '@/features/product/components/SearchMatches';
 import { useProduct } from '@/features/product/hooks';
 import { Product } from '../types';
-import { Button } from '@/components/Buttons/Button';
-import { Card, CardContent } from '@/components/Cards/Card';
-import { RadioGroup, RadioGroupItem } from '@/components/RadioButtons/RadioGroup';
-import { Label } from '@/components/Input/Label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/Selects/Select';
-import { Badge } from '@/components/Display/Badge';
+import { Button } from '@/ui/Buttons/Button';
+import { Card, CardContent } from '@/ui/Cards/Card';
+import { RadioGroup, RadioGroupItem } from '@/ui/RadioButtons/RadioGroup';
+import { Label } from '@/ui/Input/Label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
+import { Badge } from '@/ui/Display/Badge';
 import { useGlobalChat } from '@/features/chat/context';
 
 export default function ProductDetail() {

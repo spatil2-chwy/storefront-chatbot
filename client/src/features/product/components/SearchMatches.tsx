@@ -1,6 +1,6 @@
 import React from 'react';
 import { SearchMatch } from '../../../types';
-import { Badge } from '@/components/Display/Badge';
+import { Badge } from '@/ui/Display/Badge';
 import { Target, CheckCircle, Heart, Dog, Baby, Scale, Package, Shield, Pill, Utensils, Award } from 'lucide-react';
 
 interface SearchMatchesProps {
