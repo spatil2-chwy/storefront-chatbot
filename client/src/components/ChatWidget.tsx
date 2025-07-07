@@ -134,6 +134,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     setMessages, 
     addMessage, 
     insertMessageAt,
+    updateMessage,
     clearMessages,
     addTransitionMessage,
     currentContext, 
@@ -159,7 +160,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
   const [greetingShown, setGreetingShown] = useState(false);
   const [searchGreetingShown, setSearchGreetingShown] = useState(false); // Track if greeting shown for search context
   const [preloadedGreeting, setPreloadedGreeting] = useState<string | null>(null); // Store greeting fetched on page load
+  const [isStreaming, setIsStreaming] = useState(false); // Track if currently streaming
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
+  const [userHasScrolled, setUserHasScrolled] = useState(false); // Track if user has manually scrolled
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // Ref for the messages container
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
   const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
   const isMobile = useIsMobile();
@@ -170,12 +175,49 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     }
   };
 
-  useEffect(() => {
-    // Only scroll when messages change and we're not in comparison mode to prevent glitching
-    if (!isInComparisonMode) {
-      scrollToBottom();
+  // Check if user is near the bottom of the messages container
+  const isNearBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    const container = messagesContainerRef.current;
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  // Handle scroll events to detect user scrolling
+  const handleScroll = () => {
+    if (isStreaming) {
+      setUserHasScrolled(!isNearBottom());
     }
-  }, [messages, isInComparisonMode]);
+  };
+
+  // Only auto-scroll on new messages (not streaming chunk updates)
+  const prevMessagesLength = useRef(messages.length);
+  useEffect(() => {
+    // Only scroll if:
+    // - Not streaming, or
+    // - Streaming just started (new message), or
+    // - Streaming just ended
+    // - User is at the bottom
+    if (!isInComparisonMode) {
+      const isNewMessage = messages.length > prevMessagesLength.current;
+      prevMessagesLength.current = messages.length;
+      if (!isStreaming) {
+        // If not streaming, always scroll to bottom on new message
+        scrollToBottom();
+      } else if (isNewMessage && !userHasScrolled) {
+        // If streaming just started (new message), scroll to bottom
+        scrollToBottom();
+      }
+      // Otherwise, do not auto-scroll during streaming chunk updates
+    }
+  }, [messages, isInComparisonMode, isStreaming, userHasScrolled]);
+
+  // Reset user scroll state when streaming starts or ends
+  useEffect(() => {
+    if (isStreaming) {
+      setUserHasScrolled(false);
+    }
+  }, [isStreaming]);
 
   useEffect(() => {
     if (shouldOpen || shouldAutoOpen) {
@@ -403,31 +445,75 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               timestamp: new Date(),
             };
           } else {
-            // Use backend chatbot endpoint for general chat mode
+            // Use streaming chatbot endpoint for general chat mode
             const chatHistory = messages.map(msg => ({
               role: msg.sender === 'user' ? 'user' : 'assistant',
               content: msg.content
             }));
             
-            // NEW LOGIC: Always get products from chat endpoint for search queries
-            // The backend will show "Searching for: {query}" and return products + follow-ups
-            const response = await api.chatbot(initialQuery, chatHistory, user?.customer_key);
-            aiResponse = {
-              id: (Date.now() + 1).toString(),
-              content: response.message,
+            const responseId = (Date.now() + 1).toString();
+            
+            // Create initial AI message for streaming
+            const streamingMessage: ChatMessage = {
+              id: responseId,
+              content: "",
               sender: 'ai',
               timestamp: new Date(),
             };
             
-            // Update global search state with the products from the response
-            if (response.products && response.products.length > 0) {
-              setSearchResults(response.products);
-              setCurrentSearchQuery(initialQuery);
-              setHasSearched(true);
-            }
+            addMessage(streamingMessage);
+            
+            // Set streaming state to true
+            setIsStreaming(true);
+            setStreamingMessageId(responseId);
+            
+            // Use streaming API
+            await api.chatbotStream(
+              initialQuery, 
+              chatHistory, 
+              user?.customer_key,
+              // onChunk callback
+              (chunk: string) => {
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: msg.content + chunk
+                }));
+                // Do NOT auto-scroll here
+              },
+              // onComplete callback
+              (fullMessage: string, products?: any[]) => {
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: fullMessage
+                }));
+                setIsStreaming(false);
+                setStreamingMessageId(null);
+                
+                console.log('ChatWidget received products:', products);
+                console.log('Products count in ChatWidget:', products?.length || 0);
+                
+                // Update global search state with the products from the response
+                if (products && products.length > 0) {
+                  console.log('Setting search results with products:', products);
+                  setSearchResults(products);
+                  setCurrentSearchQuery(initialQuery);
+                  setHasSearched(true);
+                }
+              },
+              // onError callback
+              (error: string) => {
+                console.error('Streaming error:', error);
+                updateMessage(responseId, (msg) => ({
+                  ...msg,
+                  content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+                }));
+                setIsStreaming(false);
+                setStreamingMessageId(null);
+              }
+            );
+            
+            return; // Exit early since we handled the message in streaming
           }
-
-          addMessage(aiResponse);
         } catch (error) {
           // Handle API errors gracefully
           const errorMessage: ChatMessage = {
@@ -439,12 +525,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           addMessage(errorMessage);
         } finally {
           setIsLoading(false);
+          // Ensure streaming is set to false if it wasn't already
+          setIsStreaming(false);
+          setStreamingMessageId(null);
         }
       };
 
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, updateMessage, clearMessages, currentContext, setSearchResults, setCurrentSearchQuery, setHasSearched, user, messages, preloadedChatResponse]);
 
   const sendMessage = async (messageText?: string) => {
     // Only allow sending messages in AI mode
@@ -552,21 +641,69 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
           timestamp: new Date(),
         };
       } else {
-        // Use backend chatbot endpoint for general chat mode
-        const response = await api.chatbot(messageToSend, chatHistory, user?.customer_key);
-        aiResponse = {
-          id: (Date.now() + 1).toString(),
-          content: response.message,
+        // Use streaming chatbot endpoint for general chat mode
+        const responseId = (Date.now() + 1).toString();
+        
+        // Create initial AI message for streaming
+        const streamingMessage: ChatMessage = {
+          id: responseId,
+          content: "",
           sender: 'ai',
           timestamp: new Date(),
         };
         
-        // Update global search state with the products from the response
-        if (response.products && response.products.length > 0) {
-          setSearchResults(response.products);
-          setCurrentSearchQuery(messageToSend);
-          setHasSearched(true);
-        }
+        addMessage(streamingMessage);
+        
+        // Set streaming state to true
+        setIsStreaming(true);
+        setStreamingMessageId(responseId);
+        
+        // Use streaming API
+        await api.chatbotStream(
+          messageToSend, 
+          chatHistory, 
+          user?.customer_key,
+          // onChunk callback
+          (chunk: string) => {
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: msg.content + chunk
+            }));
+            // Do NOT auto-scroll here
+          },
+          // onComplete callback
+          (fullMessage: string, products?: any[]) => {
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: fullMessage
+            }));
+            setIsStreaming(false);
+            setStreamingMessageId(null);
+            
+            console.log('ChatWidget sendMessage received products:', products);
+            console.log('Products count in sendMessage:', products?.length || 0);
+            
+            // Update global search state with the products from the response
+            if (products && products.length > 0) {
+              console.log('Setting search results in sendMessage with products:', products);
+              setSearchResults(products);
+              setCurrentSearchQuery(messageToSend);
+              setHasSearched(true);
+            }
+          },
+          // onError callback
+          (error: string) => {
+            console.error('Streaming error:', error);
+            updateMessage(responseId, (msg) => ({
+              ...msg,
+              content: "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
+            }));
+            setIsStreaming(false);
+            setStreamingMessageId(null);
+          }
+        );
+        
+        return; // Exit early since we handled the message in streaming
       }
 
       addMessage(aiResponse);
@@ -582,6 +719,9 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
       addMessage(errorMessage);
     } finally {
       setIsLoading(false);
+      // Ensure streaming is set to false if it wasn't already
+      setIsStreaming(false);
+      setStreamingMessageId(null);
     }
   };
 
@@ -644,7 +784,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
         </div>
 
         {/* Messages */}
-        <div className="flex-1 p-3 overflow-y-auto bg-gray-50">
+        <div 
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 p-3 overflow-y-auto bg-gray-50"
+        >
           {/* Initial suggestions if no messages */}
           {messages.length === 0 && (
             <div>
@@ -907,7 +1051,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 {!isLiveAgent && (
                   <>
                     {/* Messages - Scrollable area */}
-                    <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
+                    <div 
+                      ref={messagesContainerRef}
+                      onScroll={handleScroll}
+                      className="flex-1 p-4 overflow-y-auto space-y-3 bg-white"
+                    >
                       {/* Initial suggestions if no messages */}
                       {messages.length === 0 && (
                         <div className="space-y-2">
@@ -1013,6 +1161,15 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         </div>
                       )}
                       <div ref={messagesEndRef} />
+                      
+                      {/* New message indicator when streaming and user has scrolled up */}
+                      {isStreaming && userHasScrolled && (
+                        <div className="flex justify-center mt-2">
+                          <div className="bg-chewy-blue text-white px-3 py-1 rounded-full text-xs font-work-sans animate-pulse">
+                            New message incoming...
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {/* Input - Fixed at bottom */}
                     <div className="border-t border-gray-100 p-3 bg-white rounded-b-lg flex-shrink-0">
@@ -1115,8 +1272,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 resizeHandles={['nw']}
                 className="absolute bottom-16 right-0 shadow-2xl rounded-lg border bg-white flex flex-col"
               >
-      
-          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
+                <div className="flex flex-col h-full">
+                  <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -1194,7 +1351,11 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             {!isLiveAgent && (
               <>
                 {/* Messages */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
+                <div 
+                  ref={messagesContainerRef}
+                  onScroll={handleScroll}
+                  className="flex-1 p-4 overflow-y-auto space-y-3 bg-white"
+                >
                   {/* Initial suggestions if no messages */}
                   {messages.length === 0 && (
                     <div className="space-y-2">
@@ -1300,8 +1461,17 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                         </div>
                       )}
                       
-                  <div ref={messagesEndRef} />
-                </div>
+                                        <div ref={messagesEndRef} />
+                      
+                      {/* New message indicator when streaming and user has scrolled up */}
+                      {isStreaming && userHasScrolled && (
+                        <div className="flex justify-center mt-2">
+                          <div className="bg-chewy-blue text-white px-3 py-1 rounded-full text-xs font-work-sans animate-pulse">
+                            New message incoming...
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                 {/* Input */}
                 <div className="border-t border-gray-100 p-3 bg-white rounded-b-lg">
@@ -1380,6 +1550,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               </div>
             )}
           </CardContent>
+                </div>
         </ResizableBox>
         </Draggable>
       )}

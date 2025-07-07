@@ -129,14 +129,16 @@ export default function ProductListing() {
 
   // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    // Only add transition message if we're coming from a different context
+    // Always ensure we're in general context for this page
     const previousContext = currentContext;
     const newContext = { type: 'general' as const };
     
+    // Only add transition message if we're coming from a different context
     if (previousContext.type !== 'general') {
       addTransitionMessage(previousContext, newContext);
     }
     
+    // Always set the context to general for this page
     setCurrentContext(newContext);
     
     // Check if user had closed the chatbot before
@@ -145,7 +147,7 @@ export default function ProductListing() {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-  }, [setShouldAutoOpen, setCurrentContext, addTransitionMessage, currentContext]);
+  }, []); // Empty dependency array - only run once on mount
 
   useEffect(() => {
     // Listen for clear chat events
@@ -200,6 +202,12 @@ export default function ProductListing() {
   }, [user?.customer_key]);
 
   useEffect(() => {
+    console.log('🔄 Filter effect triggered:', { 
+      searchResultsLength: searchResults.length, 
+      sortBy, 
+      selectedMatchFilters, 
+      minMatchCount 
+    });
     if (searchResults.length > 0) {
       applyFilters();
     } else {
@@ -208,6 +216,7 @@ export default function ProductListing() {
   }, [searchResults, sortBy, selectedMatchFilters, minMatchCount]);
 
   const applyFilters = () => {
+    console.log('🔧 Applying filters to', searchResults.length, 'products');
     let filtered = [...searchResults];
 
     // Apply minimum match count filter - count by category types, not individual matches
@@ -277,6 +286,7 @@ export default function ProductListing() {
         break;
     }
 
+    console.log('✅ Filtered results:', filtered.length, 'products');
     setFilteredResults(filtered);
   };
 
@@ -314,11 +324,14 @@ export default function ProductListing() {
       console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);
       
       // Handle search results
+      console.log('🔍 Search response:', searchData);
       if (searchData && typeof searchData === 'object' && 'products' in searchData) {
         setSearchResults(searchData.products);
         console.log(`📊 Received ${searchData.products.length} products`);
+        console.log('📊 First product:', searchData.products[0]);
       } else {
         // Handle fallback case
+        console.log('📊 Using fallback case for search results');
         setSearchResults(Array.isArray(searchData) ? searchData : []);
       }
 
