@@ -134,58 +134,63 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             print(f"Streaming response for: {request.message}")
             print(f"Products found: {len(products) if products else 0}")
             
-            # Stream the text chunks
-            for chunk in stream_generator:
-                print(f"Streaming chunk: {chunk[:50]}...")
-                # Format as Server-Sent Event
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-            
-            # Send end signal with products
-            print(f"Sending end signal with {len(products) if products else 0} products")
-            # Convert Product objects to dictionaries for JSON serialization
-            products_dict = []
-            for product in (products or []):
+            # Send products first if there are any
+            if products:
+                print(f"Sending products before streaming text: {len(products)} products")
+                # Convert Product objects to dictionaries for JSON serialization
+                products_dict = []
+                for product in products:
+                    try:
+                        # Product is a Pydantic model, use dict() method
+                        product_dict = product.dict()
+                        
+                        # Clean string values to prevent JSON serialization issues
+                        for key, value in product_dict.items():
+                            if isinstance(value, str):
+                                # Clean any problematic string values
+                                product_dict[key] = value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+                            elif isinstance(value, list):
+                                # Handle lists that might contain objects
+                                cleaned_list = []
+                                for item in value:
+                                    if isinstance(item, str):
+                                        cleaned_list.append(item.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '))
+                                    elif hasattr(item, 'dict'):
+                                        cleaned_list.append(item.dict())
+                                    else:
+                                        cleaned_list.append(item)
+                                product_dict[key] = cleaned_list
+                        
+                        products_dict.append(product_dict)
+                    except Exception as e:
+                        print(f"Error serializing product: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        continue
+                
                 try:
-                    # Product is a Pydantic model, use dict() method
-                    product_dict = product.dict()
-                    
-                    # Clean string values to prevent JSON serialization issues
-                    for key, value in product_dict.items():
-                        if isinstance(value, str):
-                            # Clean any problematic string values
-                            product_dict[key] = value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-                        elif isinstance(value, list):
-                            # Handle lists that might contain objects
-                            cleaned_list = []
-                            for item in value:
-                                if isinstance(item, str):
-                                    cleaned_list.append(item.replace('\n', ' ').replace('\r', ' ').replace('\t', ' '))
-                                elif hasattr(item, 'dict'):
-                                    cleaned_list.append(item.dict())
-                                else:
-                                    cleaned_list.append(item)
-                            product_dict[key] = cleaned_list
-                    
-                    products_dict.append(product_dict)
-                except Exception as e:
-                    print(f"Error serializing product: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    continue
-            
-            try:
-                # Send products first if there are any
-                if products_dict:
+                    # Send products event
                     products_data = {'products': products_dict}
                     products_json = json.dumps(products_data, ensure_ascii=False)
                     print(f"Products JSON length: {len(products_json)}")
                     print(f"Products count: {len(products_dict)}")
-                    print(f"Sending products event")
+                    print(f"Sending products event before text")
                     yield f"data: {products_json}\n\n"
-                else:
-                    print("No products to send")
-                
-                # Then send end signal
+                except Exception as e:
+                    print(f"Error serializing products data: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # Stream the text chunks
+            for chunk in stream_generator:
+                print(f"Streaming chunk: {chunk[:10]}...")
+                # Format as Server-Sent Event
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            
+            # Send end signal
+            print(f"Sending end signal")
+            try:
+                # Send end signal
                 end_signal = {'end': True}
                 end_json = json.dumps(end_signal, ensure_ascii=False)
                 print(f"Sending end signal")
