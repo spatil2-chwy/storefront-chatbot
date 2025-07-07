@@ -149,6 +149,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
     searchResults,
     setSearchResults,
     setCurrentSearchQuery,
+    hasSearched,
     setHasSearched,
     isMainChatHidden
   } = useGlobalChat();
@@ -480,6 +481,19 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 }));
                 // Do NOT auto-scroll here
               },
+              // onProducts callback - called immediately when products are received
+              (products: any[]) => {
+                console.log('ChatWidget received products early:', products);
+                console.log('Products count in early callback:', products?.length || 0);
+                
+                // Update global search state with the products from the response
+                if (products && products.length > 0) {
+                  console.log('Setting search results with early products:', products);
+                  setSearchResults(products);
+                  setCurrentSearchQuery(initialQuery);
+                  setHasSearched(true);
+                }
+              },
               // onComplete callback
               (fullMessage: string, products?: any[]) => {
                 updateMessage(responseId, (msg) => ({
@@ -489,12 +503,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 setIsStreaming(false);
                 setStreamingMessageId(null);
                 
-                console.log('ChatWidget received products:', products);
-                console.log('Products count in ChatWidget:', products?.length || 0);
+                console.log('ChatWidget received products on complete:', products);
+                console.log('Products count in complete callback:', products?.length || 0);
                 
-                // Update global search state with the products from the response
-                if (products && products.length > 0) {
-                  console.log('Setting search results with products:', products);
+                // This is now redundant since products are handled in onProducts callback
+                // but keeping it as fallback in case onProducts wasn't called
+                if (products && products.length > 0 && !hasSearched) {
+                  console.log('Setting search results with fallback products:', products);
                   setSearchResults(products);
                   setCurrentSearchQuery(initialQuery);
                   setHasSearched(true);
@@ -671,6 +686,19 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             }));
             // Do NOT auto-scroll here
           },
+          // onProducts callback - called immediately when products are received
+          (products: any[]) => {
+            console.log('ChatWidget sendMessage received products early:', products);
+            console.log('Products count in sendMessage early callback:', products?.length || 0);
+            
+            // Update global search state with the products from the response
+            if (products && products.length > 0) {
+              console.log('Setting search results in sendMessage with early products:', products);
+              setSearchResults(products);
+              setCurrentSearchQuery(messageToSend);
+              setHasSearched(true);
+            }
+          },
           // onComplete callback
           (fullMessage: string, products?: any[]) => {
             updateMessage(responseId, (msg) => ({
@@ -680,12 +708,13 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
             setIsStreaming(false);
             setStreamingMessageId(null);
             
-            console.log('ChatWidget sendMessage received products:', products);
-            console.log('Products count in sendMessage:', products?.length || 0);
+            console.log('ChatWidget sendMessage received products on complete:', products);
+            console.log('Products count in sendMessage complete callback:', products?.length || 0);
             
-            // Update global search state with the products from the response
-            if (products && products.length > 0) {
-              console.log('Setting search results in sendMessage with products:', products);
+            // This is now redundant since products are handled in onProducts callback
+            // but keeping it as fallback in case onProducts wasn't called
+            if (products && products.length > 0 && !hasSearched) {
+              console.log('Setting search results in sendMessage with fallback products:', products);
               setSearchResults(products);
               setCurrentSearchQuery(messageToSend);
               setHasSearched(true);

@@ -131,6 +131,7 @@ export const api = {
     history: any[] = [], 
     customer_key?: number,
     onChunk?: (chunk: string) => void,
+    onProducts?: (products: any[]) => void,
     onComplete?: (fullMessage: string, products?: any[]) => void,
     onError?: (error: string) => void
   ): Promise<void> {
@@ -204,6 +205,8 @@ export const api = {
                 }
                 products = data.products || [];
                 console.log('Stored products array:', products);
+                // Call onProducts callback immediately when products are received
+                onProducts?.(products);
               } else if (data.error) {
                 console.error('Streaming error received:', data.error);
                 onError?.(data.error);
