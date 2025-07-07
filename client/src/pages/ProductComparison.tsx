@@ -286,17 +286,17 @@ export default function ProductComparison() {
             
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
+                <table className="w-full min-w-[800px] table-fixed">
                   <thead>
                     <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                      <th className="px-6 py-4 text-left">
+                      <th className="px-6 py-4 text-left w-48">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
                           <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Product</span>
                         </div>
                       </th>
                       {comparingProducts.map((product, index) => (
-                        <th key={product.id} className="px-6 py-4 text-left min-w-[220px]">
+                        <th key={product.id} className="px-6 py-4 text-left" style={{width: `calc((100% - 12rem) / ${comparingProducts.length})`}}>
                           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
                             <div className="relative mb-3">
                               <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
