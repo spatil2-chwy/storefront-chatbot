@@ -75,27 +75,27 @@
 /* Chewy Brand Utilities */
 @layer utilities {
   .bg-chewy-blue {
-    background-color: #004C98;
+    background-color: #1c49c2;
   }
   
   .text-chewy-blue {
-    color: #004C98;
+    color: #1c49c2;
   }
   
   .border-chewy-blue {
-    border-color: #004C98;
+    border-color: #1c49c2;
   }
   
   .bg-chewy-yellow {
-    background-color: #FFD100;
+    background-color: #FFC001;
   }
   
   .text-chewy-yellow {
-    color: #FFD100;
+    color: #FFC001;
   }
   
   .bg-chewy-light-blue {
-    background-color: #E6F3FF;
+    background-color: #D5EBFF;
   }
   
   .line-clamp-2 {
