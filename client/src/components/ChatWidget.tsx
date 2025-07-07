@@ -1194,8 +1194,8 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 resizeHandles={['nw']}
                 className="absolute bottom-16 right-0 shadow-2xl rounded-lg border bg-white flex flex-col"
               >
-      
-          <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
+                <div className="flex flex-col h-full">
+                  <CardHeader className="bg-white border-b border-gray-100 p-3 rounded-t-lg drag-handle cursor-move">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
@@ -1459,6 +1459,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
               </div>
             )}
           </CardContent>
+                </div>
         </ResizableBox>
         </Draggable>
       )}
