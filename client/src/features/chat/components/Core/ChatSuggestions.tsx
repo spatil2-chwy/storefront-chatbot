@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bot } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
 
 interface ChatSuggestionsProps {
@@ -17,12 +18,8 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({ onSuggestionCl
   return (
     <div className="text-center space-y-4">
       <div className="flex flex-col items-center space-y-2">
-        <div className="w-12 h-12 bg-chewy-blue rounded-full flex items-center justify-center">
-          <img 
-            src="/chewy-c-white.png" 
-            alt="Chewy C" 
-            className="w-7 h-7"
-          />
+        <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+          <Bot className="w-6 h-6 text-white" />
         </div>
         <div>
           <h3 className="font-semibold text-gray-900">How can I help you today?</h3>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Bot } from 'lucide-react';
 import { Skeleton } from '../../../../ui/Feedback/Skeleton';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSuggestions } from './ChatSuggestions';
@@ -66,12 +66,8 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       {/* Loading skeleton */}
       {isLoading && (
         <div className="flex items-start space-x-2">
-          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
-            <img 
-              src="/chewy-c-white.png" 
-              alt="Chewy C" 
-              className="w-5 h-5"
-            />
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-full" />

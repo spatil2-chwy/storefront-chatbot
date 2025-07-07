@@ -71,13 +71,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     if (message.content.includes('Now comparing:') && message.comparisonProducts && message.comparisonProducts.length > 0) {
       return (
         <div className="flex justify-start items-start space-x-2">
-          {/* AI Avatar */}
-          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
-            <img 
-              src="/chewy-c-white.png" 
-              alt="Chewy C" 
-              className="w-5 h-5"
-            />
+          {/* Tylee Avatar */}
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
           </div>
           
           {/* Enhanced comparison message */}
@@ -145,13 +141,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       
       return (
         <div className="flex justify-start items-start space-x-2">
-          {/* AI Avatar */}
-          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
-            <img 
-              src="/chewy-c-white.png" 
-              alt="Chewy C" 
-              className="w-5 h-5"
-            />
+          {/* Tylee Avatar */}
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
           </div>
           
           {/* Enhanced product discussion message */}
@@ -211,14 +203,10 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
-      {/* Avatar - only for AI messages */}
+      {/* Tylee Avatar - only for AI messages */}
       {!isUser && (
-        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
-          <img 
-            src="/chewy-c-white.png" 
-            alt="Chewy C" 
-            className="w-5 h-5"
-          />
+        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-white" />
         </div>
       )}
       

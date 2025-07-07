@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Bot } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
 import { CardTitle } from '../../../../ui/Cards/Card';
 import { ChatContext } from '../../../../types';
@@ -38,12 +38,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   const getTitle = () => {
     if (chatContext?.type === 'product') {
-      return 'AI Beta - Product Questions';
+      return 'Tylee - Product Questions';
     }
     if (chatContext?.type === 'comparison') {
-      return 'AI Beta - Product Comparison';
+      return 'Tylee - Product Comparison';
     }
-    return isLiveAgent ? 'Live Agent' : 'AI Beta';
+    return isLiveAgent ? 'Live Agent' : 'Tylee';
   };
 
   const handleClearChat = () => {
@@ -59,12 +59,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <div className={headerClasses}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
-            <img 
-              src="/chewy-c-white.png" 
-              alt="Chewy C" 
-              className="w-5 h-5"
-            />
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+            <Bot className="w-4 h-4 text-white" />
           </div>
           <CardTitle className="text-gray-900 font-work-sans text-base">
             {getTitle()}
