@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
+import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
 import Header from '@/layout/Header';
 import ChatWidget from '@/features/chat/components/ChatWidget';
 import { Button } from '@/components/Buttons/Button';
@@ -145,12 +145,12 @@ export default function ProductComparison() {
             onMouseEnter={() => setShowAIOverview({show: true, product: showAIOverview.product})}
             onMouseLeave={() => setShowAIOverview({show: false, product: null})}
           >
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+                          <div className="flex items-center space-x-2 mb-3">
+                <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-gray-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
-            </div>
             <div className="text-gray-700 text-xs leading-relaxed mb-2">
               <div className="font-medium text-gray-900 mb-1 text-xs">
                 {showAIOverview.product.brand} {showAIOverview.product.title}
@@ -282,7 +282,7 @@ export default function ProductComparison() {
                       className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
                       title="Should You Buy It?"
                     >
-                      <Bot className="w-4 h-4" />
+                                              <Sparkles className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
                 )}

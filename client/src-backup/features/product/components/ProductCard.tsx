@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
+import { Sparkles, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
 import { Product } from '../../../types';
 import { Card, CardContent } from '@/components/Cards/Card';
 import { Badge } from '@/components/Display/Badge';
@@ -212,18 +212,18 @@ export default function ProductCard({ product }: ProductCardProps) {
               className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
               title="Should You Buy It?"
             >
-              <Bot className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-gray-600" />
             </button>
             
             {/* Should You Buy It AI Overview Tooltip */}
             {showAIOverview && product.should_you_buy_it && (
               <div className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-white" />
+                                  <div className="flex items-center space-x-2 mb-3">
+                    <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
-                </div>
                 <div className="text-gray-700 text-xs leading-relaxed">
                   {product.should_you_buy_it}
                 </div>

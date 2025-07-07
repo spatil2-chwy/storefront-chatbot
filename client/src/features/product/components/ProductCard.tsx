@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Bot, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
+import { Sparkles, RotateCcw, Image as ImageIcon, Check, ShoppingCart, MessageSquare, X } from 'lucide-react';
 import { Product } from '../../../types';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
@@ -14,7 +14,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const [showAIOverview, setShowAIOverview] = useState(false);
+  const [showAISynthesisFull, setShowAISynthesisFull] = useState(false);
   const { 
     comparingProducts, 
     addToComparison, 
@@ -205,42 +205,62 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </>
               )}
             </div>
+
+            {/* AI Synthesis Section - Aligned at top */}
+            {product.should_you_buy_it && (
+              <div className="mb-2 flex-shrink-0">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 relative">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="text-xs font-semibold text-gray-900">Should you buy it?</h3>
+                      </div>
+                      <div className="text-gray-700 text-xs leading-relaxed">
+                        <div className="line-clamp-2">
+                          {product.should_you_buy_it}
+                        </div>
+                        {product.should_you_buy_it && product.should_you_buy_it.length > 80 && (
+                          <div className="relative">
+                            <span
+                              onMouseEnter={() => setShowAISynthesisFull(true)}
+                              onMouseLeave={() => setShowAISynthesisFull(false)}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium mt-1 underline cursor-pointer transition-colors duration-200"
+                            >
+                              Show More
+                            </span>
+                            
+                            {/* Hover tooltip with full review */}
+                            {showAISynthesisFull && (
+                              <div className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
+                                <div className="flex items-start space-x-2 mb-2">
+                                  <div className="flex-shrink-0 mt-0.5">
+                                    <Sparkles className="w-4 h-4 text-gray-500" />
+                                  </div>
+                                  <h3 className="text-sm font-semibold text-gray-900">Should you buy it?</h3>
+                                </div>
+                                <div className="text-gray-700 text-xs leading-relaxed">
+                                  {product.should_you_buy_it}
+                                </div>
+                                {/* Arrow pointing down to the button */}
+                                <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Spacer to push bottom content down */}
             <div className="flex-1"></div>
           </CardContent>
         </Link>
-
-        {/* Should You Buy It Button - Top right corner */}
-        {product.should_you_buy_it && (
-          <div className="absolute top-2 right-2">
-            <button
-              onMouseEnter={() => setShowAIOverview(true)}
-              onMouseLeave={() => setShowAIOverview(false)}
-              className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
-              title="Should You Buy It?"
-            >
-              <Bot className="w-4 h-4" />
-            </button>
-            
-            {/* Should You Buy It AI Overview Tooltip */}
-            {showAIOverview && product.should_you_buy_it && (
-              <div className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
-                </div>
-                <div className="text-gray-700 text-xs leading-relaxed">
-                  {product.should_you_buy_it}
-                </div>
-                {/* Arrow pointing down to the button */}
-                <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Add to Cart Button */}
         <div className="px-4 pb-3">

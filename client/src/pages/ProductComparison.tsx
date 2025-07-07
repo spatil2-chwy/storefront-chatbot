@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
+import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
 import Header from '@/layout/Header';
 import ChatWidget from '@/features/Chat/components/ChatWidget';
 import { Button } from '@/ui/Buttons/Button';
@@ -238,10 +238,10 @@ export default function ProductComparison() {
             onMouseLeave={() => setShowAIOverview({show: false, product: null})}
           >
             <div className="flex items-center space-x-2 mb-3">
-              <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-gray-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
+              <h3 className="text-sm font-semibold text-gray-900">AI Synthesis</h3>
             </div>
             <div className="text-gray-700 text-xs leading-relaxed mb-2">
               <div className="font-medium text-gray-900 mb-1 text-xs">
@@ -417,8 +417,8 @@ export default function ProductComparison() {
                     <tr className="hover:bg-gray-50/50 transition-colors duration-200">
                       <td className="px-6 py-5">
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Bot className="w-4 h-4 text-white" />
+                          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-gray-600" />
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-gray-900">AI Synthesis</div>
@@ -429,7 +429,7 @@ export default function ProductComparison() {
                       {comparingProducts.map((product) => (
                         <td key={product.id} className="px-6 py-5">
                           {product.should_you_buy_it ? (
-                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                               <div className="text-sm leading-relaxed text-gray-700">
                                 {product.should_you_buy_it}
                               </div>
