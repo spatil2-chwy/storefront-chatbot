@@ -758,7 +758,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                 />
               </div>
               <div className="text-gray-900 font-work-sans text-sm font-semibold">
-                {chatContext?.type === 'product' ? 'AI Beta - Product Questions' : 'AI Beta - Product Comparison'}
+                {chatContext?.type === 'product' ? 'Tylee: AI Beta - Product Questions' : 'Tylee: AI Beta - Product Comparison'}
               </div>
             </div>
             
@@ -987,7 +987,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                       />
                     </div>
                     <CardTitle className="text-gray-900 font-work-sans text-base">
-                      {isLiveAgent ? 'Live Agent' : 'AI Beta'}
+                      {isLiveAgent ? 'Live Agent' : 'Tylee: AI Beta'}
                     </CardTitle>
                   </div>
                   <Button
@@ -1284,7 +1284,7 @@ export default function ChatWidget({ initialQuery, shouldOpen, shouldClearChat, 
                   />
                 </div>
                 <CardTitle className="text-gray-900 font-work-sans text-base">
-                  {isLiveAgent ? 'Live Agent' : 'AI Beta'}
+                  {isLiveAgent ? 'Live Agent' : 'Tylee: AI Beta'}
                 </CardTitle>
               </div>
               <Button
