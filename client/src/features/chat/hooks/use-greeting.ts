@@ -67,52 +67,9 @@ export const useGreeting = () => {
   }, [isOpen, user, greetingShown, messages.length, currentContext.type, preloadedGreeting, addMessage]);
 
   const showSearchGreeting = async (messageToSend: string) => {
-    const shouldShowGreeting = (
-      user && 
-      !searchGreetingShown && 
-      currentContext.type === 'general' && 
-      messages.length > 0 && // There are existing messages
-      (messageToSend.toLowerCase().includes('search') || 
-       messageToSend.toLowerCase().includes('find') || 
-       messageToSend.toLowerCase().includes('looking for') ||
-       messageToSend.toLowerCase().includes('need') ||
-       messageToSend.toLowerCase().includes('want'))
-    );
-
-    if (shouldShowGreeting) {
-      if (preloadedGreeting) {
-        const greetingMessage: ChatMessage = {
-          id: `search-greeting-${Date.now()}`,
-          content: preloadedGreeting,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        addMessage(greetingMessage);
-        setSearchGreetingShown(true);
-        
-        // Add a small delay so the greeting appears before the main response
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else {
-        // Fallback if greeting not preloaded
-        try {
-          const response = await api.getPersonalizedGreeting(user.customer_key);
-          const greetingMessage: ChatMessage = {
-            id: `search-greeting-${Date.now()}`,
-            content: response.greeting,
-            sender: 'ai',
-            timestamp: new Date(),
-          };
-          addMessage(greetingMessage);
-          setSearchGreetingShown(true);
-          
-          // Add a small delay so the greeting appears before the main response
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error('Failed to fetch personalized search greeting:', error);
-          // Continue without greeting if it fails
-        }
-      }
-    }
+    // Disable follow-up greetings to prevent confusion
+    // The initial greeting when opening chat should be sufficient
+    return;
   };
 
   const showInitialSearchGreeting = async (initialQuery: string) => {
@@ -161,7 +118,7 @@ export const useGreeting = () => {
 
   const resetGreeting = () => {
     setGreetingShown(false);
-    setSearchGreetingShown(false);
+    setSearchGreetingShown(false); // Keep for compatibility but not used for follow-ups
     setPreloadedGreeting(null);
   };
 

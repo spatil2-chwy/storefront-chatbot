@@ -12,10 +12,19 @@ product_svc = ProductService()
 @router.get("/search", response_model=SearchResponse)
 async def search_products(
     query: str = Query(..., description="Search query"),
-    limit: int = Query(30, description="Maximum number of results to return")
+    limit: int = Query(30, description="Maximum number of results to return"),
+    include_search_matches: bool = Query(True, description="Include search match analysis (slower but more detailed)")
 ):
     """Search products using semantic search with embeddings and return both products and AI reply"""
-    return await product_svc.search_products(query, limit)
+    return await product_svc.search_products(query, limit, include_search_matches)
+
+@router.get("/search/fast", response_model=SearchResponse)
+async def search_products_fast(
+    query: str = Query(..., description="Search query"),
+    limit: int = Query(30, description="Maximum number of results to return")
+):
+    """Fast product search without search match analysis for better response times"""
+    return await product_svc.search_products(query, limit, include_search_matches=False)
 
 @router.get("/search/stats", response_model=Dict)
 async def get_search_stats(

@@ -97,8 +97,11 @@ export default function ChatWidget({
     const messageToSend = messageText || inputValue;
     if (!messageToSend || !messageToSend.trim()) return;
 
+    // Clear input immediately to provide instant feedback
+    setInputValue('');
+    
+    // Then send the message
     await engineSendMessage(messageToSend);
-    setInputValue(''); // Always clear input after sending
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
