@@ -283,70 +283,6 @@ export default function ProductComparison() {
         {/* Comparison Table */}
         {comparingProducts.length > 0 && (
           <div className="mt-8">
-            {/* <div className="flex items-center space-x-3 mb-6">
-              <div className="w-8 h-8 bg-gradient-to-r from-chewy-blue to-blue-600 rounded-lg flex items-center justify-center">
-                <Package className="w-4 h-4 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">Detailed Comparison</h2>
-              <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
-            </div> */}
-            
-            {/* Featured Products Header
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6 mb-6">
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Comparing Products</h3>
-                <p className="text-sm text-gray-600">Side-by-side comparison of your selected items</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {comparingProducts.map((product, index) => (
-                  <div key={product.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
-                    <div className="relative mb-3">
-                      <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
-                        {product.image ? (
-                          <img 
-                            src={product.image} 
-                            alt={product.title}
-                            className="max-w-full max-h-full object-contain"
-                          />
-                        ) : (
-                          <Package className="w-8 h-8 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
-                        {index + 1}
-                      </div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="font-bold text-sm text-gray-900 mb-1">{product.brand}</div>
-                      <div className="text-xs text-gray-600 line-clamp-2 mb-3 leading-relaxed">{product.title}</div>
-                      
-                      <div className="space-y-2">
-                        <div className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</div>
-                        
-                        {product.rating && (
-                          <div className="flex items-center justify-center space-x-1">
-                            <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                            <span className="text-xs font-medium text-gray-600">{product.rating.toFixed(1)}</span>
-                            <span className="text-xs text-gray-500">
-                              ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
-                            </span>
-                          </div>
-                        )}
-                        
-                        {(product.autoshipPrice ?? 0) > 0 && (
-                          <div className="flex items-center justify-center space-x-1">
-                            <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                            <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div> */}
             
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
@@ -356,40 +292,38 @@ export default function ProductComparison() {
                       <th className="px-6 py-4 text-left">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
-                          <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Feature</span>
+                          <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Product</span>
                         </div>
                       </th>
                       {comparingProducts.map((product, index) => (
                         <th key={product.id} className="px-6 py-4 text-left min-w-[220px]">
-                          <div className="flex items-center space-x-3">
-                            <div className="relative">
-                              <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-sm">
+                          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                            <div className="relative mb-3">
+                              <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
                                 {product.image ? (
                                   <img 
                                     src={product.image} 
                                     alt={product.title}
-                                    className="w-10 h-10 object-cover rounded-lg"
+                                    className="max-w-full max-h-full object-contain"
                                   />
                                 ) : (
-                                  <Package className="w-6 h-6 text-gray-400" />
+                                  <Package className="w-8 h-8 text-gray-400" />
                                 )}
                               </div>
-                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
                                 {index + 1}
                               </div>
                             </div>
-                            <div className="flex-1 min-w-0">
+                            
+                            <div className="text-center">
                               <div className="font-bold text-sm text-gray-900 mb-1">{product.brand}</div>
-                              <div className="text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2">{product.title}</div>
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</span>
-                                {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                                  <span className="text-xs text-gray-500 line-through">${product.originalPrice?.toFixed(2)}</span>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="text-xs text-gray-600 line-clamp-2 mb-3 leading-relaxed">{product.title}</div>
+                              
+                              <div className="space-y-2">
+                                <div className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</div>
+                                
                                 {product.rating && (
-                                  <div className="flex items-center space-x-1">
+                                  <div className="flex items-center justify-center space-x-1">
                                     <div className="flex text-xs">
                                       {renderStars(product.rating)}
                                     </div>
@@ -399,13 +333,14 @@ export default function ProductComparison() {
                                     </span>
                                   </div>
                                 )}
+                                
+                                {(product.autoshipPrice ?? 0) > 0 && (
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                                    <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
+                                  </div>
+                                )}
                               </div>
-                              {(product.autoshipPrice ?? 0) > 0 && (
-                                <div className="flex items-center space-x-1 mt-1">
-                                  <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                                  <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </th>
@@ -421,8 +356,8 @@ export default function ProductComparison() {
                             <Sparkles className="w-4 h-4 text-gray-600" />
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-gray-900">AI Synthesis</div>
-                            <div className="text-xs text-gray-500">Expert recommendation</div>
+                            <div className="text-sm font-semibold text-gray-900">What Tylee Thinks</div>
+                            <div className="text-xs text-gray-500">AI recommendation</div>
                           </div>
                         </div>
                       </td>
