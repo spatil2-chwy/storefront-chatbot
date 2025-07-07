@@ -165,4 +165,14 @@ export const api = {
     const data = await response.json();
     return data.response;
   },
+
+  async getUserPets(customer_key: number): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/customers/${customer_key}/pets`);
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `Failed to get user pets: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
 };
