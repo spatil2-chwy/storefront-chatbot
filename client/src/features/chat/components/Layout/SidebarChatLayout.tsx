@@ -104,7 +104,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 onChange={onInputChange}
                 onSend={onSend}
                 onKeyPress={onKeyPress}
-                disabled={isLoading}
+                disabled={false}
                 placeholder="Ask your question here"
                 isEmbedded={true}
               />
@@ -172,7 +172,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   onChange={onInputChange}
                   onSend={onSend}
                   onKeyPress={onKeyPress}
-                  disabled={isLoading}
+                  disabled={false}
                   placeholder="What do you want to learn?"
                 />
               </>

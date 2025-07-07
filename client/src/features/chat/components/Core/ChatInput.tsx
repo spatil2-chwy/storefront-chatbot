@@ -39,7 +39,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         />
         <Button
           onClick={onSend}
-          disabled={disabled}
+          disabled={disabled || !value.trim()}
           className="bg-chewy-blue hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
         >
           <Send className="w-4 h-4" />

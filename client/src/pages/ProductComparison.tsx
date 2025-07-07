@@ -20,7 +20,8 @@ export default function ProductComparison() {
     setIsOpen,
     setShouldAutoOpen,
     clearComparison,
-    addTransitionMessage
+    addTransitionMessage,
+    isOpen: isChatSidebarOpen
   } = useGlobalChat();
 
   // Auto-open chat when component mounts and set comparison context
@@ -187,7 +188,11 @@ export default function ProductComparison() {
         </div>
 
         {/* Product Comparison Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6 mb-6 comparison-grid">
+        <div className={`grid gap-6 mb-6 comparison-grid ${
+          isChatSidebarOpen 
+            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3' // With sidebar: 1, 2, 3, 3 columns
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4'  // Without sidebar: 1, 2, 4, 4 columns
+        }`}>
           {comparingProducts.map((product) => {
             const matchedCategories = getMatchedCategories(product);
             

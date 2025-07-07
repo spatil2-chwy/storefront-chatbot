@@ -42,7 +42,8 @@ export default function ProductListing() {
     isInComparisonMode,
     currentContext,
     setCurrentContext,
-    addTransitionMessage
+    addTransitionMessage,
+    isOpen: isChatSidebarOpen
   } = useGlobalChat();
 
   // Set general context and auto-open chatbot when navigating to this page
@@ -303,59 +304,62 @@ export default function ProductListing() {
 
         {/* Show search results header only when there's a search */}
         {hasSearched && (
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Your Search for "{currentSearchQuery}"
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Showing {filteredResults.length} of {searchResults.length} results
-                {(minMatchCount > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
-                  <span className="text-blue-600 ml-1">(filtered)</span>
-                )}
-              </p>
-            </div>
-            
-            {/* Sort and Filter Dropdowns - only show when there are results */}
-            {filteredResults.length > 0 && (
-              <div className="flex items-center space-x-4">
-                {/* Match Count Filter */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Minimum Categories Matched</span>
-                  <Select value={minMatchCount.toString()} onValueChange={(value) => setMinMatchCount(parseInt(value))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Any</SelectItem>
-                      <SelectItem value="1">1+</SelectItem>
-                      <SelectItem value="2">2+</SelectItem>
-                      <SelectItem value="3">3+</SelectItem>
-                      <SelectItem value="4">4+</SelectItem>
-                      <SelectItem value="5">5+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Sort Dropdown */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Sort By</span>
-                  <Select value={sortBy} onValueChange={handleSortChange}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="relevance">Relevance</SelectItem>
-                      <SelectItem value="matches">Most Matches</SelectItem>
-                      <SelectItem value="price-low">Price: Low to High</SelectItem>
-                      <SelectItem value="price-high">Price: High to Low</SelectItem>
-                      <SelectItem value="rating">Customer Rating</SelectItem>
-                      <SelectItem value="bestsellers">Best Sellers</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Your Search for "{currentSearchQuery}"
+                </h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Showing {filteredResults.length} of {searchResults.length} results
+                  {(minMatchCount > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
+                    <span className="text-blue-600 ml-1">(filtered)</span>
+                  )}
+                </p>
               </div>
-            )}
+              
+              {/* Sort and Filter Dropdowns - only show when there are results */}
+              {filteredResults.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                  {/* Match Count Filter */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600 hidden sm:inline">Min Categories</span>
+                    <span className="text-sm text-gray-600 sm:hidden">Categories Matched</span>
+                    <Select value={minMatchCount.toString()} onValueChange={(value) => setMinMatchCount(parseInt(value))}>
+                      <SelectTrigger className="w-24 sm:w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Any</SelectItem>
+                        <SelectItem value="1">1+</SelectItem>
+                        <SelectItem value="2">2+</SelectItem>
+                        <SelectItem value="3">3+</SelectItem>
+                        <SelectItem value="4">4+</SelectItem>
+                        <SelectItem value="5">5+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sort Dropdown */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Sort By</span>
+                    <Select value={sortBy} onValueChange={handleSortChange}>
+                      <SelectTrigger className="w-40 sm:w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="relevance">Relevance</SelectItem>
+                        <SelectItem value="matches">Most Matches</SelectItem>
+                        <SelectItem value="price-low">Price: Low to High</SelectItem>
+                        <SelectItem value="price-high">Price: High to Low</SelectItem>
+                        <SelectItem value="rating">Customer Rating</SelectItem>
+                        <SelectItem value="bestsellers">Best Sellers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -434,8 +438,22 @@ export default function ProductListing() {
 
             {/* Product Grid */}
             <div className="flex-1">
+              {/* Mobile Filter Button */}
+              {isMobile && filteredResults.length > 0 && (
+                <div className="mb-4">
+                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                    <Filter className="w-4 h-4" />
+                    <span>Filters</span>
+                  </button>
+                </div>
+              )}
+
               {filteredResults.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-fr product-grid">
+                <div className={`grid gap-6 auto-rows-fr product-grid ${
+                  isChatSidebarOpen 
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' // With sidebar: 1, 2, 3, 4 columns
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'  // Without sidebar: 1, 2, 4, 5 columns
+                }`}>
                   {filteredResults.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

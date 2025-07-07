@@ -206,104 +206,54 @@
 
 @media (min-width: 1024px) {
   /* Ensure entire page content is constrained when sidebar is open */
-  .chat-sidebar-open {
+  body.chat-sidebar-open,
+  html.chat-sidebar-open {
     overflow-x: hidden;
   }
   
-  .chat-sidebar-open [data-main-content] {
-    margin-right: 400px; /* 400px sidebar width */
-    padding-left: 1rem; /* Reduce left padding when sidebar is open */
-    padding-right: 1rem; /* Reduce right padding when sidebar is open */
+  /* Force the entire page container to stay within bounds - highest specificity */
+  body.chat-sidebar-open .min-h-screen,
+  html.chat-sidebar-open .min-h-screen {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
   }
   
-  /* Ensure body doesn't overflow when sidebar is open */
-  .chat-sidebar-open body {
-    overflow-x: hidden;
-  }
-  
-  .chat-sidebar-open .min-h-screen {
-    box-sizing: border-box;
+  /* Main content area constraint - override existing styles with highest specificity */
+  body.chat-sidebar-open [data-main-content],
+  html.chat-sidebar-open [data-main-content] {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-sizing: border-box !important;
+    transition: all 0.3s ease-in-out;
   }
   
   /* Adjust header container when chat is open */
-  .chat-sidebar-open header {
-    width: calc(100vw - 400px);
-    max-width: calc(100vw - 400px);
+  body.chat-sidebar-open header,
+  html.chat-sidebar-open header {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
     transition: all 0.3s ease-in-out;
   }
   
-  .chat-sidebar-open header .max-w-full {
-    margin-right: 0;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    max-width: 100%;
-    width: 100%;
+  body.chat-sidebar-open header .max-w-full,
+  html.chat-sidebar-open header .max-w-full {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
     transition: all 0.3s ease-in-out;
   }
   
-  /* Ensure main content area is properly constrained */
-  .chat-sidebar-open main[data-main-content] {
-    width: calc(100vw - 400px);
-    max-width: calc(100vw - 400px);
-    margin-right: 0;
-    padding-right: 2rem;
-    box-sizing: border-box;
-  }
-  
-  /* Force all content to stay within bounds */
-  .chat-sidebar-open .min-h-screen {
-    width: calc(100vw - 400px);
-    max-width: calc(100vw - 400px);
-  }
-  
-  /* Ensure grid containers have proper spacing */
-  .chat-sidebar-open .product-grid {
-    transition: grid-template-columns 0.3s ease-in-out;
-    gap: 1.5rem; /* Increase gap between cards */
-  }
-  
-  .chat-sidebar-open .comparison-grid {
-    transition: grid-template-columns 0.3s ease-in-out;
-    gap: 1.5rem; /* Increase gap between cards */
-  }
-}
-
-/* Product grid adjustments when chat is open - optimized for Mac screens */
-@media (min-width: 1024px) {
-  .chat-sidebar-open .product-grid {
-    grid-template-columns: repeat(2, minmax(260px, 1fr)) !important; /* tablets: 2 cols */
-  }
-}
-
-@media (min-width: 1200px) {
-  .chat-sidebar-open .product-grid {
-    grid-template-columns: repeat(3, minmax(240px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
-  }
-}
-
-@media (min-width: 1700px) {
-  .chat-sidebar-open .product-grid {
-    grid-template-columns: repeat(4, minmax(280px, 1fr)) !important; /* Large displays: 4 cols (iMac 27"+) */
-  }
-}
-
-/* Comparison grid adjustments when chat is open - optimized for Mac screens */
-@media (min-width: 1024px) {
-  .chat-sidebar-open .comparison-grid {
-    grid-template-columns: repeat(2, minmax(240px, 1fr)) !important; /* tablets: 2 cols */
-  }
-}
-
-@media (min-width: 1200px) {
-  .chat-sidebar-open .comparison-grid {
-    grid-template-columns: repeat(3, minmax(220px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
-  }
-}
-
-@media (min-width: 1700px) {
-  .chat-sidebar-open .comparison-grid {
-    grid-template-columns: repeat(4, minmax(260px, 1fr)) !important; /* Large displays: 4 cols (iMac 27"+) */
-  }
 }
 
 /* Mobile/Tablet: no layout changes needed, just overlay */
