@@ -1,6 +1,7 @@
 import React from 'react';
-import { User, Bot, ShoppingCart, X } from 'lucide-react';
+import { User, Bot, ShoppingCart, X, Star, Package } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
+import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
 import { getTransitionStyling, isTransitionMessage } from '../../utils/chat-utilities';
 import { formatMessageContent } from '../../utils/message-formatting';
@@ -18,11 +19,189 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   chatContext,
   isMobile = false
 }) => {
-  const isTransition = isTransitionMessage(message);
   const isUser = message.sender === 'user';
+  const isTransition = isTransitionMessage(message);
   
+  // Helper function to render star ratings
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />);
+    }
+    
+    if (hasHalfStar) {
+      stars.push(<Star key="half" className="w-3 h-3 fill-yellow-400 text-yellow-400 opacity-50" />);
+    }
+    
+    const remainingStars = 5 - Math.ceil(rating);
+    for (let i = 0; i < remainingStars; i++) {
+      stars.push(<Star key={`empty-${i}`} className="w-3 h-3 text-gray-300" />);
+    }
+    
+    return stars;
+  };
+
+  // Helper function to render product image
+  const renderProductImage = (product: any) => {
+    if (!product.image || product.image === '') {
+      return (
+        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center rounded">
+          <Package className="w-6 h-6 text-gray-400" />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="w-12 h-12 bg-gray-50 flex items-center justify-center rounded">
+        <img 
+          src={product.image} 
+          alt={product.title}
+          className="w-10 h-10 object-cover rounded"
+        />
+      </div>
+    );
+  };
+
   // Handle transition messages
   if (isTransition) {
+    // For comparison transition messages with product data, show enhanced display
+    if (message.content.includes('Now comparing:') && message.comparisonProducts && message.comparisonProducts.length > 0) {
+      return (
+        <div className="flex justify-start items-start space-x-2">
+          {/* AI Avatar */}
+          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
+            <img 
+              src="/chewy-c-white.png" 
+              alt="Chewy C" 
+              className="w-5 h-5"
+            />
+          </div>
+          
+          {/* Enhanced comparison message */}
+          <div className="max-w-lg bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <ShoppingCart className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-700">
+                  Now comparing {message.comparisonProducts.length} products
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClearComparison}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-100 p-1"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            
+            {/* Display products in a grid */}
+            <div className="grid grid-cols-1 gap-3">
+              {message.comparisonProducts.map((product, index) => (
+                <div key={product.id || index} className="bg-white rounded-lg p-3 border border-purple-100">
+                  <div className="flex items-center space-x-3">
+                    {renderProductImage(product)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
+                          {product.brand}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                        {product.title}
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-semibold text-gray-900">
+                          ${product.price}
+                        </span>
+                        {product.rating && (
+                          <div className="flex items-center space-x-1">
+                            <div className="flex">
+                              {renderStars(product.rating)}
+                            </div>
+                            <span className="text-xs text-gray-600">
+                              {product.rating.toFixed(1)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // For individual product transition messages, show enhanced display
+    if (message.content.includes('Now discussing:') && message.transitionType === 'product' && (message.productData || chatContext?.product)) {
+      const product = message.productData || chatContext?.product;
+      
+      return (
+        <div className="flex justify-start items-start space-x-2">
+          {/* AI Avatar */}
+          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
+            <img 
+              src="/chewy-c-white.png" 
+              alt="Chewy C" 
+              className="w-5 h-5"
+            />
+          </div>
+          
+          {/* Enhanced product discussion message */}
+          <div className="max-w-lg bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Package className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">
+                  Now discussing
+                </span>
+              </div>
+            </div>
+            
+            {/* Display product information */}
+            <div className="bg-white rounded-lg p-3 border border-green-100">
+              <div className="flex items-center space-x-3">
+                {renderProductImage(product)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
+                      {product.brand}
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                    {product.title}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-semibold text-gray-900">
+                      ${product.price}
+                    </span>
+                    {product.rating && (
+                      <div className="flex items-center space-x-1">
+                        <div className="flex">
+                          {renderStars(product.rating)}
+                        </div>
+                        <span className="text-xs text-gray-600">
+                          {product.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // For other transition messages, show simple display
     return (
       <div className={`px-4 py-2 rounded-lg text-sm text-center ${getTransitionStyling(message)}`}>
         {message.content}
@@ -44,14 +223,15 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       )}
       
       {/* Message Content */}
-      <div className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+      <div className={`max-w-xs lg:max-w-md ${
         isUser 
           ? 'bg-chewy-blue text-white' 
           : 'bg-gray-100 text-gray-900'
-      }`}>
-        {/* Show comparison mode indicator */}
-        {!isUser && message.content.includes('Now comparing:') && (
-          <div className="flex items-center justify-between mb-2 p-2 bg-purple-50 rounded border border-purple-200">
+      } rounded-lg overflow-hidden`}>
+        
+        {/* Show comparison mode indicator for messages without product data */}
+        {!isUser && message.content.includes('Now comparing:') && (!message.comparisonProducts || message.comparisonProducts.length === 0) && (
+          <div className="flex items-center justify-between p-2 bg-purple-50 border-b border-purple-200">
             <div className="flex items-center space-x-2">
               <ShoppingCart className="w-4 h-4 text-purple-600" />
               <span className="text-sm font-medium text-purple-700">Comparison Mode</span>
@@ -67,11 +247,56 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </div>
         )}
         
-        {/* Message text */}
-        <div 
-          className={`text-sm ${isUser ? 'text-white' : 'text-gray-900'}`}
-          dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content) }}
-        />
+        {/* Display comparison products if available (for non-comparison messages) */}
+        {!isUser && !message.content.includes('Now comparing:') && message.comparisonProducts && message.comparisonProducts.length > 0 && (
+          <div className="p-3 border-b border-gray-200">
+            <div className="text-xs font-medium text-gray-600 mb-2">Comparing Products:</div>
+            <div className="space-y-2">
+              {message.comparisonProducts.slice(0, 3).map((product, index) => (
+                <div key={product.id || index} className="flex items-center space-x-2">
+                  {renderProductImage(product)}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-gray-900 truncate">
+                      {product.brand} {product.title}
+                    </div>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <span className="text-xs font-semibold text-gray-900">
+                        ${product.price}
+                      </span>
+                      {product.rating && (
+                        <div className="flex items-center space-x-1">
+                          <div className="flex">
+                            {renderStars(product.rating)}
+                          </div>
+                          <span className="text-xs text-gray-600">
+                            {product.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {message.comparisonProducts.length > 3 && (
+                <div className="text-xs text-gray-500 text-center">
+                  +{message.comparisonProducts.length - 3} more products
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Message text - hide for comparison messages since we show products above */}
+        <div className={`p-3 ${isUser ? 'text-white' : 'text-gray-900'}`}>
+          {!message.content.includes('Now comparing:') && (
+            <div 
+              className="text-sm"
+              dangerouslySetInnerHTML={{ 
+                __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+              }} 
+            />
+          )}
+        </div>
       </div>
       
       {/* User avatar */}

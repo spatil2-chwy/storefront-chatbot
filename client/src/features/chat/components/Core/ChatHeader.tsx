@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
 import { CardTitle } from '../../../../ui/Cards/Card';
 import { ChatContext } from '../../../../types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../../../ui/Overlay/AlertDialog';
 
 interface ChatHeaderProps {
   isLiveAgent: boolean;
@@ -23,6 +34,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   hasMessages,
   isDraggable = false
 }) => {
+  const [showClearDialog, setShowClearDialog] = useState(false);
+
   const getTitle = () => {
     if (chatContext?.type === 'product') {
       return 'AI Beta - Product Questions';
@@ -31,6 +44,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       return 'AI Beta - Product Comparison';
     }
     return isLiveAgent ? 'Live Agent' : 'AI Beta';
+  };
+
+  const handleClearChat = () => {
+    setShowClearDialog(false);
+    onClearChat?.();
   };
 
   const headerClasses = isDraggable
@@ -66,12 +84,25 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
         {/* Clear Chat Button for embedded chats */}
         {chatContext && hasMessages && onClearChat && (
-          <button
-            onClick={onClearChat}
-            className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-          >
-            Clear chat
-          </button>
+          <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+            <AlertDialogTrigger asChild>
+              <button className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline">
+                Clear chat
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to clear the chat history? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClearChat}>Clear Chat</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
       
@@ -104,12 +135,25 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           {/* Clear Chat Button - Only show in AI mode */}
           {!isLiveAgent && hasMessages && onClearChat && (
             <div className="flex flex-col items-end space-y-1">
-              <button
-                onClick={onClearChat}
-                className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline"
-              >
-                Clear chat
-              </button>
+              <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+                <AlertDialogTrigger asChild>
+                  <button className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline">
+                    Clear chat
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to clear the chat history? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearChat}>Clear Chat</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </div>

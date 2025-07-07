@@ -5,6 +5,17 @@ import { Input } from '@/ui/Input/Input';
 import { Product, ChatMessage } from '../../../types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/ui/Overlay/AlertDialog';
 
 // Simple markdown to HTML converter for chat messages
 const formatMessageContent = (content: string): string => {
@@ -78,6 +89,7 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -155,6 +167,12 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
     onClose();
   };
 
+  const handleClearChat = () => {
+    setMessages([]);
+    setInputValue('');
+    setShowClearDialog(false);
+  };
+
   const sampleQuestions = [
     "What are the key ingredients in this product?",
     "Is this suitable for my dog's age and size?",
@@ -190,14 +208,41 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-5 h-5" />
-          </Button>
+          
+          <div className="flex items-center space-x-2">
+            {/* Clear Chat Button */}
+            {messages.length > 0 && (
+              <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+                <AlertDialogTrigger asChild>
+                  <button className="text-xs text-gray-500 hover:text-gray-700 font-work-sans underline">
+                    Clear chat
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to clear the chat history? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearChat}>Clear Chat</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Sample Questions */}

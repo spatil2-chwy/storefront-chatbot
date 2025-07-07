@@ -7,26 +7,22 @@ import { Badge } from '@/ui/Display/Badge';
 import { Button } from '@/ui/Buttons/Button';
 import { Checkbox } from '@/ui/Checkboxes/Checkbox';
 import SearchMatches from './SearchMatches';
-import ProductChatModal from '../../chat/components/ProductChatModal';
-import { useGlobalChat } from '../../chat/context';
+import { useGlobalChat } from '../../Chat/context';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [showAIOverview, setShowAIOverview] = useState(false);
   const { 
     comparingProducts, 
     addToComparison, 
     removeFromComparison, 
-    isInComparisonMode,
     setCurrentContext,
-    setIsOpen,
-    setShouldAutoOpen,
-    clearMessages,
-    setIsMainChatHidden
+    setIsOpen: setGlobalChatOpen,
+    currentContext,
+    addTransitionMessage
   } = useGlobalChat();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
@@ -66,7 +62,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
 
     return (
-      <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
+      <div className="w-full h-48 bg-gray-50 flex items-center justify-center relative">
         <img 
           src={product.image} 
           alt={product.title}
@@ -74,9 +70,19 @@ export default function ProductCard({ product }: ProductCardProps) {
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.style.display = 'none';
-            target.nextElementSibling?.classList.remove('hidden');
+            const fallback = target.parentElement?.querySelector('.image-fallback');
+            if (fallback) {
+              fallback.classList.remove('hidden');
+            }
           }}
         />
+        {/* Fallback image placeholder */}
+        <div className="image-fallback hidden absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
       </div>
     );
   };
@@ -89,21 +95,23 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const handleChatClick = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setIsMainChatHidden(false);
-  };
-
-  const handleHideMainChat = (hide: boolean) => {
-    setIsMainChatHidden(hide);
-    if (hide) {
-      setIsOpen(false); // Hide main chat when product modal is open
+  const handleChatClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Set product context and open side chat instead of modal
+    const newContext = { type: 'product' as const, product: product };
+    
+    // Add transition message to show "Now Discussing" if context is changing
+    if (currentContext.type !== 'product' || currentContext.product?.id !== product.id) {
+      addTransitionMessage(currentContext, newContext);
     }
+    
+    setCurrentContext(newContext);
+    setGlobalChatOpen(true);
   };
+
+
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -278,13 +286,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </Button>
         </div>
 
-        {/* Product Chat Modal */}
-        <ProductChatModal
-          product={product}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onHideMainChat={handleHideMainChat}
-        />
+
       </Card>
     </>
   );

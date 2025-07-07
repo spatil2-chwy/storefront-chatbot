@@ -5,7 +5,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);
@@ -198,4 +197,101 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+/* Chat sidebar layout adjustments */
+.chat-sidebar-open [data-main-content] {
+  transition: all 0.3s ease-in-out;
+}
+
+@media (min-width: 768px) {
+  /* Ensure entire page content is constrained when sidebar is open */
+  .chat-sidebar-open {
+    overflow-x: hidden;
+  }
+  
+  .chat-sidebar-open [data-main-content] {
+    margin-right: 420px; /* 400px sidebar + 20px spacing */
+    padding-left: 1rem; /* Reduce left padding when sidebar is open */
+    padding-right: 1rem; /* Reduce right padding when sidebar is open */
+  }
+  
+  /* Adjust header container when chat is open */
+  .chat-sidebar-open header .max-w-full {
+    margin-right: 420px; /* Adjust header container */
+    padding-left: 1rem;
+    padding-right: 1rem;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Ensure main content area is properly constrained */
+  .chat-sidebar-open main[data-main-content] {
+    width: calc(100vw - 420px);
+    max-width: calc(100vw - 420px);
+    margin-right: 0;
+    padding-right: 2rem;
+    box-sizing: border-box;
+  }
+  
+  /* Force all content to stay within bounds */
+  .chat-sidebar-open .min-h-screen {
+    width: calc(100vw - 420px);
+    max-width: calc(100vw - 420px);
+  }
+  
+  /* Ensure grid containers have proper spacing */
+  .chat-sidebar-open .product-grid {
+    transition: grid-template-columns 0.3s ease-in-out;
+    gap: 1.5rem; /* Increase gap between cards */
+  }
+  
+  .chat-sidebar-open .comparison-grid {
+    transition: grid-template-columns 0.3s ease-in-out;
+    gap: 1.5rem; /* Increase gap between cards */
+  }
+}
+
+/* Product grid adjustments when chat is open - optimized for Mac screens */
+@media (min-width: 768px) {
+  .chat-sidebar-open .product-grid {
+    grid-template-columns: repeat(2, minmax(260px, 1fr)) !important; /* tablets: 2 cols */
+  }
+}
+
+@media (min-width: 1000px) {
+  .chat-sidebar-open .product-grid {
+    grid-template-columns: repeat(3, minmax(240px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
+  }
+}
+
+@media (min-width: 1700px) {
+  .chat-sidebar-open .product-grid {
+    grid-template-columns: repeat(4, minmax(280px, 1fr)) !important; /* Large displays: 4 cols (iMac 27"+) */
+  }
+}
+
+/* Comparison grid adjustments when chat is open - optimized for Mac screens */
+@media (min-width: 768px) {
+  .chat-sidebar-open .comparison-grid {
+    grid-template-columns: repeat(2, minmax(240px, 1fr)) !important; /* tablets: 2 cols */
+  }
+}
+
+@media (min-width: 1000px) {
+  .chat-sidebar-open .comparison-grid {
+    grid-template-columns: repeat(3, minmax(220px, 1fr)) !important; /* Mac laptops: 3 cols (13", 14", 16") */
+  }
+}
+
+@media (min-width: 1700px) {
+  .chat-sidebar-open .comparison-grid {
+    grid-template-columns: repeat(4, minmax(260px, 1fr)) !important; /* Large displays: 4 cols (iMac 27"+) */
+  }
+}
+
+/* Mobile: no layout changes needed, just overlay */
+@media (max-width: 767px) {
+  .chat-sidebar-open header .max-w-full {
+    transition: none;
+  }
 }

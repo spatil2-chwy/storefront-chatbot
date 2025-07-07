@@ -127,6 +127,8 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         timestamp: new Date(),
         isTransition: true,
         transitionType: transitionType,
+        // Store product data for individual product transitions
+        productData: transitionType === 'product' && toContext.product ? toContext.product : undefined,
         // Store comparison data for historical preservation
         comparisonProductCount: transitionType === 'comparison' && toContext.products ? toContext.products.length : undefined,
         comparisonProducts: transitionType === 'comparison' && toContext.products ? toContext.products : undefined,

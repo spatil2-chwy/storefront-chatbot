@@ -3,14 +3,15 @@ import { useLocation } from 'wouter';
 import { X, Package, ArrowRight } from 'lucide-react';
 import { Button } from '@/ui/Buttons/Button';
 import { Product } from '../../../types';
-import { useGlobalChat } from '../../chat/context';
+import { useGlobalChat } from '../../Chat/context';
 
 export default function ComparisonFooter() {
   const [, setLocation] = useLocation();
   const { 
     comparingProducts, 
     removeFromComparison, 
-    clearComparison
+    clearComparison,
+    isOpen: isChatOpen
   } = useGlobalChat();
 
   // Don't render if no products
@@ -32,8 +33,15 @@ export default function ComparisonFooter() {
     return comparingProducts[index] || null;
   });
 
+  // Adjust positioning when sidebar is open
+  const footerClasses = `fixed bottom-0 left-0 bg-white border-t-2 border-gray-200 shadow-lg z-40 p-4 transition-all duration-300 ${
+    isChatOpen 
+      ? 'right-0 md:right-96 lg:right-[400px]' // Account for sidebar width on different screen sizes
+      : 'right-0'
+  }`;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg z-40 p-4">
+    <div className={footerClasses}>
       <div className="max-w-full mx-auto px-8 sm:px-12 lg:px-16">
         <div className="flex items-center justify-between">
           {/* Product Slots */}

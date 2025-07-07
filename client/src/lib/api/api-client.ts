@@ -1,4 +1,4 @@
-import { Product } from '../types';
+import { Product } from '../../types';
 
 const API_BASE_URL = 'http://localhost:8000';
 

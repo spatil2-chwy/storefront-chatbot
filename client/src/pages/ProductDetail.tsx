@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/layout/Header';
-import ChatWidget from '@/features/chat/components/ChatWidget';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
 import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import SearchMatches from '@/features/product/components/SearchMatches';
 import { useProduct } from '@/features/product/hooks';
@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/ui/RadioButtons/RadioGroup';
 import { Label } from '@/ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
 import { Badge } from '@/ui/Display/Badge';
-import { useGlobalChat } from '@/features/chat/context';
+import { useGlobalChat } from '@/features/Chat/context';
 
 export default function ProductDetail() {
   const [match, params] = useRoute('/product/:id');
@@ -155,7 +155,7 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8" data-main-content>
         {/* Breadcrumb */}
         <nav className="flex mb-6 text-sm">
           <Link href="/" className="text-chewy-blue hover:underline flex items-center space-x-1">

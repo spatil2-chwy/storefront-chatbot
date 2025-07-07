@@ -3,7 +3,7 @@ import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Targ
 import Header from '@/layout/Header';
 import ProductCard from '@/features/product/components/ProductCard';
 import ProductFilters from '@/features/product/components/ProductFilters';
-import ChatWidget from '@/features/chat/components/ChatWidget';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
 import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import { api } from '@/lib/api';
 import { Product } from '../types';
@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/ui/Cards/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
 import { Badge } from '@/ui/Display/Badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useGlobalChat } from '@/features/chat/context';
+import { useGlobalChat } from '@/features/Chat/context';
 import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
@@ -289,7 +289,7 @@ export default function ProductListing() {
         hasSearched={hasSearched}
       />
       
-      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" data-main-content>
         {/* Autoship Banner */}
         <Card className="bg-chewy-light-blue mb-6">
           <CardContent className="p-4 flex items-center space-x-3">
@@ -435,7 +435,7 @@ export default function ProductListing() {
             {/* Product Grid */}
             <div className="flex-1">
               {filteredResults.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 auto-rows-fr">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-fr product-grid">
                   {filteredResults.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

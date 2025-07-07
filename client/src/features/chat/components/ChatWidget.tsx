@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobalChat } from '../context';
-import { useIsMobile } from '../../../hooks/use-mobile';
 import { ChatContext, Product } from '../../../types';
 import { useChatEngine } from '../hooks/use-chat-engine';
 import { useGreeting } from '../hooks/use-greeting';
 import { useComparisonTracker } from '../hooks/use-comparison-tracker';
 import { isTransitionMessage } from '../utils/chat-utilities';
-import { ChatHeader } from './Core/ChatHeader';
-import { ChatMessages } from './Core/ChatMessages';
-import { ChatInput } from './Core/ChatInput';
-import { LiveAgentFallback } from './Fallbacks/LiveAgentFallback';
-import { MobileChatModal } from './Layout/MobileChatModal';
-import { DesktopChatWindow } from './Layout/DesktopChatWindow';
+import { SidebarChatLayout } from './Layout/SidebarChatLayout';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -45,7 +39,6 @@ export default function ChatWidget({
   
   const [inputValue, setInputValue] = useState('');
   const [isLiveAgent, setIsLiveAgent] = useState(false);
-  const isMobile = useIsMobile();
 
   // Initialize hooks
   const { 
@@ -143,69 +136,9 @@ export default function ChatWidget({
     return null;
   }
 
-  // If chatContext is provided (for embedded chat like comparison page), render inline
-  if (chatContext) {
-    return (
-      <div className="h-full flex flex-col bg-white border border-gray-200">
-        {/* Header */}
-        <ChatHeader
-          isLiveAgent={isLiveAgent}
-          onModeSwitch={handleModeSwitch}
-          onClearChat={handleClearChat}
-          chatContext={chatContext}
-          hasMessages={messages.length > 0}
-        />
-
-        {/* Messages */}
-        <ChatMessages
-          messages={messages}
-          isLoading={isLoading}
-          chatContext={chatContext}
-          onSuggestionClick={handleSuggestionClick}
-          onClearComparison={handleClearComparison}
-          isEmbedded={true}
-          shouldAutoScroll={!isInComparisonMode}
-        />
-
-        {/* Input */}
-        <ChatInput
-          value={inputValue}
-          onChange={setInputValue}
-          onSend={() => sendMessage()}
-          onKeyPress={handleKeyPress}
-          disabled={!inputValue.trim() || isLoading}
-          placeholder="Ask your question here"
-          isEmbedded={true}
-        />
-      </div>
-    );
-  }
-
-  // Mobile: bottom drawer/modal
-  if (isMobile) {
-    return (
-      <MobileChatModal
-        isOpen={isOpen}
-        onToggle={() => setIsOpen(!isOpen)}
-        isLiveAgent={isLiveAgent}
-        onModeSwitch={handleModeSwitch}
-        onClose={handleCloseChat}
-        onClearChat={handleClearChat}
-        messages={messages}
-        isLoading={isLoading}
-        inputValue={inputValue}
-        onInputChange={setInputValue}
-        onSend={() => sendMessage()}
-        onKeyPress={handleKeyPress}
-        onSuggestionClick={handleSuggestionClick}
-        onClearComparison={handleClearComparison}
-      />
-    );
-  }
-
-  // Desktop: floating window
+  // Use the unified sidebar layout for all chat scenarios - always sidebar, never embedded
   return (
-    <DesktopChatWindow
+    <SidebarChatLayout
       isOpen={isOpen}
       onToggle={() => setIsOpen(!isOpen)}
       isLiveAgent={isLiveAgent}
@@ -220,6 +153,8 @@ export default function ChatWidget({
       onKeyPress={handleKeyPress}
       onSuggestionClick={handleSuggestionClick}
       onClearComparison={handleClearComparison}
+      chatContext={chatContext}
+      isEmbedded={false}
     />
   );
 }

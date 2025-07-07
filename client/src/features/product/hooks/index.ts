@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Product } from '../../types';
-import { api, ApiError } from '../../lib/api';
+import { Product } from '../../../types';
+import { api, ApiError } from '../../../lib/api';
 
 export const useProduct = (productId: number | null) => {
   const [product, setProduct] = useState<Product | null>(null);

@@ -104,6 +104,8 @@ export const useChatEngine = ({
           content: response,
           sender: 'ai',
           timestamp: new Date(),
+          comparisonProducts: comparingProducts,
+          comparisonProductCount: comparingProducts.length,
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
@@ -113,6 +115,7 @@ export const useChatEngine = ({
           content: response,
           sender: 'ai',
           timestamp: new Date(),
+          productTitle: `${currentContext.product.brand} ${currentContext.product.title}`,
         };
       } else {
         // Use backend chatbot endpoint for general chat mode
@@ -190,6 +193,8 @@ export const useChatEngine = ({
           content: response,
           sender: 'ai',
           timestamp: new Date(),
+          comparisonProducts: comparingProducts,
+          comparisonProductCount: comparingProducts.length,
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
@@ -199,6 +204,7 @@ export const useChatEngine = ({
           content: response,
           sender: 'ai',
           timestamp: new Date(),
+          productTitle: `${currentContext.product.brand} ${currentContext.product.title}`,
         };
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // If in comparison context, call the backend for product comparison
@@ -208,6 +214,8 @@ export const useChatEngine = ({
           content: response,
           sender: 'ai',
           timestamp: new Date(),
+          comparisonProducts: currentContext.products,
+          comparisonProductCount: currentContext.products.length,
         };
       } else {
         // Use backend chatbot endpoint for general chat mode

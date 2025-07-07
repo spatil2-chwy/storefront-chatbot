@@ -2,11 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
 import Header from '@/layout/Header';
-import ChatWidget from '@/features/chat/components/ChatWidget';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
-import { useGlobalChat } from '@/features/chat/context';
+import { useGlobalChat } from '@/features/Chat/context';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
@@ -43,22 +43,9 @@ export default function ProductComparison() {
     }
   }, [comparingProducts, currentContext, setIsOpen, setShouldAutoOpen, setCurrentContext, addTransitionMessage]);
 
-  // Redirect back if no products to compare
-  useEffect(() => {
-    if (comparingProducts.length === 0) {
-      setLocation('/');
-    }
-  }, [comparingProducts.length, setLocation]);
-
   const handleExitComparison = () => {
-    // Add transition message before clearing comparison
-    const previousContext = currentContext;
-    const newContext = { type: 'general' as const };
-    addTransitionMessage(previousContext, newContext);
-    
-    // Clear comparison and set context
     clearComparison();
-    setCurrentContext(newContext);
+    // Always go back to the main product listing page (which is at root "/")
     setLocation('/');
   };
 
@@ -96,20 +83,31 @@ export default function ProductComparison() {
     }
 
     return (
-      <img 
-        src={product.image} 
-        alt={product.title}
-        className="w-full h-32 object-cover"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.nextElementSibling?.classList.remove('hidden');
-        }}
-      />
+      <div className="w-full h-32 bg-gray-50 flex items-center justify-center relative">
+        <img 
+          src={product.image} 
+          alt={product.title}
+          className="max-w-full max-h-full object-contain"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const fallback = target.parentElement?.querySelector('.image-fallback');
+            if (fallback) {
+              fallback.classList.remove('hidden');
+            }
+          }}
+        />
+        {/* Fallback image placeholder */}
+        <div className="image-fallback hidden absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
+      </div>
     );
   };
 
-  // Extract categories from search matches for each product
   const getMatchedCategories = (product: any) => {
     if (!product.search_matches) return [];
     
@@ -163,7 +161,7 @@ export default function ProductComparison() {
         </div>
       )}
       
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" data-main-content>
         {/* Header with Exit Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -189,7 +187,7 @@ export default function ProductComparison() {
         </div>
 
         {/* Product Comparison Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6 mb-6 comparison-grid">
           {comparingProducts.map((product) => {
             const matchedCategories = getMatchedCategories(product);
             
@@ -199,13 +197,6 @@ export default function ProductComparison() {
                   {/* Product Image */}
                   <div className="relative w-full h-32">
                     {renderImage(product)}
-                    {/* Fallback image (hidden by default) */}
-                    <div className="w-full h-32 bg-gray-100 flex items-center justify-center hidden">
-                      <div className="text-center">
-                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Image not available</p>
-                      </div>
-                    </div>
                   </div>
                   
                   <CardContent className="p-4 flex-1 flex flex-col">
@@ -310,15 +301,10 @@ export default function ProductComparison() {
             );
           })}
         </div>
-
-        {/* Chat Widget - positioned higher up */}
-        <div className="h-72 border border-gray-200 bg-white">
-          <ChatWidget 
-            chatContext={{ type: 'comparison', products: comparingProducts }}
-            onClearChat={() => {}}
-          />
-        </div>
       </main>
+
+      {/* Use the main ChatWidget without embedded mode - it will show as sidebar */}
+      <ChatWidget />
     </div>
   );
 } 
