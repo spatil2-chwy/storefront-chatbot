@@ -129,6 +129,91 @@ export default function ProductComparison() {
     console.log('Add to cart:', product.title);
   };
 
+  // Helper functions to extract comparison data from available fields
+  const getHealthFeature = (product: any) => {
+    if (!product.keywords) return null;
+    const healthKeywords = product.keywords.filter((keyword: string) => 
+      keyword.toLowerCase().includes('health') || 
+      keyword.toLowerCase().includes('vitamin') ||
+      keyword.toLowerCase().includes('supplement') ||
+      keyword.toLowerCase().includes('probiotic') ||
+      keyword.toLowerCase().includes('digestive') ||
+      keyword.toLowerCase().includes('joint') ||
+      keyword.toLowerCase().includes('dental')
+    );
+    return healthKeywords.length > 0 ? healthKeywords.join(', ') : null;
+  };
+
+  const getSpecialDiet = (product: any) => {
+    if (!product.keywords) return null;
+    const dietKeywords = product.keywords.filter((keyword: string) => 
+      keyword.toLowerCase().includes('grain') ||
+      keyword.toLowerCase().includes('free') ||
+      keyword.toLowerCase().includes('organic') ||
+      keyword.toLowerCase().includes('natural') ||
+      keyword.toLowerCase().includes('limited') ||
+      keyword.toLowerCase().includes('sensitive') ||
+      keyword.toLowerCase().includes('allergy') ||
+      keyword.toLowerCase().includes('hypoallergenic')
+    );
+    return dietKeywords.length > 0 ? dietKeywords.join(', ') : null;
+  };
+
+  const getFlavor = (product: any) => {
+    // Check keywords first
+    if (product.keywords) {
+      const flavorKeywords = product.keywords.filter((keyword: string) => 
+        keyword.toLowerCase().includes('chicken') ||
+        keyword.toLowerCase().includes('beef') ||
+        keyword.toLowerCase().includes('salmon') ||
+        keyword.toLowerCase().includes('turkey') ||
+        keyword.toLowerCase().includes('duck') ||
+        keyword.toLowerCase().includes('lamb') ||
+        keyword.toLowerCase().includes('fish') ||
+        keyword.toLowerCase().includes('pork') ||
+        keyword.toLowerCase().includes('venison')
+      );
+      if (flavorKeywords.length > 0) return flavorKeywords.join(', ');
+    }
+    
+    // Check title for flavor information
+    if (product.title) {
+      const title = product.title.toLowerCase();
+      const flavors = ['chicken', 'beef', 'salmon', 'turkey', 'duck', 'lamb', 'fish', 'pork', 'venison'];
+      const foundFlavors = flavors.filter(flavor => title.includes(flavor));
+      if (foundFlavors.length > 0) return foundFlavors.join(', ');
+    }
+    
+    return null;
+  };
+
+  const getBreedSize = (product: any) => {
+    // Check keywords first
+    if (product.keywords) {
+      const sizeKeywords = product.keywords.filter((keyword: string) => 
+        keyword.toLowerCase().includes('small') ||
+        keyword.toLowerCase().includes('medium') ||
+        keyword.toLowerCase().includes('large') ||
+        keyword.toLowerCase().includes('puppy') ||
+        keyword.toLowerCase().includes('adult') ||
+        keyword.toLowerCase().includes('senior') ||
+        keyword.toLowerCase().includes('toy') ||
+        keyword.toLowerCase().includes('giant')
+      );
+      if (sizeKeywords.length > 0) return sizeKeywords.join(', ');
+    }
+    
+    // Check title for size information
+    if (product.title) {
+      const title = product.title.toLowerCase();
+      const sizes = ['small breed', 'medium breed', 'large breed', 'toy breed', 'giant breed', 'puppy', 'adult', 'senior'];
+      const foundSizes = sizes.filter(size => title.includes(size));
+      if (foundSizes.length > 0) return foundSizes.join(', ');
+    }
+    
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
@@ -227,14 +312,14 @@ export default function ProductComparison() {
                     
                     <div className="space-y-1 mb-3">
                       <div className="flex items-center space-x-2">
-                        <span className="text-lg font-semibold text-gray-900">${product.price}</span>
+                        <span className="text-lg font-semibold text-gray-900">${product.price?.toFixed(2)}</span>
                         {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                          <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
+                          <span className="text-sm text-gray-500 line-through">${product.originalPrice?.toFixed(2)}</span>
                         )}
                       </div>
                       {(product.autoshipPrice ?? 0) > 0 && (
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
+                          <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)}</span>
                           <div className="flex items-center space-x-1">
                             <RotateCcw className="w-3 h-3 text-chewy-blue" />
                             <span className="text-xs text-chewy-blue font-medium">Autoship</span>
@@ -306,6 +391,165 @@ export default function ProductComparison() {
             );
           })}
         </div>
+
+        {/* Comparison Table */}
+        {comparingProducts.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Detailed Comparison</h2>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-200">
+                      Feature
+                    </th>
+                    {comparingProducts.map((product) => (
+                      <th key={product.id} className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-200 min-w-[200px]">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                            {product.image ? (
+                              <img 
+                                src={product.image} 
+                                alt={product.title}
+                                className="w-6 h-6 object-cover rounded"
+                              />
+                            ) : (
+                              <Package className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-bold text-xs text-gray-900">{product.brand}</div>
+                            <div className="text-xs text-gray-600 line-clamp-2">{product.title}</div>
+                          </div>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {/* AI Synthesis Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      AI Synthesis
+                    </td>
+                    {comparingProducts.map((product) => (
+                      <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                        {product.should_you_buy_it ? (
+                          <div className="text-xs leading-relaxed">
+                            {product.should_you_buy_it}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">Not available</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  
+                  {/* Ingredients Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      Ingredients
+                    </td>
+                    {comparingProducts.map((product) => (
+                      <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                        {product.keywords && product.keywords.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {product.keywords.slice(0, 8).map((keyword, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {product.keywords.length > 8 && (
+                              <span className="text-xs text-gray-500">+{product.keywords.length - 8} more</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">Not available</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  
+                  {/* Health Feature Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      Health Feature
+                    </td>
+                    {comparingProducts.map((product) => {
+                      const healthFeature = getHealthFeature(product);
+                      return (
+                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                          {healthFeature ? (
+                            <span className="text-xs">{healthFeature}</span>
+                          ) : (
+                            <span className="text-gray-400 italic">Not specified</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Special Diet Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      Special Diet
+                    </td>
+                    {comparingProducts.map((product) => {
+                      const specialDiet = getSpecialDiet(product);
+                      return (
+                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                          {specialDiet ? (
+                            <span className="text-xs">{specialDiet}</span>
+                          ) : (
+                            <span className="text-gray-400 italic">Not specified</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Flavor Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      Flavor
+                    </td>
+                    {comparingProducts.map((product) => {
+                      const flavor = getFlavor(product);
+                      return (
+                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                          {flavor ? (
+                            <span className="text-xs">{flavor}</span>
+                          ) : (
+                            <span className="text-gray-400 italic">Not specified</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  
+                  {/* Breed Size Row */}
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50">
+                      Breed Size
+                    </td>
+                    {comparingProducts.map((product) => {
+                      const breedSize = getBreedSize(product);
+                      return (
+                        <td key={product.id} className="px-4 py-3 text-sm text-gray-700">
+                          {breedSize ? (
+                            <span className="text-xs">{breedSize}</span>
+                          ) : (
+                            <span className="text-gray-400 italic">Not specified</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Use the main ChatWidget without embedded mode - it will show as sidebar */}

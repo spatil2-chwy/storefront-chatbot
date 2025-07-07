@@ -204,7 +204,7 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
                 {product.title}
               </h3>
               <div className="text-sm font-semibold text-gray-900">
-                ${product.price}
+                ${product.price?.toFixed(2)}
               </div>
             </div>
           </div>

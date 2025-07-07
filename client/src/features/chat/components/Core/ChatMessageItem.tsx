@@ -116,7 +116,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       </div>
                       <div className="flex items-center space-x-3">
                         <span className="text-sm font-semibold text-gray-900">
-                          ${product.price}
+                          ${product.price?.toFixed(2)}
                         </span>
                         {product.rating && (
                           <div className="flex items-center space-x-1">
@@ -180,7 +180,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="text-sm font-semibold text-gray-900">
-                      ${product.price}
+                      ${product.price?.toFixed(2)}
                     </span>
                     {product.rating && (
                       <div className="flex items-center space-x-1">
@@ -261,7 +261,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                     </div>
                     <div className="flex items-center space-x-1 mt-1">
                       <span className="text-xs font-semibold text-gray-900">
-                        ${product.price}
+                        ${product.price?.toFixed(2)}
                       </span>
                       {product.rating && (
                         <div className="flex items-center space-x-1">
