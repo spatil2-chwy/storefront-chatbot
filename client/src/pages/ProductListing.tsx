@@ -166,17 +166,23 @@ export default function ProductListing() {
   useEffect(() => {
     const checkForBirthdayPets = async () => {
       if (!user?.customer_key) return;
-      
       // Only show birthday popup once per session
       const birthdayShownToday = localStorage.getItem(`birthday-shown-${new Date().toDateString()}`);
       if (birthdayShownToday) return;
-
       try {
         const pets = await api.getUserPets(user.customer_key);
         const today = new Date();
         
         // Check if any pet has a birthday today
         const birthdayPet = pets.find(pet => {
+
+
+          console.log("DEMO Showing: Forcing Birthday popup for Lucy");
+          if (pet.pet_name === 'Lucy') {
+            return true; // Force show for demo purposes
+          }
+
+
           if (!pet.birthday) return false;
           const birthday = new Date(pet.birthday);
           return birthday.getMonth() === today.getMonth() && 
@@ -193,13 +199,13 @@ export default function ProductListing() {
           // Mark that we've shown the birthday popup today
           localStorage.setItem(`birthday-shown-${new Date().toDateString()}`, 'true');
         }
-      } catch (error) {
+      } catch (error) { 
         console.error('Failed to check for birthday pets:', error);
       }
     };
 
     checkForBirthdayPets();
-  }, [user?.customer_key]);
+  }, [user?.customer_key, user]);
 
   useEffect(() => {
     console.log('🔄 Filter effect triggered:', { 
