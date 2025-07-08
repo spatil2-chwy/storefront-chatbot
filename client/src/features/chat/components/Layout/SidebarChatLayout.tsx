@@ -25,6 +25,7 @@ interface SidebarChatLayoutProps {
   chatContext?: ChatContext;
   isEmbedded?: boolean;
   isStreaming: boolean;
+  streamingMessageId?: string | null;
   userHasScrolled: boolean;
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
@@ -48,6 +49,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   chatContext,
   isEmbedded = false,
   isStreaming,
+  streamingMessageId,
   userHasScrolled,
   onScroll,
   scrollContainerRef,
@@ -106,6 +108,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 onClearComparison={onClearComparison}
                 isEmbedded={true}
                 isStreaming={isStreaming}
+                streamingMessageId={streamingMessageId}
                 userHasScrolled={userHasScrolled}
                 onScroll={onScroll}
                 scrollContainerRef={scrollContainerRef}
@@ -177,6 +180,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   onSuggestionClick={onSuggestionClick}
                   onClearComparison={onClearComparison}
                   isStreaming={isStreaming}
+                  streamingMessageId={streamingMessageId}
                   userHasScrolled={userHasScrolled}
                   onScroll={onScroll}
                   scrollContainerRef={scrollContainerRef}

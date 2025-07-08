@@ -109,6 +109,7 @@ export default function ChatWidget({
           addMessage(streamingMessage);
           setIsStreaming(true);
           setStreamingMessageId(responseId);
+          setIsLoading(false); // Clear loading state since we're now streaming
           await api.chatbotStream(
             initialQuery,
             chatHistory,
@@ -230,6 +231,7 @@ export default function ChatWidget({
       addMessage(streamingMessage);
       setIsStreaming(true);
       setStreamingMessageId(responseId);
+      setIsLoading(false); // Clear loading state since we're now streaming
       // Route to the correct endpoint based on context
       if (isInComparisonMode && comparingProducts.length >= 2) {
         // Use compare endpoint for comparison mode
@@ -358,6 +360,7 @@ export default function ChatWidget({
       chatContext={chatContext}
       isEmbedded={false}
       isStreaming={isStreaming}
+      streamingMessageId={streamingMessageId}
       userHasScrolled={userHasScrolled}
       onScroll={handleScroll}
       scrollContainerRef={messagesContainerRef}

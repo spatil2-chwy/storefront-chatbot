@@ -11,13 +11,15 @@ interface ChatMessageItemProps {
   onClearComparison: () => void;
   chatContext?: ChatContext;
   isMobile?: boolean;
+  isStreaming?: boolean;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   message,
   onClearComparison,
   chatContext,
-  isMobile = false
+  isMobile = false,
+  isStreaming = false
 }) => {
   const isUser = message.sender === 'user';
   const isTransition = isTransitionMessage(message);
@@ -277,12 +279,26 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {/* Message text - hide for comparison messages since we show products above */}
         <div className={`p-3 ${isUser ? 'text-white' : 'text-gray-900'}`}>
           {!message.content.includes('Now comparing:') && (
-            <div 
-              className="text-sm"
-              dangerouslySetInnerHTML={{ 
-                __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
-              }} 
-            />
+            <>
+              {/* Show typing indicator for empty streaming messages */}
+              {isStreaming && !message.content.trim() ? (
+                <div className="flex items-center space-x-1 text-gray-500">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                  <span className="text-sm">Tylee is typing...</span>
+                </div>
+              ) : (
+                <div 
+                  className="text-sm"
+                  dangerouslySetInnerHTML={{ 
+                    __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
+                  }} 
+                />
+              )}
+            </>
           )}
         </div>
       </div>

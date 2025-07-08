@@ -14,6 +14,7 @@ interface ChatMessagesProps {
   isEmbedded?: boolean;
   isMobile?: boolean;
   isStreaming: boolean;
+  streamingMessageId?: string | null;
   userHasScrolled: boolean;
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
@@ -28,6 +29,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   isEmbedded = false,
   isMobile = false,
   isStreaming,
+  streamingMessageId,
   userHasScrolled,
   onScroll,
   scrollContainerRef,
@@ -50,20 +52,21 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             onClearComparison={onClearComparison}
             chatContext={chatContext}
             isMobile={isMobile}
+            isStreaming={streamingMessageId === message.id}
           />
         ))
       )}
       
-      {/* Loading indicator */}
-      {isLoading && (
+      {/* Loading indicator - only show when loading and not streaming */}
+      {isLoading && !isStreaming && (
         <div className="flex items-center space-x-2 text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm">Thinking...</span>
         </div>
       )}
       
-      {/* Loading skeleton */}
-      {isLoading && (
+      {/* Loading skeleton - only show when loading and not streaming */}
+      {isLoading && !isStreaming && (
         <div className="flex items-start space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
             <Bot className="w-4 h-4 text-white" />
