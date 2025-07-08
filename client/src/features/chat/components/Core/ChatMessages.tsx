@@ -13,7 +13,10 @@ interface ChatMessagesProps {
   onClearComparison: () => void;
   isEmbedded?: boolean;
   isMobile?: boolean;
-  shouldAutoScroll?: boolean;
+  isStreaming: boolean;
+  userHasScrolled: boolean;
+  onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -24,23 +27,19 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   onClearComparison,
   isEmbedded = false,
   isMobile = false,
-  shouldAutoScroll = true
+  isStreaming,
+  userHasScrolled,
+  onScroll,
+  scrollContainerRef,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (shouldAutoScroll) {
-      const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      };
-      // Small delay to ensure DOM is updated
-      setTimeout(scrollToBottom, 100);
-    }
-  }, [messages, shouldAutoScroll]);
-
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div 
+      className="flex-1 overflow-y-auto p-4 space-y-4" 
+      ref={scrollContainerRef} 
+      onScroll={onScroll}
+    >
       {messages.length === 0 ? (
         <ChatSuggestions onSuggestionClick={onSuggestionClick} />
       ) : (
@@ -77,6 +76,15 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         </div>
       )}
       
+      {/* New message indicator when streaming and user has scrolled up */}
+      {isStreaming && userHasScrolled && (
+        <div className="flex justify-center sticky bottom-2">
+          <div className="bg-chewy-blue text-white px-3 py-1 rounded-full text-xs font-work-sans animate-pulse">
+            New message incoming...
+          </div>
+        </div>
+      )}
+
       {/* Invisible element to scroll to */}
       <div ref={messagesEndRef} />
     </div>

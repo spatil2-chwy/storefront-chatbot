@@ -6,7 +6,7 @@ from .prompts import get_comparison_prompt, get_ask_about_product_prompt
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY_2")
+api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
 
@@ -125,4 +125,3 @@ def get_product_data(product: Dict[str, Any]) -> Dict[str, Any]:
         "answered_faqs": product.get("answered_faqs"),
     }
     return product_data
-

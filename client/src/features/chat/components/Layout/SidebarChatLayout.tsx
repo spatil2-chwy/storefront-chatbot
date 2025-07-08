@@ -24,6 +24,10 @@ interface SidebarChatLayoutProps {
   onClearComparison: () => void;
   chatContext?: ChatContext;
   isEmbedded?: boolean;
+  isStreaming: boolean;
+  userHasScrolled: boolean;
+  onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
@@ -42,7 +46,11 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   onSuggestionClick,
   onClearComparison,
   chatContext,
-  isEmbedded = false
+  isEmbedded = false,
+  isStreaming,
+  userHasScrolled,
+  onScroll,
+  scrollContainerRef,
 }) => {
   // Handle body scroll and layout adjustment when sidebar is open
   useEffect(() => {
@@ -97,7 +105,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 onSuggestionClick={onSuggestionClick}
                 onClearComparison={onClearComparison}
                 isEmbedded={true}
-                shouldAutoScroll={true}
+                isStreaming={isStreaming}
+                userHasScrolled={userHasScrolled}
+                onScroll={onScroll}
+                scrollContainerRef={scrollContainerRef}
               />
               <ChatInput
                 value={inputValue}
@@ -165,7 +176,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   chatContext={chatContext}
                   onSuggestionClick={onSuggestionClick}
                   onClearComparison={onClearComparison}
-                  shouldAutoScroll={true}
+                  isStreaming={isStreaming}
+                  userHasScrolled={userHasScrolled}
+                  onScroll={onScroll}
+                  scrollContainerRef={scrollContainerRef}
                 />
                 <ChatInput
                   value={inputValue}

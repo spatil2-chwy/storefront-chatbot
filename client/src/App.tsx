@@ -11,6 +11,8 @@ import ProductDetail from "@/pages/ProductDetail";
 import ProductComparison from "@/pages/ProductComparison";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
+import TestBirthdayPopup from "@/pages/TestBirthdayPopup";
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -53,6 +55,11 @@ function Router() {
       <Route path="/profile">
         <ProtectedRoute>
           <Profile />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/birthday-test">
+        <ProtectedRoute>
+          <TestBirthdayPopup />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

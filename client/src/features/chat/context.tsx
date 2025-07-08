@@ -6,6 +6,7 @@ interface GlobalChatContextType {
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   insertMessageAt: (message: ChatMessage, index: number) => void;
+  updateMessage: (messageId: string, updater: (message: ChatMessage) => ChatMessage) => void;
   clearMessages: () => void;
   // New method for context transitions
   addTransitionMessage: (fromContext: ChatContextType, toContext: ChatContextType) => void;
@@ -87,6 +88,12 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     });
   }, []);
 
+  const updateMessage = useCallback((messageId: string, updater: (message: ChatMessage) => ChatMessage) => {
+    setMessages(prev => 
+      prev.map(msg => msg.id === messageId ? updater(msg) : msg)
+    );
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
   }, []);
@@ -166,6 +173,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         setMessages,
         addMessage,
         insertMessageAt,
+        updateMessage,
         clearMessages,
         addTransitionMessage,
         currentContext,

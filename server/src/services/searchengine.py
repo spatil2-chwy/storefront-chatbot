@@ -6,6 +6,7 @@ from typing import cast, Any
 
 
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+# client = chromadb.HttpClient(host='localhost', port=8001)
 # PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)

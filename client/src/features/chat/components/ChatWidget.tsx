@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalChat } from '../context';
-import { ChatContext, Product } from '../../../types';
-import { useChatEngine } from '../hooks/use-chat-engine';
+import { ChatContext, ChatMessage, Product } from '../../../types';
 import { useGreeting } from '../hooks/use-greeting';
 import { useComparisonTracker } from '../hooks/use-comparison-tracker';
-import { isTransitionMessage } from '../utils/chat-utilities';
 import { SidebarChatLayout } from './Layout/SidebarChatLayout';
+import { api } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth/auth';
 
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -26,6 +26,8 @@ export default function ChatWidget({
 }: ChatWidgetProps) {
   const { 
     messages, 
+    addMessage,
+    updateMessage,
     clearMessages,
     isOpen, 
     setIsOpen,
@@ -33,12 +35,28 @@ export default function ChatWidget({
     isInComparisonMode,
     clearComparison,
     shouldAutoOpen,
+    hasSearched,
+    setHasSearched,
     setShouldAutoOpen,
-    isMainChatHidden
+    isMainChatHidden,
+    setSearchResults,
+    setCurrentSearchQuery
   } = useGlobalChat();
   
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isLiveAgent, setIsLiveAgent] = useState(false);
+  const [greetingShown, setGreetingShown] = useState(false);
+  const [searchGreetingShown, setSearchGreetingShown] = useState(false); // Track if greeting shown for search context
+  const [preloadedGreeting, setPreloadedGreeting] = useState<string | null>(null); // Store greeting fetched on page load
+  const [isStreaming, setIsStreaming] = useState(false); // Track if currently streaming
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
+  const [userHasScrolled, setUserHasScrolled] = useState(false); // Track if user has manually scrolled
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // Ref for the messages container
+  const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
+  const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
 
   // Initialize hooks
   const { 
@@ -48,31 +66,16 @@ export default function ChatWidget({
   } = useGreeting();
 
   const { 
-    comparisonStartIndexRef,
     handleChatContextChange,
     handleExitToGeneralChat,
     resetComparisonTracker
   } = useComparisonTracker();
 
-  const { 
-    isLoading, 
-    sendMessage: engineSendMessage, 
-    resetProcessedQuery 
-  } = useChatEngine({
-    initialQuery,
-    shouldClearChat,
-    preloadedChatResponse,
-    isLiveAgent,
-    showInitialSearchGreeting,
-    showSearchGreeting
-  });
-
-  useEffect(() => {
-    // Only scroll when messages change and we're not in comparison mode to prevent glitching
-    if (!isInComparisonMode) {
-      // Auto-scroll is now handled within ChatMessages component
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [messages, isInComparisonMode]);
+  };
 
   useEffect(() => {
     if (shouldOpen || shouldAutoOpen) {
@@ -80,6 +83,132 @@ export default function ChatWidget({
       setShouldAutoOpen(false); // Reset auto-open trigger
     }
   }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
+
+  useEffect(() => {
+    if (initialQuery && processedQueryRef.current !== initialQuery) {
+      processedQueryRef.current = initialQuery;
+
+      if (shouldClearChat) {
+        clearMessages();
+      }
+
+      if (isLiveAgent) return;
+
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: initialQuery,
+        sender: 'user',
+        timestamp: new Date(),
+      };
+      addMessage(userMessage);
+      setIsLoading(true);
+
+      const generateResponse = async () => {
+        try {
+          const chatHistory = messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          })).concat({ role: 'user', content: initialQuery });
+
+          const responseId = (Date.now() + 1).toString();
+          const streamingMessage: ChatMessage = {
+            id: responseId,
+            content: "",
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          addMessage(streamingMessage);
+          setIsStreaming(true);
+          setStreamingMessageId(responseId);
+
+          await api.chatbotStream(
+            initialQuery,
+            chatHistory,
+            user?.customer_key,
+            (chunk: string) => {
+              updateMessage(responseId, (msg) => ({ ...msg, content: msg.content + chunk }));
+            },
+            (products: any[]) => {
+              if (products && products.length > 0) {
+                setSearchResults(products);
+                setCurrentSearchQuery(initialQuery);
+                setHasSearched(true);
+              }
+            },
+            (fullMessage: string) => {
+              updateMessage(responseId, (msg) => ({ ...msg, content: fullMessage }));
+              setIsStreaming(false);
+              setStreamingMessageId(null);
+            },
+            (error: string) => {
+              console.error('Streaming error:', error);
+              updateMessage(responseId, (msg) => ({ ...msg, content: "Sorry, I'm having trouble processing your request right now." }));
+              setIsStreaming(false);
+              setStreamingMessageId(null);
+            }
+          );
+        } catch (error) {
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: 'An error occurred. Please try again.',
+            sender: 'ai',
+            timestamp: new Date(),
+          };
+          addMessage(errorMessage);
+        } finally {
+          setIsLoading(false);
+          setIsStreaming(false);
+          setStreamingMessageId(null);
+        }
+      };
+      generateResponse();
+    }
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, messages, user, preloadedChatResponse, updateMessage, setSearchResults, setCurrentSearchQuery, setHasSearched]);
+
+  // Check if user is near the bottom of the messages container
+  const isNearBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    const container = messagesContainerRef.current;
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  // Handle scroll events to detect user scrolling
+  const handleScroll = () => {
+    if (isStreaming) {
+      setUserHasScrolled(!isNearBottom());
+    }
+  };
+
+  // Only auto-scroll on new messages (not streaming chunk updates)
+  const prevMessagesLength = useRef(messages.length);
+  useEffect(() => {
+    // Only scroll when messages change and we're not in comparison mode to prevent glitching
+    // Only scroll if:
+    // - Not streaming, or
+    // - Streaming just started (new message), or
+    // - Streaming just ended
+    // - User is at the bottom
+    if (!isInComparisonMode) {
+      const isNewMessage = messages.length > prevMessagesLength.current;
+      prevMessagesLength.current = messages.length;
+      if (!isStreaming) {
+        // If not streaming, always scroll to bottom on new message
+        scrollToBottom();
+      } else if (isNewMessage && !userHasScrolled) {
+        // If streaming just started (new message), scroll to bottom
+        scrollToBottom();
+      }
+      // Otherwise, do not auto-scroll during streaming chunk updates
+    }
+  }, [messages, isInComparisonMode, isStreaming, userHasScrolled]);
+
+  // Reset user scroll state when streaming starts or ends
+  useEffect(() => {
+    if (isStreaming) {
+      setUserHasScrolled(false);
+    }
+  }, [isStreaming]);
 
   // Handle chat context changes from props
   useEffect(() => {
@@ -95,13 +224,75 @@ export default function ChatWidget({
 
   const sendMessage = async (messageText?: string) => {
     const messageToSend = messageText || inputValue;
-    if (!messageToSend || !messageToSend.trim()) return;
+    if (!messageToSend.trim() || isLiveAgent) return;
 
-    // Clear input immediately to provide instant feedback
     setInputValue('');
-    
-    // Then send the message
-    await engineSendMessage(messageToSend);
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: messageToSend,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+    addMessage(userMessage);
+    setIsLoading(true);
+
+    try {
+      const chatHistory = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      })).concat({ role: 'user', content: messageToSend });
+
+      const responseId = (Date.now() + 1).toString();
+      const streamingMessage: ChatMessage = {
+        id: responseId,
+        content: "",
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(streamingMessage);
+      setIsStreaming(true);
+      setStreamingMessageId(responseId);
+
+      await api.chatbotStream(
+        messageToSend,
+        chatHistory,
+        user?.customer_key,
+        (chunk: string) => {
+          updateMessage(responseId, (msg) => ({ ...msg, content: msg.content + chunk }));
+        },
+        (products: any[]) => {
+          if (products && products.length > 0) {
+            setSearchResults(products);
+            setCurrentSearchQuery(messageToSend);
+            setHasSearched(true);
+          }
+        },
+        (fullMessage: string) => {
+          updateMessage(responseId, (msg) => ({ ...msg, content: fullMessage }));
+          setIsStreaming(false);
+          setStreamingMessageId(null);
+        },
+        (error: string) => {
+          console.error('Streaming error:', error);
+          updateMessage(responseId, (msg) => ({ ...msg, content: "Sorry, I'm having trouble processing your request right now." }));
+          setIsStreaming(false);
+          setStreamingMessageId(null);
+        }
+      );
+    } catch (error) {
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: 'An error occurred. Please try again.',
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(errorMessage);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+      setStreamingMessageId(null);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -126,7 +317,7 @@ export default function ChatWidget({
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setInputValue(suggestion);
+    sendMessage(suggestion);
   };
 
   const handleClearComparison = () => {
@@ -158,6 +349,10 @@ export default function ChatWidget({
       onClearComparison={handleClearComparison}
       chatContext={chatContext}
       isEmbedded={false}
+      isStreaming={isStreaming}
+      userHasScrolled={userHasScrolled}
+      onScroll={handleScroll}
+      scrollContainerRef={messagesContainerRef}
     />
   );
 }
