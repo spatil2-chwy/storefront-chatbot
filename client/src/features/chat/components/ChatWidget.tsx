@@ -310,7 +310,6 @@ export default function ChatWidget({
   const handleClearChat = () => {
     clearMessages();
     setInputValue('');
-    resetProcessedQuery();
     resetComparisonTracker();
     resetGreeting();
     onClearChat?.();
