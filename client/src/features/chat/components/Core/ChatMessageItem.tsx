@@ -6,6 +6,29 @@ import { ChatContext, ChatMessage } from '../../../../types';
 import { getTransitionStyling, isTransitionMessage } from '../../utils/chat-utilities';
 import { formatMessageContent } from '../../utils/message-formatting';
 
+// Safe HTML renderer component
+const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  
+  React.useEffect(() => {
+    if (containerRef.current) {
+      // Create a temporary div to parse the HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      
+      // Clear the container
+      containerRef.current.innerHTML = '';
+      
+      // Safely append the parsed content
+      while (tempDiv.firstChild) {
+        containerRef.current.appendChild(tempDiv.firstChild);
+      }
+    }
+  }, [html]);
+  
+  return <div ref={containerRef} className={className} />;
+};
+
 interface ChatMessageItemProps {
   message: ChatMessage;
   onClearComparison: () => void;
@@ -310,12 +333,16 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   <span className="text-sm">Tylee is typing...</span>
                 </div>
               ) : (
-                <div 
-                  className="text-sm"
-                  dangerouslySetInnerHTML={{ 
-                    __html: message.sender === 'ai' ? formatMessageContent(message.content) : message.content 
-                  }} 
-                />
+                <div className="text-sm">
+                  {message.sender === 'ai' ? (
+                    <SafeHtmlRenderer 
+                      html={formatMessageContent(message.content)} 
+                      className="prose prose-sm max-w-none"
+                    />
+                  ) : (
+                    message.content
+                  )}
+                </div>
               )}
             </>
           )}

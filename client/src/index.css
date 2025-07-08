@@ -153,6 +153,10 @@
     @apply italic;
   }
   
+  .prose.prose-sm del {
+    @apply line-through text-gray-500;
+  }
+  
   .prose.prose-sm code {
     @apply bg-gray-100 px-1 py-0.5 rounded text-xs font-mono;
   }
@@ -163,6 +167,14 @@
   
   .prose.prose-sm blockquote {
     @apply border-l-4 border-gray-300 pl-3 italic;
+  }
+  
+  .prose.prose-sm hr {
+    @apply my-4 border-gray-300;
+  }
+  
+  .prose.prose-sm a {
+    @apply text-blue-600 hover:text-blue-800 underline break-all;
   }
   
   .prose.prose-sm h1, .prose.prose-sm h2, .prose.prose-sm h3 {
@@ -179,6 +191,28 @@
   
   .prose.prose-sm h3 {
     @apply text-sm;
+  }
+  
+  /* Task list styling - remove list-style for task lists */
+  .prose.prose-sm ul.list-none {
+    list-style: none;
+  }
+  
+  .prose.prose-sm ul.list-none li {
+    list-style: none;
+  }
+  
+  /* Table styling */
+  .prose.prose-sm table {
+    @apply w-full border-collapse border border-gray-300 my-2;
+  }
+  
+  .prose.prose-sm table td {
+    @apply border border-gray-300 px-2 py-1 text-xs;
+  }
+  
+  .prose.prose-sm table th {
+    @apply border border-gray-300 px-2 py-1 text-xs font-semibold bg-gray-50;
   }
 }
 
