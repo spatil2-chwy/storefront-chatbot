@@ -46,7 +46,7 @@ export const useComparisonTracker = () => {
 
   const handleExitToGeneralChat = () => {
     const previousContext = currentContext;
-    const newContext = { type: 'general' as const };
+    const newContext = { type: 'general' as const, product: undefined, products: undefined };
     
     clearComparison();
     comparisonStartIndexRef.current = -1; // Reset comparison start index

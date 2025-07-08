@@ -4,13 +4,16 @@ import { Skeleton } from '../../../../ui/Feedback/Skeleton';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSuggestions } from './ChatSuggestions';
 import { ChatContext, ChatMessage } from '../../../../types';
+import { isTransitionMessage } from '../../utils/chat-utilities';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
   isLoading: boolean;
   chatContext?: ChatContext;
+  activeChatContext?: ChatContext;
   onSuggestionClick: (suggestion: string) => void;
   onClearComparison: () => void;
+  onExitProductChat: () => void;
   isEmbedded?: boolean;
   isMobile?: boolean;
   isStreaming: boolean;
@@ -24,8 +27,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   isLoading,
   chatContext,
+  activeChatContext,
   onSuggestionClick,
   onClearComparison,
+  onExitProductChat,
   isEmbedded = false,
   isMobile = false,
   isStreaming,
@@ -36,6 +41,8 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const lastProductMessageIndex = messages.map(m => isTransitionMessage(m) && m.content.includes('Now discussing:')).lastIndexOf(true);
+
   return (
     <div 
       className="flex-1 overflow-y-auto p-4 space-y-4" 
@@ -45,14 +52,16 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       {messages.length === 0 ? (
         <ChatSuggestions onSuggestionClick={onSuggestionClick} />
       ) : (
-        messages.map((message) => (
+        messages.map((message, index) => (
           <ChatMessageItem
             key={message.id}
             message={message}
             onClearComparison={onClearComparison}
+            onExitProductChat={onExitProductChat}
             chatContext={chatContext}
             isMobile={isMobile}
             isStreaming={streamingMessageId === message.id}
+            showExitButton={index === lastProductMessageIndex && activeChatContext?.type === 'product'}
           />
         ))
       )}

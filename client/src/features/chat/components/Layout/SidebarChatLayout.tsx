@@ -22,7 +22,9 @@ interface SidebarChatLayoutProps {
   onKeyPress: (e: React.KeyboardEvent) => void;
   onSuggestionClick: (suggestion: string) => void;
   onClearComparison: () => void;
+  onExitProductChat: () => void;
   chatContext?: ChatContext;
+  activeChatContext?: ChatContext;
   isEmbedded?: boolean;
   isStreaming: boolean;
   streamingMessageId?: string | null;
@@ -46,7 +48,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   onKeyPress,
   onSuggestionClick,
   onClearComparison,
+  onExitProductChat,
   chatContext,
+  activeChatContext,
   isEmbedded = false,
   isStreaming,
   streamingMessageId,
@@ -104,8 +108,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 messages={messages}
                 isLoading={isLoading}
                 chatContext={chatContext}
+                activeChatContext={activeChatContext}
                 onSuggestionClick={onSuggestionClick}
                 onClearComparison={onClearComparison}
+                onExitProductChat={onExitProductChat}
                 isEmbedded={true}
                 isStreaming={isStreaming}
                 streamingMessageId={streamingMessageId}
@@ -177,8 +183,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   messages={messages}
                   isLoading={isLoading}
                   chatContext={chatContext}
+                  activeChatContext={activeChatContext}
                   onSuggestionClick={onSuggestionClick}
                   onClearComparison={onClearComparison}
+                  onExitProductChat={onExitProductChat}
                   isStreaming={isStreaming}
                   streamingMessageId={streamingMessageId}
                   userHasScrolled={userHasScrolled}

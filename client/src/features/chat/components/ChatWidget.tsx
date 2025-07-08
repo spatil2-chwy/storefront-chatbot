@@ -336,6 +336,11 @@ export default function ChatWidget({
     clearComparison();
     resetComparisonTracker();
   };
+
+  const handleExitProductChat = () => {
+    handleExitToGeneralChat();
+  };
+
   // Hide chat when product modal is active
   if (isMainChatHidden) {
     return null;
@@ -357,7 +362,9 @@ export default function ChatWidget({
       onKeyPress={handleKeyPress}
       onSuggestionClick={handleSuggestionClick}
       onClearComparison={handleClearComparison}
+      onExitProductChat={handleExitProductChat}
       chatContext={chatContext}
+      activeChatContext={currentContext}
       isEmbedded={false}
       isStreaming={isStreaming}
       streamingMessageId={streamingMessageId}

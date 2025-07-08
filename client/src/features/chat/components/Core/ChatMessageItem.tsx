@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, ShoppingCart, X, Star, Package } from 'lucide-react';
+import { User, Bot, ShoppingCart, X, Star, Package, LogOut } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
 import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
@@ -9,17 +9,21 @@ import { formatMessageContent } from '../../utils/message-formatting';
 interface ChatMessageItemProps {
   message: ChatMessage;
   onClearComparison: () => void;
+  onExitProductChat: () => void;
   chatContext?: ChatContext;
   isMobile?: boolean;
   isStreaming?: boolean;
+  showExitButton?: boolean;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   message,
   onClearComparison,
+  onExitProductChat,
   chatContext,
   isMobile = false,
-  isStreaming = false
+  isStreaming = false,
+  showExitButton = false,
 }) => {
   const isUser = message.sender === 'user';
   const isTransition = isTransitionMessage(message);
@@ -166,17 +170,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
                     <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
-                      {product.brand}
+                      {product?.brand}
                     </Badge>
                   </div>
                   <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
-                    {product.title}
+                    {product?.title}
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="text-sm font-semibold text-gray-900">
-                      ${product.price?.toFixed(2)}
+                      ${product?.price?.toFixed(2)}
                     </span>
-                    {product.rating && (
+                    {product?.rating && (
                       <div className="flex items-center space-x-1">
                         <div className="flex">
                           {renderStars(product.rating)}
@@ -190,6 +194,21 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Exit discussion button */}
+            {showExitButton && (
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onExitProductChat}
+                  className="w-full text-green-700 hover:text-green-800 border-green-200 hover:bg-green-100"
+                >
+                  <LogOut className="w-3 h-3 mr-2" />
+                  Exit Discussion
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       );
