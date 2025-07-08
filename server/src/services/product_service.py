@@ -3,6 +3,12 @@ from src.models.product import Product
 from src.services.chatbot_logic import chat
 import time
 
+import chromadb
+client = chromadb.PersistentClient(path="../scripts/chroma_db")
+collection = client.get_collection(name="review_synthesis")
+search_analyzer = None  # Lazy loading for search matches
+print("✅ ProductService initialized successfully")
+
 class ProductService:
     def __init__(self):
         self._search_analyzer = None
@@ -276,3 +282,29 @@ class ProductService:
             return {
                 "products": [],
             }
+        
+
+    async def get_product(self, product_id: int) -> Optional[Product]:
+        try:
+            results = collection.get(where={"PRODUCT_ID": str(product_id)})
+            
+            if not results["metadatas"] or len(results["metadatas"]) == 0:
+                return None
+            
+            # Get the first (and should be only) metadata
+            metadata = results["metadatas"][0]
+            
+            if metadata is None:
+                return None
+                
+            # Ensure metadata is a proper dictionary
+            if isinstance(metadata, dict):
+                meta_dict = metadata
+            else:
+                meta_dict = dict(metadata)
+            
+            product = self._metadata_to_product(meta_dict)
+            return product
+        except Exception as e:
+            print(f"⚠️ Error fetching product {product_id}: {e}")
+            return None
