@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import './BirthdayPopup.css';
 
 interface BirthdayPopupProps {
   petName: string;
@@ -56,11 +55,11 @@ const BirthdayPopup: React.FC<BirthdayPopupProps> = ({ petName, petImage, onClos
   }, []);
 
   return (
-    <div className="birthday-popup">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-hidden animate-fadeIn">
       {confetti.map((piece) => (
         <div
           key={piece.id}
-          className="confetti-piece"
+          className="absolute -top-12 pointer-events-none opacity-80 animate-confettiFall"
           style={{
             left: `${piece.left}%`,
             animationDelay: `${piece.delay}s`,
@@ -71,23 +70,35 @@ const BirthdayPopup: React.FC<BirthdayPopupProps> = ({ petName, petImage, onClos
           {piece.emoji}
         </div>
       ))}
-      <div className="popup-content">
-        <button className="close-button" onClick={onClose}>×</button>
-        <div className="confetti-background">
+      <div className="bg-white rounded-xl p-8 text-center relative max-w-md w-11/12 shadow-2xl animate-slideIn text-gray-800 border border-gray-200">
+        <button 
+          className="absolute top-4 right-4 bg-gray-100 border border-gray-300 text-gray-500 w-8 h-8 rounded-full flex items-center justify-center text-xl cursor-pointer transition-all duration-200 hover:bg-gray-200 hover:text-gray-700"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        <div className="relative">
           <img 
             src={showBirthdayImage ? "/pugbirthday.png" : petImage} 
             alt={`${petName}'s birthday`} 
-            className={`pet-image ${isVibrating ? 'vibrating' : ''}`}
+            className={`w-30 h-30 rounded-full mb-6 border-4 border-gray-200 object-cover transition-all duration-300 ease-in-out ${
+              isVibrating 
+                ? 'animate-vibrate' 
+                : 'animate-bounce'
+            }`}
           />
-          <h1>Happy Birthday {petName}!</h1>
-          <p>We hope your pup has a fur-tastic day. Here is a coupon for a free treat with your next order!</p>
-          {/* share button  */}
-            <button 
+          <h1 className="text-3xl font-bold mb-4 text-gray-900">
+            Happy Birthday {petName}!
+          </h1>
+          <p className="text-lg leading-relaxed mb-6 text-gray-700">
+            We hope your pup has a fur-tastic day. Here is a coupon for a free treat with your next order!
+          </p>
+          <button 
             className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition-colors duration-200 cursor-pointer"
             onClick={() => alert('Share functionality coming soon!')}
-            >
+          >
             Share to social media
-            </button>
+          </button>
         </div>
       </div>
     </div>

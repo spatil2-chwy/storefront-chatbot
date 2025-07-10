@@ -79,10 +79,56 @@ export default {
             height: "0",
           },
         },
+        "fadeIn": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slideIn": {
+          from: {
+            transform: "translateY(-50px)",
+            opacity: "0",
+          },
+          to: {
+            transform: "translateY(0)",
+            opacity: "1",
+          },
+        },
+        "confettiFall": {
+          "0%": {
+            transform: "translateY(-50px) rotate(0deg)",
+            opacity: "1",
+          },
+          "100%": {
+            transform: "translateY(100vh) rotate(720deg)",
+            opacity: "0",
+          },
+        },
+        "bounce": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "vibrate": {
+          "0%": { transform: "translateX(0) translateY(0) rotate(0deg)" },
+          "10%": { transform: "translateX(-2px) translateY(-1px) rotate(-1deg)" },
+          "20%": { transform: "translateX(2px) translateY(1px) rotate(1deg)" },
+          "30%": { transform: "translateX(-2px) translateY(1px) rotate(-1deg)" },
+          "40%": { transform: "translateX(2px) translateY(-1px) rotate(1deg)" },
+          "50%": { transform: "translateX(-1px) translateY(2px) rotate(-0.5deg)" },
+          "60%": { transform: "translateX(1px) translateY(-2px) rotate(0.5deg)" },
+          "70%": { transform: "translateX(-2px) translateY(1px) rotate(-1deg)" },
+          "80%": { transform: "translateX(2px) translateY(-1px) rotate(1deg)" },
+          "90%": { transform: "translateX(-1px) translateY(2px) rotate(-0.5deg)" },
+          "100%": { transform: "translateX(0) translateY(0) rotate(0deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fadeIn": "fadeIn 0.3s ease-in",
+        "slideIn": "slideIn 0.3s ease-out",
+        "confettiFall": "confettiFall 4s linear infinite",
+        "bounce": "bounce 1s ease-in-out",
+        "vibrate": "vibrate 0.1s linear infinite",
       },
     },
   },
