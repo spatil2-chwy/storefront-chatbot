@@ -5,7 +5,7 @@ import { useGreeting } from '../hooks/use-greeting';
 import { useComparisonTracker } from '../hooks/use-comparison-tracker';
 import { SidebarChatLayout } from './Layout/SidebarChatLayout';
 import { chatApi, productsApi } from '../../../lib/api';
-import { useAuth } from '../../../lib/auth/auth';
+import { useAuth } from '../../../lib/auth';
 interface ChatWidgetProps {
   initialQuery?: string;
   shouldOpen?: boolean;

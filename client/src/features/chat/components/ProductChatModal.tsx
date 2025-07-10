@@ -4,7 +4,7 @@ import { Button } from '@/ui/Buttons/Button';
 import { Input } from '@/ui/Input/Input';
 import { ChatMessage } from '../../../types';
 import { productsApi } from '../../../lib/api/products';
-import { useAuth } from '../../../lib/auth/auth';
+import { useAuth } from '../../../lib/auth';
 import { formatMessageContent } from '../utils/message-formatting';
 import {
   AlertDialog,
