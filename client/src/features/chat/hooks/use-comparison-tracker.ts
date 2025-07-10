@@ -32,9 +32,9 @@ export const useComparisonTracker = () => {
     }
   }, [currentContext.type]);
 
-  // Handle comparison mode changes - now handled by page components with proper transitions
+  // Handle comparison mode changes
   useEffect(() => {
-    // Set comparison start index when we're in comparison mode
+    // Set comparison start index when entering comparison mode
     if (isInComparisonMode && comparingProducts.length >= 2 && comparisonStartIndexRef.current === -1) {
       comparisonStartIndexRef.current = 1;
     }
@@ -49,7 +49,7 @@ export const useComparisonTracker = () => {
     const newContext = { type: 'general' as const, product: undefined, products: undefined };
     
     clearComparison();
-    comparisonStartIndexRef.current = -1; // Reset comparison start index
+    comparisonStartIndexRef.current = -1;
     
     // Add transition message when exiting to general chat
     addTransitionMessage(previousContext, newContext);

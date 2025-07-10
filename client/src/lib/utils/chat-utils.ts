@@ -2,7 +2,7 @@ import { ChatMessage } from '../../types';
 
 // Chat utility functions for styling and message type detection
 
-// Helper function to get transition message styling based on type
+// Get transition message styling based on type
 export const getTransitionStyling = (message: ChatMessage): string => {
   // Handle new transition messages with explicit types
   if (message.isTransition) {
@@ -32,7 +32,7 @@ export const getTransitionStyling = (message: ChatMessage): string => {
   return '';
 };
 
-// Helper function to check if a message is a transition (new or legacy)
+// Check if a message is a transition (new or legacy)
 export const isTransitionMessage = (message: ChatMessage): boolean => {
   return message.isTransition || 
          message.content.includes('Now comparing:') || 

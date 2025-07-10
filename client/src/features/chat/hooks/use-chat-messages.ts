@@ -30,14 +30,14 @@ export const useChatMessages = ({
   // Handle initial query processing
   useEffect(() => {
     if (initialQuery && initialQuery.trim() && initialQuery !== processedQueryRef.current && !isLiveAgent) {
-      processedQueryRef.current = initialQuery; // Mark as processed
+      processedQueryRef.current = initialQuery;
       
       // Clear chat if this is a new search and there are existing messages
       if (shouldClearChat && messages.length > 0) {
         clearMessages();
       }
       
-      // Create and add user message immediately
+      // Create and add user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         content: preloadedChatResponse ? `Searching for: ${initialQuery}` : initialQuery,
@@ -47,7 +47,7 @@ export const useChatMessages = ({
       
       addMessage(userMessage);
       
-      // If we have a preloaded chat response, use it instead of making an API call
+      // Use preloaded response if available
       if (preloadedChatResponse) {
         const aiResponse: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -58,7 +58,7 @@ export const useChatMessages = ({
         
         addMessage(aiResponse);
         
-        // Update global search state with the products from the response
+        // Update search state with products from response
         if (preloadedChatResponse.products && preloadedChatResponse.products.length > 0) {
           setSearchResults(preloadedChatResponse.products);
           setCurrentSearchQuery(initialQuery);

@@ -8,29 +8,24 @@ interface GlobalChatContextType {
   insertMessageAt: (message: ChatMessage, index: number) => void;
   updateMessage: (messageId: string, updater: (message: ChatMessage) => ChatMessage) => void;
   clearMessages: () => void;
-  // New method for context transitions
   addTransitionMessage: (fromContext: ChatContextType, toContext: ChatContextType) => void;
   currentContext: ChatContextType;
   setCurrentContext: (context: ChatContextType) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  // Product state management
   searchResults: Product[];
   setSearchResults: (products: Product[]) => void;
   currentSearchQuery: string;
   setCurrentSearchQuery: (query: string) => void;
   hasSearched: boolean;
   setHasSearched: (searched: boolean) => void;
-  // Comparison state management
   comparingProducts: Product[];
   addToComparison: (product: Product) => void;
   removeFromComparison: (productId: number) => void;
   clearComparison: () => void;
   isInComparisonMode: boolean;
-  // Auto-open management
   shouldAutoOpen: boolean;
   setShouldAutoOpen: (should: boolean) => void;
-  // Hide main chat when product modal is active
   isMainChatHidden: boolean;
   setIsMainChatHidden: (hidden: boolean) => void;
 }
@@ -52,9 +47,9 @@ interface GlobalChatProviderProps {
 export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentContext, setCurrentContext] = useState<ChatContextType>({ type: 'general' });
-  const [isOpen, setIsOpen] = useState(false); // Start with chatbot collapsed
+  const [isOpen, setIsOpen] = useState(false);
   
-  // Product state management
+  // Search state management
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
@@ -62,16 +57,14 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   // Comparison state management
   const [comparingProducts, setComparingProducts] = useState<Product[]>([]);
   
-  // Auto-open management
+  // UI state management
   const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
-  
-  // Hide main chat when product modal is active
   const [isMainChatHidden, setIsMainChatHidden] = useState<boolean>(false);
   
-  // Track if a transition message was recently added to prevent duplicates
+  // Track transition timing to prevent duplicates
   const [lastTransitionTime, setLastTransitionTime] = useState<number>(0);
 
-  // Compute comparison mode based on number of products (need 2+ to compare)
+  // Compute comparison mode based on number of products
   const isInComparisonMode = useMemo(() => {
     return comparingProducts.length >= 2;
   }, [comparingProducts.length]);
@@ -98,7 +91,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     setMessages([]);
   }, []);
 
-  // New method to handle context transitions with appropriate messages
+  // Handle context transitions with appropriate messages
   const addTransitionMessage = useCallback((fromContext: ChatContextType, toContext: ChatContextType) => {
     // Prevent duplicate transitions within 1 second
     const now = Date.now();
@@ -134,9 +127,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         timestamp: new Date(),
         isTransition: true,
         transitionType: transitionType,
-        // Store product data for individual product transitions
         productData: transitionType === 'product' && toContext.product ? toContext.product : undefined,
-        // Store comparison data for historical preservation
         comparisonProductCount: transitionType === 'comparison' && toContext.products ? toContext.products.length : undefined,
         comparisonProducts: transitionType === 'comparison' && toContext.products ? toContext.products : undefined,
       };
@@ -147,7 +138,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const addToComparison = useCallback((product: Product) => {
     setComparingProducts(prev => {
       const exists = prev.find(p => p.id === product.id);
-      if (exists) return prev; // Already in comparison
+      if (exists) return prev;
       
       // Limit to 4 products maximum
       if (prev.length >= 4) return prev;

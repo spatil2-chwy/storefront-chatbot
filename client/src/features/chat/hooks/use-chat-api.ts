@@ -49,7 +49,7 @@ export const useChatApi = (callbacks: ChatApiCallbacks) => {
   ): Promise<ChatMessage> => {
     const response = await chatApi.chatbot(query, chatHistory, customerKey);
     
-    // Update global search state with the products from the response
+    // Update search state if products are returned
     if (response.products && response.products.length > 0) {
       setSearchResults(response.products);
       setCurrentSearchQuery(query);

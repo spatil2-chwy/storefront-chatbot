@@ -63,26 +63,23 @@ export const useChatEngine = ({
     try {
       let aiResponse: ChatMessage;
 
-      // Prepare chat history for all endpoints
+      // Prepare chat history for API calls
       const chatHistory = messages.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
 
-      // If in comparison mode and we have products to compare, call the backend
+      // Route to appropriate API based on context
       if (isInComparisonMode && comparingProducts.length >= 2) {
         aiResponse = await generateComparisonResponse(query, comparingProducts, chatHistory);
       } else if (currentContext.type === 'product' && currentContext.product) {
-        // If in product context, call the backend for product-specific questions
         aiResponse = await generateProductResponse(query, currentContext.product, chatHistory);
       } else {
-        // Use backend chatbot endpoint for general chat mode
         aiResponse = await generateGeneralResponse(query, chatHistory, user?.customer_key);
       }
 
       addMessage(aiResponse);
     } catch (error) {
-      // Handle API errors gracefully
       const errorMessage = generateErrorResponse();
       addMessage(errorMessage);
     } finally {
@@ -91,45 +88,38 @@ export const useChatEngine = ({
   };
 
   const sendMessage = async (messageText: string) => {
-    // Only allow sending messages in AI mode
     if (isLiveAgent) return;
-    
     if (!messageText || !messageText.trim()) return;
 
     const userMessage = createUserMessage(messageText);
     addMessage(userMessage);
     setIsLoading(true);
 
-    // Check if we should show a personalized greeting before the response
     await showSearchGreeting(messageText);
 
     try {
       let aiResponse: ChatMessage;
 
-      // Prepare chat history for all endpoints
+      // Prepare chat history for API calls
       const chatHistory = messages.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
 
-      // If in comparison mode and we have at least 2 products to compare, call the backend
+      // Route to appropriate API based on context
       if (isInComparisonMode && comparingProducts.length >= 2) {
         aiResponse = await generateComparisonResponse(messageText, comparingProducts, chatHistory);
       } else if (currentContext.type === 'product' && currentContext.product) {
-        // If in product context, call the backend for product-specific questions
         aiResponse = await generateProductResponse(messageText, currentContext.product, chatHistory);
       } else if (currentContext.type === 'comparison' && currentContext.products) {
-        // If in comparison context, call the backend for product comparison
         aiResponse = await generateComparisonResponse(messageText, currentContext.products, chatHistory);
       } else {
-        // Use backend chatbot endpoint for general chat mode
         aiResponse = await generateGeneralResponse(messageText, chatHistory, user?.customer_key);
       }
 
       addMessage(aiResponse);
     } catch (error) {
       console.error('Error in sendMessage:', error);
-      // Handle API errors gracefully
       const errorMessage = generateErrorResponse();
       addMessage(errorMessage);
     } finally {

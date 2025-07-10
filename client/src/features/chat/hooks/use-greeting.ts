@@ -17,7 +17,7 @@ export const useGreeting = () => {
   const [searchGreetingShown, setSearchGreetingShown] = useState(false);
   const [preloadedGreeting, setPreloadedGreeting] = useState<string | null>(null);
 
-  // Fetch personalized greeting when component mounts (page loads)
+  // Fetch personalized greeting when component mounts
   useEffect(() => {
     const fetchGreetingOnLoad = async () => {
       if (user && !preloadedGreeting) {
@@ -28,7 +28,6 @@ export const useGreeting = () => {
           setPreloadedGreeting(response.greeting);
         } catch (error) {
           console.error('Failed to preload personalized greeting:', error);
-          // Set fallback greeting
           setPreloadedGreeting("Hey there! What can I help you find for your furry friends today?");
         }
       }
@@ -67,13 +66,12 @@ export const useGreeting = () => {
   }, [isOpen, user, greetingShown, messages.length, currentContext.type, preloadedGreeting, addMessage]);
 
   const showSearchGreeting = async (messageToSend: string) => {
-    // Disable follow-up greetings to prevent confusion
-    // The initial greeting when opening chat should be sufficient
+    // Disabled to prevent confusion - initial greeting is sufficient
     return;
   };
 
   const showInitialSearchGreeting = async (initialQuery: string) => {
-    // Show personalized greeting for search queries if user is logged in and it's general chat mode
+    // Show personalized greeting for search queries if user is logged in and in general chat mode
     const shouldShowSearchGreeting = (
       user && 
       !searchGreetingShown && 
@@ -91,7 +89,7 @@ export const useGreeting = () => {
         addMessage(greetingMessage);
         setSearchGreetingShown(true);
         
-        // Add a small delay so the greeting appears before the main response
+        // Add delay so greeting appears before main response
         await new Promise(resolve => setTimeout(resolve, 500));
       } else {
         // Fallback if greeting not preloaded
@@ -106,11 +104,10 @@ export const useGreeting = () => {
           addMessage(greetingMessage);
           setSearchGreetingShown(true);
           
-          // Add a small delay so the greeting appears before the main response
+          // Add delay so greeting appears before main response
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           console.error('Failed to fetch personalized search greeting:', error);
-          // Continue without greeting if it fails
         }
       }
     }
@@ -118,7 +115,7 @@ export const useGreeting = () => {
 
   const resetGreeting = () => {
     setGreetingShown(false);
-    setSearchGreetingShown(false); // Keep for compatibility but not used for follow-ups
+    setSearchGreetingShown(false);
     setPreloadedGreeting(null);
   };
 

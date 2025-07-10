@@ -2,7 +2,7 @@
 export const formatMessageContent = (content: string): string => {
   let formattedContent = content;
   
-  // First, handle code blocks (```code```) to prevent them from being processed as markdown
+  // Handle code blocks (```code```) to prevent markdown processing
   const codeBlocks: string[] = [];
   formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, (match, code) => {
     const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
@@ -13,7 +13,7 @@ export const formatMessageContent = (content: string): string => {
   // Handle inline code (`code`)
   formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>');
   
-  // Convert [text](url) links to <a> tags with proper styling
+  // Convert [text](url) links to <a> tags
   formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline break-all">$1</a>');
   
   // Convert **bold** to <strong>
@@ -45,12 +45,12 @@ export const formatMessageContent = (content: string): string => {
     return match;
   });
   
-  // Wrap table rows in table structure if we detect table-like content
+  // Wrap table rows in table structure if detected
   if (formattedContent.includes('<tr>')) {
     formattedContent = formattedContent.replace(/(<tr>.*?<\/tr>)/g, '<table class="border-collapse border border-gray-300 my-2"><tbody>$1</tbody></table>');
   }
   
-  // Convert numbered lists (1. item) and bullet lists (- item, * item) to proper HTML lists
+  // Convert numbered lists (1. item) and bullet lists (- item, * item) to HTML lists
   const lines = formattedContent.split('\n');
   let inList = false;
   let listType = '';
@@ -147,7 +147,7 @@ export const formatMessageContent = (content: string): string => {
   return formattedContent;
 };
 
-// Helper function to escape HTML in code blocks
+// Escape HTML in code blocks
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;

@@ -1,17 +1,12 @@
-from openai import OpenAI
-from dotenv import load_dotenv
 import json
 import time
-from os import getenv
-import time
 from typing import List, Dict, Any, Optional, Union, cast, Generator
-load_dotenv()
 from src.services.searchengine import query_products, rank_products
 from src.services.article_service import ArticleService
-api_key = getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY is not set. Please check your .env file.")
-client = OpenAI(api_key=api_key)
+from src.services.openai_client import get_openai_client
+
+# Get the centralized OpenAI client
+client = get_openai_client()
 # refactor needed, tools, system prompt, model, etc should be in a separate file
 tools = [
     {

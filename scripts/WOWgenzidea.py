@@ -1,6 +1,7 @@
-from openai import OpenAI
 import base64
-client = OpenAI()
+from openai_client import get_openai_client
+
+client = get_openai_client()
 
 prompt = """
 A cute picture of a Labrador Retriever wearing a birthday hat.
