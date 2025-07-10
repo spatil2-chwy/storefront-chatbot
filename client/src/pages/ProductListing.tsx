@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
 import Header from '@/layout/Header';
-import ProductCard from '@/features/product/components/ProductCard';
-import ProductFilters from '@/features/product/components/ProductFilters';
+import ProductCard from '@/features/Product/components/ProductCard';
+import ProductFilters from '@/features/Product/components/ProductFilters';
 import ChatWidget from '@/features/Chat/components/ChatWidget';
-import ComparisonFooter from '@/features/product/components/ComparisonFooter';
+import ComparisonFooter from '@/features/Product/components/ComparisonFooter';
 import BirthdayPopup from '@/features/Chat/components/Core/BirthdayPopup';
-import { api } from '@/lib/api';
+import { usersApi } from '@/lib/api/users';
+import { chatApi } from '@/lib/api/chat';
 import { Product } from '../types';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
@@ -65,7 +66,7 @@ export default function ProductListing() {
 
       try {
         console.log('🔍 Fetching user pets...');
-        const pets = await api.getUserPets(user.customer_key);
+        const pets = await usersApi.getUserPets(user.customer_key);
         console.log('Found pets:', pets);
 
         if (pets.length === 0) {
@@ -172,7 +173,7 @@ export default function ProductListing() {
       const birthdayShownToday = localStorage.getItem(`birthday-shown-${new Date().toDateString()}`);
       if (birthdayShownToday) return;
       try {
-        const pets = await api.getUserPets(user.customer_key);
+        const pets = await usersApi.getUserPets(user.customer_key);
         const today = new Date();
 
         // Check if any pet has a birthday today
@@ -325,7 +326,7 @@ export default function ProductListing() {
     try {
       // Use the updated searchAndChat method that only calls the chat endpoint
       const customer_key = user?.customer_key;
-      const { searchResults: searchData, chatResponse } = await api.searchAndChat(trimmedQuery, customer_key);
+      const { searchResults: searchData, chatResponse } = await chatApi.searchAndChat(trimmedQuery, customer_key);
       
       const searchEndTime = performance.now();
       console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);

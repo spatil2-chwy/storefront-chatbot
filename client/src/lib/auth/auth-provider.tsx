@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useState, useEffect } from 'react';
-import axios from 'axios';
+import { authApi } from '../api/auth';
 
 export interface User {
   customer_key: number;
@@ -70,12 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { data } = await axios.post<User>("http://localhost:8000/customers/login", { email, password });
+      const userData = await authApi.login(email, password);
       // we got a valid user back → log them in
-      setUser(data);
+      setUser(userData);
       setIsAuthenticated(true);
       // persist so that refreshes also "remember" they're in
-      localStorage.setItem("user", JSON.stringify(data));
+      localStorage.setItem("user", JSON.stringify(userData));
       return true;
     } catch {
       return false;
