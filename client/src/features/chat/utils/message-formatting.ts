@@ -38,16 +38,16 @@ export const formatMessageContent = (content: string): string => {
   
   // Handle simple tables (basic support)
   formattedContent = formattedContent.replace(/\|(.+)\|/g, (match, content) => {
-    const cells = content.split('|').map(cell => cell.trim());
+    const cells = content.split('|').map((cell: string) => cell.trim());
     if (cells.length > 1) {
-      return `<tr>${cells.map(cell => `<td class="border border-gray-300 px-2 py-1">${cell}</td>`).join('')}</tr>`;
+      return `<tr>${cells.map((cell: string) => `<td class="border border-gray-300 px-2 py-1">${cell}</td>`).join('')}</tr>`;
     }
     return match;
   });
   
   // Wrap table rows in table structure if we detect table-like content
   if (formattedContent.includes('<tr>')) {
-    formattedContent = formattedContent.replace(/(<tr>.*?<\/tr>)/gs, '<table class="border-collapse border border-gray-300 my-2"><tbody>$1</tbody></table>');
+    formattedContent = formattedContent.replace(/(<tr>.*?<\/tr>)/g, '<table class="border-collapse border border-gray-300 my-2"><tbody>$1</tbody></table>');
   }
   
   // Convert numbered lists (1. item) and bullet lists (- item, * item) to proper HTML lists

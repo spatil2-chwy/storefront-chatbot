@@ -4,7 +4,7 @@ import { ChatContext, ChatMessage, Product } from '../../../types';
 import { useGreeting } from '../hooks/use-greeting';
 import { useComparisonTracker } from '../hooks/use-comparison-tracker';
 import { SidebarChatLayout } from './Layout/SidebarChatLayout';
-import { api } from '../../../lib/api';
+import { chatApi, productsApi } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth/auth';
 interface ChatWidgetProps {
   initialQuery?: string;
@@ -110,7 +110,7 @@ export default function ChatWidget({
           setIsStreaming(true);
           setStreamingMessageId(responseId);
           setIsLoading(false); // Clear loading state since we're now streaming
-          await api.chatbotStream(
+          await chatApi.chatbotStream(
             initialQuery,
             chatHistory,
             user?.customer_key,
@@ -235,7 +235,7 @@ export default function ChatWidget({
       // Route to the correct endpoint based on context
       if (isInComparisonMode && comparingProducts.length >= 2) {
         // Use compare endpoint for comparison mode
-        const response = await api.compareProducts(messageToSend, comparingProducts, chatHistory);
+        const response = await productsApi.compareProducts(messageToSend, comparingProducts, chatHistory);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -246,7 +246,7 @@ export default function ChatWidget({
         setStreamingMessageId(null);
       } else if (currentContext.type === 'product' && currentContext.product) {
         // Use ask about product endpoint for product context
-        const response = await api.askAboutProduct(messageToSend, currentContext.product, chatHistory);
+        const response = await productsApi.askAboutProduct(messageToSend, currentContext.product, chatHistory);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -256,7 +256,7 @@ export default function ChatWidget({
         setStreamingMessageId(null);
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // Use compare endpoint for comparison context
-        const response = await api.compareProducts(messageToSend, currentContext.products, chatHistory);
+        const response = await productsApi.compareProducts(messageToSend, currentContext.products, chatHistory);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -267,7 +267,7 @@ export default function ChatWidget({
         setStreamingMessageId(null);
       } else {
         // Use streaming chatbot endpoint for general chat mode
-        await api.chatbotStream(
+        await chatApi.chatbotStream(
           messageToSend,
           chatHistory,
           user?.customer_key,

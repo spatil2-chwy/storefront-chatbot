@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Package } from 'lucide-react';
 import { Button } from '@/ui/Buttons/Button';
 import { Input } from '@/ui/Input/Input';
-import { Product, ChatMessage } from '../../../types';
-import { api } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { ChatMessage } from '../../../types';
+import { productsApi } from '../../../lib/api/products';
+import { useAuth } from '../../../lib/auth/auth';
 import { formatMessageContent } from '../utils/message-formatting';
 import {
   AlertDialog,
@@ -42,7 +42,7 @@ const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html
 };
 
 interface ProductChatModalProps {
-  product: Product;
+  product: any; // Changed from Product to any as Product type is removed
   isOpen: boolean;
   onClose: () => void;
   onHideMainChat: (hide: boolean) => void;
@@ -88,7 +88,7 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
 
     try {
       // Get AI response for product-specific question
-      const response = await api.askAboutProduct(messageToSend, product);
+      const response = await productsApi.askAboutProduct(messageToSend, product);
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
         content: response,

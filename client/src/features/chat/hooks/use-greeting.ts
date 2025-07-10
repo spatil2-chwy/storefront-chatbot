@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../../lib/api';
+import { chatApi } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { useGlobalChat } from '../context';
 import { ChatMessage } from '../../../types';
@@ -23,7 +23,7 @@ export const useGreeting = () => {
       if (user && !preloadedGreeting) {
         console.log('Fetching personalized greeting for user:', user.customer_key);
         try {
-          const response = await api.getPersonalizedGreeting(user.customer_key);
+          const response = await chatApi.getPersonalizedGreeting(user.customer_key);
           console.log('Received greeting response:', response);
           setPreloadedGreeting(response.greeting);
         } catch (error) {
@@ -96,7 +96,7 @@ export const useGreeting = () => {
       } else {
         // Fallback if greeting not preloaded
         try {
-          const response = await api.getPersonalizedGreeting(user.customer_key);
+          const response = await chatApi.getPersonalizedGreeting(user.customer_key);
           const greetingMessage: ChatMessage = {
             id: `search-greeting-${Date.now()}`,
             content: response.greeting,

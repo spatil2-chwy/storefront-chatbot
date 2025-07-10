@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Product } from '../../../types';
-import { api, ApiError } from '../../../lib/api';
+import { productsApi, ApiError } from '../../../lib/api';
 
 export const useProduct = (productId: number | null) => {
   const [product, setProduct] = useState<Product | null>(null);
@@ -18,7 +18,7 @@ export const useProduct = (productId: number | null) => {
       try {
         setLoading(true);
         setError(null);
-        const data = await api.getProduct(productId);
+        const data = await productsApi.getProduct(productId);
         setProduct(data);
       } catch (err) {
         if (err instanceof ApiError) {

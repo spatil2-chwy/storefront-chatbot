@@ -1,7 +1,20 @@
 // Auth API - handles login/logout
 
 import axios from 'axios';
-import { User } from '../../types';
+
+// Use the same User interface as the auth provider
+export interface User {
+  customer_key: number;
+  customer_id: number;
+  name: string;
+  email: string;
+  password: string;
+  operating_revenue_trailing_365?: number;
+  customer_order_first_placed_dttm?: string;
+  customer_address_zip?: string;
+  customer_address_city?: string;
+  customer_address_state?: string;
+}
 
 const API_BASE_URL = 'http://localhost:8000';
 

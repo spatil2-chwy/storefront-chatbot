@@ -16,6 +16,7 @@ export interface Pet {
   weight: number;          // Weight in pounds
   allergy_count: number;   // Number of allergies
   status: string;          // Current status
+  image?: string;          // Optional pet image URL
 }
 
 export const usersApi = {

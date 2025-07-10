@@ -1,6 +1,4 @@
 import { Switch, Route, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/ui/Feedback/Toaster";
 import { TooltipProvider } from "@/ui/Tooltips/Tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -69,16 +67,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <GlobalChatProvider>
-            <Toaster />
-            <Router />
-          </GlobalChatProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <AuthProvider>
+        <GlobalChatProvider>
+          <Toaster />
+          <Router />
+        </GlobalChatProvider>
+      </AuthProvider>
+    </TooltipProvider>
   );
 }
 

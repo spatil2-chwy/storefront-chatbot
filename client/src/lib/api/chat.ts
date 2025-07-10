@@ -1,7 +1,7 @@
 // Chat API - handles chatbot conversations and streaming
 
 import { Product } from '../../types';
-import { apiPost } from './client';
+import { apiPost, apiRequest } from './client';
 
 export const chatApi = {
   // Send message to chatbot
@@ -39,20 +39,11 @@ export const chatApi = {
       customer_key,
     };
 
-    // Use direct fetch for streaming since it needs special handling
-    const response = await fetch(`http://localhost:8000/chats/chatbot/stream`, {
+    // Use centralized API client for consistency
+    const response = await apiRequest('/chats/chatbot/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Response error text:', errorText);
-      throw new Error(`Failed to get chatbot stream: ${response.statusText}`);
-    }
 
     if (!response.body) {
       throw new Error('No response body for streaming');

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../../lib/auth';
 import { useGlobalChat } from '../context';
-import { api } from '../../../lib/api';
+import { chatApi, productsApi } from '../../../lib/api';
 import { ChatMessage } from '../../../types';
 
 interface ChatEngineProps {
@@ -98,7 +98,7 @@ export const useChatEngine = ({
 
       // If in comparison mode and we have products to compare, call the backend
       if (isInComparisonMode && comparingProducts.length >= 2) {
-        const response = await api.compareProducts(query, comparingProducts, chatHistory);
+        const response = await productsApi.compareProducts(query, comparingProducts, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -109,7 +109,7 @@ export const useChatEngine = ({
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
-        const response = await api.askAboutProduct(query, currentContext.product, chatHistory);
+        const response = await productsApi.askAboutProduct(query, currentContext.product, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -119,14 +119,7 @@ export const useChatEngine = ({
         };
       } else {
         // Use backend chatbot endpoint for general chat mode
-        const chatHistory = messages.map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        }));
-        
-        // NEW LOGIC: Always get products from chat endpoint for search queries
-        // The backend will show "Searching for: {query}" and return products + follow-ups
-        const response = await api.chatbot(query, chatHistory, user?.customer_key);
+        const response = await chatApi.chatbot(query, chatHistory, user?.customer_key);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response.message,
@@ -187,7 +180,7 @@ export const useChatEngine = ({
 
       // If in comparison mode and we have at least 2 products to compare, call the backend
       if (isInComparisonMode && comparingProducts.length >= 2) {
-        const response = await api.compareProducts(messageText, comparingProducts, chatHistory);
+        const response = await productsApi.compareProducts(messageText, comparingProducts, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -198,7 +191,7 @@ export const useChatEngine = ({
         };
       } else if (currentContext.type === 'product' && currentContext.product) {
         // If in product context, call the backend for product-specific questions
-        const response = await api.askAboutProduct(messageText, currentContext.product, chatHistory);
+        const response = await productsApi.askAboutProduct(messageText, currentContext.product, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -208,7 +201,7 @@ export const useChatEngine = ({
         };
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // If in comparison context, call the backend for product comparison
-        const response = await api.compareProducts(messageText, currentContext.products, chatHistory);
+        const response = await productsApi.compareProducts(messageText, currentContext.products, chatHistory);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response,
@@ -219,7 +212,7 @@ export const useChatEngine = ({
         };
       } else {
         // Use backend chatbot endpoint for general chat mode
-        const response = await api.chatbot(messageText, chatHistory, user?.customer_key);
+        const response = await chatApi.chatbot(messageText, chatHistory, user?.customer_key);
         aiResponse = {
           id: (Date.now() + 1).toString(),
           content: response.message,

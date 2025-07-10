@@ -1,2 +1,2 @@
-export * from './cn';
+// Export utils functions
 export * from './utils';
