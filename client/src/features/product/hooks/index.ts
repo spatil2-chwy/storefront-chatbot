@@ -2,24 +2,22 @@ import { useState, useEffect } from 'react';
 import { Product } from '../../../types';
 import { productsApi, ApiError } from '../../../lib/api';
 
-export const useProduct = (productId: number | null) => {
-  const [product, setProduct] = useState<Product | null>(null);
+// Generic hook for fetching any resource with loading and error states
+export const useAsyncResource = <T>(
+  fetchFn: () => Promise<T>,
+  dependencies: any[] = []
+) => {
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!productId) {
-      setProduct(null);
-      setLoading(false);
-      return;
-    }
-
-    const fetchProduct = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await productsApi.getProduct(productId);
-        setProduct(data);
+        const result = await fetchFn();
+        setData(result);
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message);
@@ -31,8 +29,18 @@ export const useProduct = (productId: number | null) => {
       }
     };
 
-    fetchProduct();
-  }, [productId]);
+    fetchData();
+  }, dependencies);
+
+  return { data, loading, error };
+};
+
+// Specific hook for products using the generic hook
+export const useProduct = (productId: number | null) => {
+  const { data: product, loading, error } = useAsyncResource(
+    () => productsApi.getProduct(productId!),
+    [productId]
+  );
 
   return { product, loading, error };
 }; 

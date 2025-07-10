@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatMessageContent } from '../features/Chat/utils/message-formatting';
+import { formatMessageContent } from '../lib/utils';
 
 // Safe HTML renderer component for testing
 const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {

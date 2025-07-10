@@ -3,8 +3,7 @@ import { User, Bot, ShoppingCart, X, Star, Package, LogOut } from 'lucide-react'
 import { Button } from '../../../../ui/Buttons/Button';
 import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
-import { getTransitionStyling, isTransitionMessage } from '../../utils/chat-utilities';
-import { formatMessageContent } from '../../utils/message-formatting';
+import { getTransitionStyling, isTransitionMessage, formatMessageContent } from "../../../../lib/utils";
 
 // Safe HTML renderer component
 const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {

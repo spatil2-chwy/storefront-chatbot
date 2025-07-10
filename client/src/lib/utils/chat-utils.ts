@@ -1,4 +1,4 @@
-import { ChatMessage } from '../../../types';
+import { ChatMessage } from '../../types';
 
 // Chat utility functions for styling and message type detection
 

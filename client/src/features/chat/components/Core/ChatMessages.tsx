@@ -4,7 +4,7 @@ import { Skeleton } from '../../../../ui/Feedback/Skeleton';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSuggestions } from './ChatSuggestions';
 import { ChatContext, ChatMessage } from '../../../../types';
-import { isTransitionMessage } from '../../utils/chat-utilities';
+import { isTransitionMessage } from "../../../../lib/utils";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
