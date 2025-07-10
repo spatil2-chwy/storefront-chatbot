@@ -1,2 +1,2 @@
-// Export utils functions
-export * from './utils';
+// Export utility functions
+export { cn } from './utils';

@@ -1,7 +1,32 @@
+// Re-export User interface from auth API to maintain consistency
 export interface User {
-  id: number;
-  email: string;
+  customer_key: number;
+  customer_id: number;
   name: string;
+  email: string;
+  password: string;
+  operating_revenue_trailing_365?: number;
+  customer_order_first_placed_dttm?: string;
+  customer_address_zip?: string;
+  customer_address_city?: string;
+  customer_address_state?: string;
+}
+
+// Re-export Pet interface from users API
+export interface Pet {
+  pet_profile_id: number;
+  pet_name: string;
+  pet_type: string;        // "DOG", "CAT", etc.
+  pet_breed: string;       // "Golden Retriever", etc.
+  gender: string;          // "MALE", "FMLE"
+  birthday: string;        // ISO date string
+  life_stage: string;      // "P" (puppy), "A" (adult), "S" (senior)
+  adopted: boolean;        // Whether pet was adopted
+  adoption_date: string | null; // When adopted
+  weight: number;          // Weight in pounds
+  allergy_count: number;   // Number of allergies
+  status: string;          // Current status
+  image?: string;          // Optional pet image URL
 }
 
 export interface Size {
