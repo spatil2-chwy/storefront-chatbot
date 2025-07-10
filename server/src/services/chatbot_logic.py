@@ -1,9 +1,15 @@
 import json
 import time
+import logging
 from typing import List, Dict, Any, Optional, Union, cast, Generator
 from src.services.searchengine import query_products, rank_products
 from src.services.article_service import ArticleService
 from src.services.openai_client import get_openai_client
+
+# Initialize logging first
+from src.utils.logging_config import setup_logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Get the centralized OpenAI client
 client = get_openai_client()
@@ -259,6 +265,11 @@ def format_products_for_llm(products, limit=10):
 
 def chat(user_input: str, history: list, user_context: str = ""):
     start_time = time.time()
+    logger.info(f"Chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
+    
+    # Log user context if provided
+    if user_context:
+        logger.info(f"User context provided: {len(user_context)} characters")
     
     # Create system message with user context if provided
     system_msg = system_message.copy()
@@ -268,33 +279,38 @@ def chat(user_input: str, history: list, user_context: str = ""):
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
     )
-    # print(full_history)
+    
+    logger.debug(f"Chat history length: {len(full_history)} messages")
+    
     # Step 1: Get model response
+    llm_start = time.time()
     response = client.responses.create(
         model=MODEL,
         input=full_history,
         tools=cast(Any, tools),
         temperature=0.1,
     )   
-    print(f"First response received in {time.time() - start_time:.4f} seconds")
-    # print(response)
+    llm_time = time.time() - llm_start
+    logger.info(f"LLM initial response received in {llm_time:.3f}s")
     products = []
     assistant_reply = ""
 
-    print(response.output)
+    logger.debug(f"LLM response type: {response.output[0].type if response.output else 'empty'}")
+    
     if len(response.output) == 1 and response.output[0].type == "message":
-        # Handle message response
+        # Handle direct message response (no tool calls)
         assistant_reply = response.output[0].content[0].text
         full_history.append({"role": "assistant", "content": assistant_reply})
+        logger.info(f"Direct message response generated (no tool calls)")
     else:
-        function_start = time.time()
-        print(f"Function call start after {function_start - start_time:.4f} seconds from start")
-
         # Handle function call response
+        function_start = time.time()
+        logger.info(f"Function calls detected after {function_start - start_time:.3f}s")
+
         for output_item in response.output:
             if output_item.type == "function_call":
                 tool_call = output_item
-                print(f"🔧 LLM chose to use tool: {tool_call.name}")
+                logger.info(f"Tool call: {tool_call.name}")
                 
                 # Convert tool_call to dict for history
                 tool_call_dict = {
@@ -307,17 +323,22 @@ def chat(user_input: str, history: list, user_context: str = ""):
                 full_history.append(tool_call_dict)
                 
                 if tool_call.name not in ["search_products", "search_articles"]:
+                    logger.error(f"Unexpected tool call: {tool_call.name}")
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
                 args = json.loads(tool_call.arguments)
-                print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
+                logger.debug(f"Tool call arguments: {args}")
+                
+                tool_exec_start = time.time()
+                logger.info(f"Executing {tool_call.name} after {tool_exec_start - start_time:.3f}s from chat start")
                 
                 if tool_call.name == "search_articles":
                     # Handle article search differently - no products returned
                     result = call_function(tool_call.name, args)
                     article_content = result
+                    tool_exec_time = time.time() - tool_exec_start
                     
-                    print(f"Article search returned in {time.time() - start_time:.4f} seconds")
+                    logger.info(f"Article search completed in {tool_exec_time:.3f}s")
                     
                     # Add function result to history
                     full_history.append({
@@ -327,12 +348,15 @@ def chat(user_input: str, history: list, user_context: str = ""):
                     })
 
                     # generate a response
+                    second_llm_start = time.time()
                     second_response = client.responses.create(
                         model=MODEL,
                         input=full_history,
                         # tools=[]  # No tools for this follow-up
                         temperature=0.1,
                     )
+                    second_llm_time = time.time() - second_llm_start
+                    logger.info(f"Article response generation took {second_llm_time:.3f}s")
 
                     full_history.append({
                         "role": "assistant",
@@ -344,9 +368,8 @@ def chat(user_input: str, history: list, user_context: str = ""):
                     continue  # Continue to next tool call or final response
                 else:
                     products = call_function(tool_call.name, args)
-                    print(f"Function call returned in {time.time() - start_time:.4f} seconds")
-                    function_end = time.time()
-                    print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
+                    tool_exec_time = time.time() - tool_exec_start
+                    logger.info(f"Product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
                     
                     # Add function result to history
                     full_history.append({
@@ -355,9 +378,12 @@ def chat(user_input: str, history: list, user_context: str = ""):
                         "output": f"{len(products)} products returned"
                     })
                     
-  
                     # Format and inject product context for LLM
+                    context_start = time.time()
                     product_context = format_products_for_llm(products)
+                    context_time = time.time() - context_start
+                    logger.debug(f"Product context formatting took {context_time:.3f}s")
+                    
                     full_history.append({
                         "role": "user",
                         "content": f"""
@@ -371,16 +397,21 @@ Product Reviews: {product_context}
 
 You're not being chatty — you're being helpful, warm, and efficient."""
                     })
+                    
                     # Now let the LLM generate the final message
+                    final_llm_start = time.time()
                     final_response = client.responses.create(
                         model=MODEL,
                         input=full_history,
                         temperature=0.1,
                     )
-                    final_reply = final_response.output[0].content[0].text
+                    final_llm_time = time.time() - final_llm_start
+                    logger.info(f"Final response generation took {final_llm_time:.3f}s")
                     
+                    final_reply = final_response.output[0].content[0].text
                     assistant_reply = final_reply
-    print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
+    total_time = time.time() - start_time
+    logger.info(f"Chat completed in {total_time:.3f}s - Response length: {len(assistant_reply)} chars")
     return {
         "message": str(assistant_reply),
         "history": full_history[1:],  # Exclude system message
@@ -396,29 +427,34 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
     """
     start_time = time.time()
+    logger.info(f"Streaming chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
     # Create system message with user context if provided
     system_msg = system_message.copy()
     if user_context:
         system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
+        logger.info(f"User context provided for streaming: {len(user_context)} characters")
     
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
     )
     
     # Step 1: Get model response (non-streaming for function call detection)
+    llm_start = time.time()
     response = client.responses.create(
         model=MODEL,
         input=full_history,
         tools=tools,
         temperature=0.1,
     )   
-    print(f"First response received in {time.time() - start_time:.4f} seconds")
+    llm_time = time.time() - llm_start
+    logger.info(f"Streaming LLM initial response received in {llm_time:.3f}s")
     
     products = []
     assistant_reply = ""
 
-    print(response.output)
+    logger.debug(f"Streaming response type: {response.output[0].type if response.output else 'empty'}")
+    
     if len(response.output) == 1 and response.output[0].type == "message":
         # Handle message response - stream the content
         try:
@@ -426,8 +462,10 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         except AttributeError:
             # Handle case where response doesn't have expected structure
             assistant_reply = "I understand your question. Let me help you with that."
+            logger.warning("Unexpected response structure in streaming mode")
         
         full_history.append({"role": "assistant", "content": assistant_reply})
+        logger.info(f"Streaming direct message response (no tool calls)")
         
         # For simple message responses, yield the complete text
         def simple_generator():
@@ -436,13 +474,13 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         return simple_generator(), products
     else:
         function_start = time.time()
-        print(f"Function call start after {function_start - start_time:.4f} seconds from start")
+        logger.info(f"Streaming function calls detected after {function_start - start_time:.3f}s")
 
         # Handle function call response
         for output_item in response.output:
             if output_item.type == "function_call":
                 tool_call = output_item
-                print(f"🔧 LLM chose to use tool: {tool_call.name}")
+                logger.info(f"Streaming tool call: {tool_call.name}")
                 
                 # Convert tool_call to dict for history
                 tool_call_dict = {
@@ -455,17 +493,22 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                 full_history.append(tool_call_dict)
                 
                 if tool_call.name not in ["search_products", "search_articles"]:
+                    logger.error(f"Unexpected streaming tool call: {tool_call.name}")
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
                 args = json.loads(tool_call.arguments)
-                print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
+                logger.debug(f"Streaming tool call arguments: {args}")
+                
+                tool_exec_start = time.time()
+                logger.info(f"Executing streaming {tool_call.name} after {tool_exec_start - start_time:.3f}s")
                 
                 if tool_call.name == "search_articles":
                     # Handle article search differently - no products returned
                     result = call_function(tool_call.name, args)
                     article_content = result
+                    tool_exec_time = time.time() - tool_exec_start
                     
-                    print(f"Article search returned in {time.time() - start_time:.4f} seconds")
+                    logger.info(f"Streaming article search completed in {tool_exec_time:.3f}s")
                     
                     # Add function result to history
                     full_history.append({
@@ -475,12 +518,14 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     })
 
                     # Generate streaming response for final message
+                    stream_start = time.time()
                     stream = client.responses.create(
                         model=MODEL,
                         input=full_history,
                         temperature=0.1,
                         stream=True,
                     )
+                    logger.debug(f"Streaming article response started after {stream_start - start_time:.3f}s")
                     
                     # Stream the response
                     def article_generator():
@@ -495,16 +540,15 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                                 elif event.type == "error":
                                     raise Exception(f"Streaming error: {event.error}")
                         except Exception as e:
-                            print(f"Error in article streaming: {e}")
+                            logger.error(f"Error in article streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
                     return article_generator(), products
                     
                 else:
                     products = call_function(tool_call.name, args)
-                    print(f"Function call returned in {time.time() - start_time:.4f} seconds")
-                    function_end = time.time()
-                    print(f"Function call returned after {function_end - start_time:.4f} seconds from start")
+                    tool_exec_time = time.time() - tool_exec_start
+                    logger.info(f"Streaming product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
                     
                     # Add function result to history
                     full_history.append({
@@ -514,7 +558,11 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     })
                     
                     # Format and inject product context for LLM
+                    context_start = time.time()
                     product_context = format_products_for_llm(products)
+                    context_time = time.time() - context_start
+                    logger.debug(f"Streaming product context formatting took {context_time:.3f}s")
+                    
                     full_history.append({
                         "role": "user",
                         "content": f"""
@@ -530,12 +578,14 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                     })
                     
                     # Now let the LLM generate the final message with streaming
+                    stream_start = time.time()
                     stream = client.responses.create(
                         model=MODEL,
                         input=cast(Any, full_history),
                         temperature=0.1,
                         stream=True,
                     )
+                    logger.debug(f"Streaming product response started after {stream_start - start_time:.3f}s")
                     
                     # Stream the response
                     def product_generator():
@@ -550,12 +600,13 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                                 elif event.type == "error":
                                     raise Exception(f"Streaming error: {event.error}")
                         except Exception as e:
-                            print(f"Error in product streaming: {e}")
+                            logger.error(f"Error in product streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
                     return product_generator(), products
     
-    print(f"Chat message returned in {time.time() - start_time:.4f} seconds")
+    total_time = time.time() - start_time
+    logger.info(f"Streaming chat completed in {total_time:.3f}s")
     
     # Fallback generator
     def fallback_generator():
