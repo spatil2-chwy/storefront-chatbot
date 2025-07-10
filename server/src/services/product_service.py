@@ -219,7 +219,7 @@ class ProductService:
                 )
                 match_time = time.time() - match_start
                 
-                print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
+                # print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
             except Exception as e:
                 print(f"⚠️ Error analyzing search matches: {e}")
                 search_matches = None

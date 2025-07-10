@@ -253,7 +253,7 @@ def format_products_for_llm(products, limit=10):
         
         lines.append(product_line)
     
-    print(f"Formatted products for LLM: {lines}")
+    # print(f"Formatted products for LLM: {lines}")
     return "Here are the top product recommendations with customer insights:\n\n" + "\n\n".join(lines)
 
 

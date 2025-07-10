@@ -233,7 +233,7 @@ class SearchAnalyzer:
         result = {k: v for k, v in found_criteria.items() if v}
         
         extraction_time = time.time() - start_time
-        print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
+        # print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result
 

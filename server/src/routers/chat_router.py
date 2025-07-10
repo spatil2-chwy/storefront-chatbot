@@ -183,17 +183,17 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             
             # Stream the text chunks
             for chunk in stream_generator:
-                print(f"Streaming chunk: {chunk[:10]}...")
+                # print(f"Streaming chunk: {chunk[:10]}...")
                 # Format as Server-Sent Event
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             
             # Send end signal
-            print(f"Sending end signal")
+            # print(f"Sending end signal")
             try:
                 # Send end signal
                 end_signal = {'end': True}
                 end_json = json.dumps(end_signal, ensure_ascii=False)
-                print(f"Sending end signal")
+                # print(f"Sending end signal")
                 yield f"data: {end_json}\n\n"
                 
             except Exception as e:
