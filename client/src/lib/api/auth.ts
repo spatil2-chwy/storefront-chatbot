@@ -1,4 +1,4 @@
-// Auth API - handles login/logout
+// Auth API - handles login/logout operations
 
 import axios from 'axios';
 import { User } from '../../types';

@@ -1,3 +1,6 @@
+// Main application component
+// Sets up routing, authentication, and global providers
+
 import { Switch, Route, Redirect } from "wouter";
 import { Toaster } from "@/ui/Feedback/Toaster";
 import { TooltipProvider } from "@/ui/Tooltips/Tooltip";
@@ -11,7 +14,7 @@ import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 import TestBirthdayPopup from "@/pages/TestBirthdayPopup";
 
-
+// Route wrapper that checks authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -31,6 +34,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Main routing component
 function Router() {
   return (
     <Switch>

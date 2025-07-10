@@ -1,4 +1,7 @@
-// Re-export User interface from auth API to maintain consistency
+// Centralized type definitions for the application
+// All interfaces and types should be defined here
+
+// User authentication and profile data
 export interface User {
   customer_key: number;
   customer_id: number;
@@ -12,7 +15,7 @@ export interface User {
   customer_address_state?: string;
 }
 
-// Re-export Pet interface from users API
+// Pet profile data
 export interface Pet {
   pet_profile_id: number;
   pet_name: string;
@@ -29,12 +32,14 @@ export interface Pet {
   image?: string;          // Optional pet image URL
 }
 
+// Product variant size information
 export interface Size {
   name?: string; // Variant name
   price?: number;
   pricePerLb?: string;
 }
 
+// Search match analysis data
 export interface SearchMatch {
   field: string; // e.g., "title", "description", "category", "brand", "keywords"
   matched_terms: string[]; // e.g., ["dental", "dog"]
@@ -42,6 +47,7 @@ export interface SearchMatch {
   field_value?: string; // the actual field value that matched
 }
 
+// Product catalog item
 export interface Product {
   id?: number; // PRODUCT_ID
   title?: string; // CLEAN_NAME
@@ -67,6 +73,7 @@ export interface Product {
   answered_faqs?: string; // Answered FAQs
 }
 
+// Chat message structure
 export interface ChatMessage {
   id: string;
   content: string;
@@ -81,6 +88,7 @@ export interface ChatMessage {
   transitionType?: 'general' | 'product' | 'comparison'; // Type of transition for styling
 }
 
+// Chat context for different conversation modes
 export interface ChatContext {
   type: 'general' | 'product' | 'comparison';
   product?: Product;

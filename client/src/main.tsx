@@ -1,8 +1,12 @@
+// Application entry point
+// Sets up React Query provider and renders the app
+
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 
+// Configure React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

@@ -1,18 +1,9 @@
+// Authentication context provider
+// Manages user login state, localStorage persistence, and auth functions
+
 import React, { createContext, ReactNode, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
-
-export interface User {
-  customer_key: number;
-  customer_id: number;
-  name: string;
-  email: string;
-  password: string;
-  operating_revenue_trailing_365?: number;
-  customer_order_first_placed_dttm?: string;
-  customer_address_zip?: string;
-  customer_address_city?: string;
-  customer_address_state?: string;
-}
+import { User } from '../../types';
 
 export interface AuthContextType {
   user: User | null;
@@ -24,35 +15,12 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// export function AuthProvider({ children }: { children: ReactNode }) {
-//   const [user, setUser] = useState<User | null>(null);
-//   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-//   const login = async (email: string, password: string): Promise<boolean> => {
-//     try {
-//       const response = await axios.post<User>('http://localhost:8000/customers/login', { email, password });
-//       const loggedInUser = response.data;
-
-//       setUser(loggedInUser);
-//       setIsAuthenticated(true);
-//       localStorage.setItem('isAuthenticated', 'true');
-//       localStorage.setItem('user', JSON.stringify(loggedInUser));
-
-//       return true;
-//     } catch (error: any) {
-//       // inspect error
-//       console.error('Login error:', error);
-//       return false;
-//     }
-//   };
-
-  // auth.tsx
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from localStorage on mount
+  // Restore auth state from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -71,10 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const userData = await authApi.login(email, password);
-      // we got a valid user back → log them in
       setUser(userData);
       setIsAuthenticated(true);
-      // persist so that refreshes also "remember" they're in
+      // Persist user data for page refreshes
       localStorage.setItem("user", JSON.stringify(userData));
       return true;
     } catch {

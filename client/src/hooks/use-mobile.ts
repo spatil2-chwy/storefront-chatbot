@@ -1,3 +1,6 @@
+// Hook to detect mobile screen size
+// Returns true if screen width is below mobile breakpoint
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768

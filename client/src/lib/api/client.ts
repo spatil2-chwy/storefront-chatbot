@@ -1,9 +1,9 @@
-// Base HTTP client for all API calls
-// Handles common stuff like base URL, error handling, and request/response processing
+// Centralized HTTP client for all API calls
+// Handles base URL, error handling, request deduplication, and response processing
 
 const API_BASE_URL = 'http://localhost:8000';
 
-// Request deduplication cache
+// Cache for request deduplication - prevents multiple identical calls
 const pendingRequests = new Map<string, Promise<Response>>();
 
 // Custom error class for API errors
@@ -14,14 +14,14 @@ export class ApiError extends Error {
   }
 }
 
-// Generate cache key for request deduplication
+// Generate unique key for request deduplication
 function getRequestKey(endpoint: string, options: RequestInit = {}): string {
   const method = options.method || 'GET';
   const body = options.body ? JSON.stringify(options.body) : '';
   return `${method}:${endpoint}:${body}`;
 }
 
-// Main request function - handles all HTTP operations with deduplication
+// Main request function with deduplication
 export async function apiRequest(
   endpoint: string,
   options: RequestInit = {}
@@ -29,7 +29,7 @@ export async function apiRequest(
   const url = `${API_BASE_URL}${endpoint}`;
   const requestKey = getRequestKey(endpoint, options);
   
-  // Check if there's already a pending request with the same key
+  // Return existing request if one is already pending
   if (pendingRequests.has(requestKey)) {
     return pendingRequests.get(requestKey)!;
   }
@@ -46,7 +46,7 @@ export async function apiRequest(
 
   // Create the request promise
   const requestPromise = fetch(url, defaultOptions).then(response => {
-    // Remove from pending requests when completed
+    // Clean up when request completes
     pendingRequests.delete(requestKey);
     
     // Throw error for non-2xx responses
@@ -56,7 +56,7 @@ export async function apiRequest(
     
     return response;
   }).catch(error => {
-    // Remove from pending requests on error
+    // Clean up on error
     pendingRequests.delete(requestKey);
     throw error;
   });
