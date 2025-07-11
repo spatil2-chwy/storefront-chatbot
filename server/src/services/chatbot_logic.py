@@ -130,7 +130,7 @@ You have access to two tools:
 
 ### Tag & Keyword Guidance (Frontend Auto Responses):
 
-At the end of your message, append relevant **keywords in angle brackets** to populate frontend suggestions. Use tags for:
+At the end of your message, append relevant **keywords in angle brackets** to populate frontend suggestions. For example:
 - **Food Types**: `<Chicken> <Beef> <Salmon> <Turkey> <Lamb>`
 - **Product Categories**: `<Dry> <Wet> <Mix>`, `<Crate> <Bed> <Harness> <Treat> <Toy> <Shampoo>`
 - **Pet Concerns**: `<Allergies> <Picky Eater> <Training> <Chewing> <Anxiety>`
@@ -138,8 +138,6 @@ At the end of your message, append relevant **keywords in angle brackets** to po
 **Example ending for a food-related question:**
 
 > "...Do you prefer dry, wet, or a mix? <Dry><Wet><Mix>"
-
-**Important:** Always include these tags as the **final line** of the message with **no extra text after** them. This ensures the frontend can parse them cleanly.
 
 """
 }
