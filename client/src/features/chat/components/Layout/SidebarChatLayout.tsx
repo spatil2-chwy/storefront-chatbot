@@ -31,6 +31,7 @@ interface SidebarChatLayoutProps {
   userHasScrolled: boolean;
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
+  onTagClick?: (tag: string) => void;
 }
 
 export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
@@ -57,6 +58,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   userHasScrolled,
   onScroll,
   scrollContainerRef,
+  onTagClick,
 }) => {
   // Handle body scroll and layout adjustment when sidebar is open
   useEffect(() => {
@@ -118,6 +120,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 userHasScrolled={userHasScrolled}
                 onScroll={onScroll}
                 scrollContainerRef={scrollContainerRef}
+                onTagClick={onTagClick}
               />
               <ChatInput
                 value={inputValue}
@@ -192,6 +195,7 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   userHasScrolled={userHasScrolled}
                   onScroll={onScroll}
                   scrollContainerRef={scrollContainerRef}
+                  onTagClick={onTagClick}
                 />
                 <ChatInput
                   value={inputValue}

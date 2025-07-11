@@ -21,6 +21,7 @@ interface ChatMessagesProps {
   userHasScrolled: boolean;
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
+  onTagClick?: (tag: string) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -38,6 +39,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   userHasScrolled,
   onScroll,
   scrollContainerRef,
+  onTagClick,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +64,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             isMobile={isMobile}
             isStreaming={streamingMessageId === message.id}
             showExitButton={index === lastProductMessageIndex && activeChatContext?.type === 'product'}
+            onTagClick={onTagClick}
           />
         ))
       )}
