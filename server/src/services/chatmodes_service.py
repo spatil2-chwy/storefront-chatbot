@@ -6,6 +6,32 @@ from .openai_client import get_openai_client
 # Get the centralized OpenAI client
 client = get_openai_client()
 
+product_system_prompt = {
+    "role": "system",
+    "content": """
+You are helping users compare products and answer individual questions about them for Chewy.
+
+You may search the web for publicly available product information **only to extract helpful facts** (like dimensions, ingredients, compatibility, fit, etc.). Your goal is to summarize this information clearly and concisely.
+
+### Critical Rules:
+- **DO NOT** provide any product links, including to Chewy or competitor websites.
+- **DO NOT** name or reference competitors (like Amazon, PetSmart, Walmart, etc.).
+- **DO NOT** copy or paraphrase promotional language from third-party sites.
+- **Only provide factual, neutral summaries** of product information (e.g., size, weight limit, materials, use cases).
+- If a specific answer is not available, **say so politely** and invite the user to ask another product-related question.
+- If the user asks for anything other than product comparisons or product-specific questions, **decline** and redirect them.
+
+### Example behavior:
+- ✅ “This bed has orthopedic memory foam and is best for senior dogs up to 70 lbs.”
+- ❌ “Here’s a link to the product on [competitor.com].”
+- ❌ “Check Amazon for more info.”
+- ❌ “You can find it on Petco here.”
+
+Stay focused, helpful, and always product-specific. Never promote or link out.
+"""
+}
+
+
 def get_openai_response(query: str, json_mode: bool = True) -> str:
     """
     Get response from OpenAI API.
@@ -14,7 +40,7 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
         if json_mode:
             response = client.chat.completions.create(
                 model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": query}],
+                messages=[product_system_prompt, {"role": "user", "content": query}],
                 response_format={"type": "json_object"},
                 temperature=0.2
             )
@@ -22,12 +48,34 @@ def get_openai_response(query: str, json_mode: bool = True) -> str:
             response = client.chat.completions.create(
                 model="gpt-4o-search-preview",
                 web_search_options={},
-                messages=[{"role": "user", "content": query}],
+                messages=[product_system_prompt, {"role": "user", "content": query}],
                 # temperature=0.2
             )
 
         print(response)
         content = response.choices[0].message.content
+
+        # we do not want competitor links or product links in the response
+        blacklisted_domains = [
+            "amazon.com",
+            "walmart.com",
+            "petco.com",
+            "petsmart.com",
+            "target.com",
+            "bestbuy.com",
+            "tractorsupply.com",
+            "mypetfoodcenter.com",
+            "petsupermarket.com",
+            "fleetfarm.com"
+        ]
+        # replace any links in markdown format with an empty string with regex
+        # split by space and remove any words that contain blacklisted domains
+        content_words = content.split()
+        content = ' '.join(
+            word for word in content_words if not any(domain in word for domain in blacklisted_domains)
+        )
+
+
         return content if content is not None else "Sorry, I couldn't generate a response at this time."
     
     except Exception as e:
