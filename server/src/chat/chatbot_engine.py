@@ -1,9 +1,9 @@
 import json
 import time
 from typing import List, Dict, Any, Optional, Union, cast, Generator
-from src.services.searchengine import query_products, rank_products
-from src.services.article_service import ArticleService
-from src.services.openai_client import get_openai_client
+from src.search.product_search import query_products, rank_products
+from src.search.article_search import ArticleService
+from src.config.openai_loader import get_openai_client
 
 # Get the centralized OpenAI client
 client = get_openai_client()
