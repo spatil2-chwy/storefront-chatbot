@@ -6,8 +6,8 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "results.jsonl"
+CSV_PATH = "data/chromadb/all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "data/chromadb/results.jsonl"
 
 COLLECTION_NAME = "review_synthesis"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"

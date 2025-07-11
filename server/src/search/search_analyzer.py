@@ -13,7 +13,7 @@ class SearchAnalyzer:
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
         """Build search filters from actual product metadata"""
-        cache_file = "metadata_filters_cache.json"
+        cache_file = "data/chromadb/metadata_filters_cache.json"
         
         # Try to load from cache first
         if os.path.exists(cache_file):
