@@ -24,7 +24,7 @@ class ProductService:
     def search_analyzer(self):
         """Lazy load the search analyzer only when needed"""
         if self._search_analyzer is None:
-            from src.services.search_analyzer import SearchAnalyzer
+            from src.search.search_analyzer import SearchAnalyzer
             logger.info("Initializing SearchAnalyzer...")
             self._search_analyzer = SearchAnalyzer()
         return self._search_analyzer
@@ -234,7 +234,7 @@ class ProductService:
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
 
-    async def search_products(self, query: str, limit: int = 10) -> dict:
+    async def search_products(self, query: str, limit: int = 10, include_search_matches: bool = True) -> dict:
         """Search products using direct semantic search without LLM agent"""
         try:
             total_start = time.time()

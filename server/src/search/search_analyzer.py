@@ -190,6 +190,8 @@ class SearchAnalyzer:
         query_lower = query.lower().strip()
         query_words = set(query_lower.split())
         
+        print(f"🔍 Analyzing query: '{query}' -> words: {query_words}")
+        
         found_criteria = {
             'Brands': [],
             'Categories': [],
@@ -236,6 +238,7 @@ class SearchAnalyzer:
         result = {k: v for k, v in found_criteria.items() if v}
         
         extraction_time = time.time() - start_time
+        print(f"📋 Found criteria: {result}")
         # print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result
