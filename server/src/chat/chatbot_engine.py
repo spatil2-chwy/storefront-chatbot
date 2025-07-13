@@ -126,13 +126,14 @@ Key rules:
 }
 MODEL = "gpt-4.1"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list, user_context: dict | None = None):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
         special_diet_tags (list): List of special diet tags that the product must adhere to
+        user_context (dict): Optional user context containing preferences like preferred_brands
     Returns:
         list: A list of products
     """
@@ -148,7 +149,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
-    ranked_products = rank_products(results)
+    ranked_products = rank_products(results, user_context)
     print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
     if not ranked_products:
@@ -199,18 +200,25 @@ function_mapping = {
 }
 
 
-def call_function(name, args):
+def call_function(name, args, user_context: dict | None = None):
     """Calls a tool function by its name with the provided arguments.
     Parameters:
         name (str): The name of the function to call
         args (dict): A dictionary of input arguments for the function
+        user_context (dict): Optional user context for personalized results
     Returns:
         The result of the function call
     Raises:
         ValueError: If the function name is not recognized
     """
     if name in function_mapping:
-        return function_mapping[name](**args)
+        if name == "search_products" and user_context:
+            # Add user_context to args for search_products
+            args_with_context = args.copy()
+            args_with_context['user_context'] = user_context
+            return function_mapping[name](**args_with_context)
+        else:
+            return function_mapping[name](**args)
     raise ValueError(f"Unknown function: {name}")
 
 
@@ -389,18 +397,19 @@ You're not being chatty — you're being helpful, warm, and efficient."""
 
 
 
-def chat_stream_with_products(user_input: str, history: list, user_context: str = ""):
+def chat_stream_with_products(user_input: str, history: list, user_context: dict | None = None):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
     Only streams the final response, not during function calls.
     Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
     """
     start_time = time.time()
+    print(f"User context: {user_context}")
     
     # Create system message with user context if provided
     system_msg = system_message.copy()
     if user_context:
-        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
     
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
@@ -457,6 +466,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                 if tool_call.name not in ["search_products", "search_articles"]:
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
+                import json
                 args = json.loads(tool_call.arguments)
                 print(f"Calling {tool_call.name}(**{args}), its been {time.time() - start_time:.4f} seconds since the chat started")
                 
@@ -501,7 +511,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     return article_generator(), products
                     
                 else:
-                    products = call_function(tool_call.name, args)
+                    products = call_function(tool_call.name, args, user_context)
                     print(f"Function call returned in {time.time() - start_time:.4f} seconds")
                     function_end = time.time()
                     print(f"Function call returned after {function_end - start_time:.4f} seconds from start")

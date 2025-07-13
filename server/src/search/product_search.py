@@ -263,9 +263,22 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
 #         print(f"Error in follow-up search: {e}, falling back to original results")
 #         return original_results
 
-def rank_products(results):
+def rank_products(results, user_context=None):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""
     start_time = time.time()
+    
+    # Parse preferred brands from user context
+    preferred_brands = []
+    if user_context and user_context.get('preferred_brands'):
+        try:
+            import json
+            preferred_brands = json.loads(user_context['preferred_brands'])
+            if not isinstance(preferred_brands, list):
+                preferred_brands = []
+        except (json.JSONDecodeError, TypeError):
+            preferred_brands = []
+
+    print(f"Preferred brands: {preferred_brands}")
     
     # Debug: Count products with reviews and FAQs
     total_products = len(results['metadatas'][0]) if results['metadatas'] and results['metadatas'][0] else 0
@@ -353,6 +366,25 @@ def rank_products(results):
         
         return score
     
+    def brand_preference_score(metadata, preferred_brands):
+        """
+        Score based on brand preference - products from preferred brands get higher scores
+        """
+        if not preferred_brands:
+            return 0.0
+        
+        brand = metadata.get('BRAND', '') or ''
+        if not brand:
+            return 0.0
+        
+        # Case-insensitive brand matching
+        brand_lower = brand.lower().strip()
+        for preferred_brand in preferred_brands:
+            if preferred_brand.lower().strip() in brand_lower or brand_lower in preferred_brand.lower().strip():
+                return 0.4  # Significant boost for preferred brands
+        
+        return 0.0
+    
     scored_results = []
     for metadata, document, product_id, distance in zip(
         results['metadatas'][0], 
@@ -379,13 +411,17 @@ def rank_products(results):
         # Method 5: Content quality (synthesized reviews and FAQs presence)
         content_quality = content_quality_score(metadata)
         
-        # Combine with weights - maximum priority to content quality
+        # Method 6: Brand preference (NEW)
+        brand_preference = brand_preference_score(metadata, preferred_brands)
+        
+        # Combine with weights - brand preference gets high priority
         final_score = (
             wilson * 0.1 +
             (bayesian / 5.0) * 0.1 +  # Normalize to 0-1
             popularity * 0.05 +
             relevance * 0.15 +
-            content_quality * 0.6  # Maximum weight for content quality
+            content_quality * 0.3 +  # Reduced from 0.6 to make room for brand preference
+            brand_preference * 0.4  # High weight for brand preference
         )
         
         scored_results.append((metadata, document, product_id, distance, final_score))

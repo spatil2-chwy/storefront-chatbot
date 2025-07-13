@@ -113,8 +113,8 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
     if request.customer_key:
         try:
             user_context_data = user_svc.get_user_context_for_chat(db, request.customer_key)
-            if user_context_data:
-                user_context = user_svc.format_pet_context_for_ai(user_context_data)
+            # if user_context_data:
+            #     user_context = user_svc.format_pet_context_for_ai(user_context_data)
         except Exception as e:
             print(f"Error getting user context for customer {request.customer_key}: {e}")
     
@@ -124,7 +124,7 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             stream_generator, products = chat_stream_with_products(
                 user_input=request.message,
                 history=request.history,
-                user_context=user_context
+                user_context=user_context_data
             )
             
             print(f"Streaming response for: {request.message}")
