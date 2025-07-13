@@ -82,6 +82,18 @@ class UserBase(BaseModel):
     customer_address_zip: Optional[str]
     customer_address_city: Optional[str]
     customer_address_state: Optional[str]
+    
+    # Persona fields
+    persona_summary: Optional[str] = None
+    preferred_brands: Optional[str] = None  # JSON string
+    special_diet: Optional[str] = None  # JSON string
+    possible_next_buys: Optional[str] = None
+    price_range_food: Optional[str] = None  # JSON string
+    price_range_treats: Optional[str] = None  # JSON string
+    price_range_waste_management: Optional[str] = None  # JSON string
+    price_range_beds: Optional[str] = None  # JSON string
+    price_range_feeders: Optional[str] = None  # JSON string
+    price_range_leashes_and_collars: Optional[str] = None  # JSON string
 
     @field_validator("customer_order_first_placed_dttm", mode="before")
     def parse_user_datetime(cls, v):

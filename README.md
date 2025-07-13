@@ -181,3 +181,28 @@ User Follow-up → Review Collection → Re-rank Buffer Products → Update Buff
 - `query_products()`: Initial search, stores results in buffer
 - `query_products_with_followup()`: Re-ranks buffer using review collection
 
+
+# Customer Persona Enhancement
+
+### 1. Persona Data Processing
+- **Source**: 10 detailed user personas from `data/core/user_personas_openai.json`
+- **Format**: Each persona contains:
+  - `summary`: Detailed behavioral description
+  - `preferred_brands`: Array of brand preferences
+  - `special_diet`: Dietary requirements/preferences
+  - `possible_next_buys`: Suggested next purchases
+  - `price_range_*`: Price range preferences for different categories
+
+### 2. Data Enhancement Script
+Created `scripts/customer_persona_enhancer.py` that:
+- Loads and parses persona data from JSON
+- Extracts all persona fields dynamically
+- Assigns personas sequentially in batches of 10 customers
+- Creates enhanced customer data with persona columns
+- Outputs to `data/core/customers_with_personas.tsv`
+
+### 3. Database Schema Updates
+Updated the database to support persona data:
+
+## Usage
+1. Run customer_persona_enhancer.py to enhance the customer tsv data and then run load_data.py again to re-create the database with updated values.

@@ -5,23 +5,23 @@ import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
 import { Separator } from '@/ui/Layout/Separator';
-import { 
-  User, 
-  Mail, 
-  MapPin, 
-  Calendar, 
-  PawPrint, 
+import {
+  User,
+  Mail,
+  MapPin,
+  Calendar,
+  PawPrint,
   LogOut,
   Heart,
   Weight,
   Gift
 } from 'lucide-react';
-import { usersApi, Pet } from '@/lib/api/users';
+import { usersApi } from '@/lib/api/users';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
-  const [pets, setPets] = useState<Pet[]>([]);
+  const [pets, setPets] = useState<any[]>([]); // Changed type to any[] as Pet is not exported
   const [loadingPets, setLoadingPets] = useState(true);
 
   // Redirect if not authenticated
@@ -83,6 +83,17 @@ export default function Profile() {
     }
   };
 
+  // Persona parsing helpers
+  const parseArray = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      return JSON.parse(val);
+    } catch {
+      return [];
+    }
+  };
+
   // Show loading while checking auth state
   if (isLoading) {
     return (
@@ -97,6 +108,12 @@ export default function Profile() {
     return null;
   }
 
+  // Persona fields
+  const personaSummary = user.persona_summary;
+  const preferredBrands = parseArray(user.preferred_brands);
+  const specialDiet = parseArray(user.special_diet);
+  const possibleNextBuys = user.possible_next_buys;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8" data-main-content>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -108,11 +125,11 @@ export default function Profile() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* User Information Card */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <User className="h-5 w-7" />
                   Account Information
                 </CardTitle>
               </CardHeader>
@@ -125,6 +142,32 @@ export default function Profile() {
                   </p>
                 </div>
 
+                {/* Persona Summary Section */}
+                {personaSummary && (
+                  <div className="bg-chewy-blue/5 border border-chewy-blue/10 rounded-lg p-2 mt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart className="h-4 w-4 text-chewy-blue" />
+                      <span className="font-semibold text-chewy-blue">Persona Insight</span>
+                    </div>
+                    <p className="text-gray-700 text-sm leading-relaxed">{personaSummary}</p>
+                    {preferredBrands.length > 0 && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        <span className="font-semibold">Preferred Brands:</span> {preferredBrands.join(', ')}
+                      </div>
+                    )}
+                    {specialDiet.length > 0 && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        <span className="font-semibold">Special Diet:</span> {specialDiet.join(', ')}
+                      </div>
+                    )}
+                    {possibleNextBuys && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        <span className="font-semibold">Possible Next Buys:</span> {possibleNextBuys}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Separator />
 
                 <div className="space-y-3">
@@ -134,11 +177,10 @@ export default function Profile() {
                       {user.customer_address_city}, {user.customer_address_state}
                     </span>
                   </div>
-                  
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-600">
-                      Customer since {user.customer_order_first_placed_dttm ? 
+                      Customer since {user.customer_order_first_placed_dttm ?
                         formatDate(user.customer_order_first_placed_dttm) : 'Unknown'}
                     </span>
                   </div>
@@ -146,9 +188,9 @@ export default function Profile() {
 
                 <Separator />
 
-                <Button 
+                <Button
                   onClick={handleLogout}
-                  variant="outline" 
+                  variant="outline"
                   className="w-full text-red-600 border-red-200 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -204,7 +246,7 @@ export default function Profile() {
                                 <span>Born: {formatDate(pet.birthday)}</span>
                               </div>
                             )}
-                            
+
                             {pet.weight && (
                               <div className="flex items-center gap-2 text-gray-600">
                                 <Weight className="h-4 w-4" />
