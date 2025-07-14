@@ -8,12 +8,14 @@ export const chatApi = {
   async chatbot(
     message: string, 
     history: any[] = [], 
-    customer_key?: number
+    customer_key?: number,
+    image?: string // Base64 encoded image
   ): Promise<{message: string, history: any[], products: any[]}> {
     const payload = {
       message,
       history,
       customer_key,
+      image, // Include image in payload
     };
     
     const response = await apiPost<{response: {message: string, history: any[], products: any[]}}>(
@@ -31,12 +33,14 @@ export const chatApi = {
     onChunk?: (chunk: string) => void,
     onProducts?: (products: any[]) => void,
     onComplete?: (fullMessage: string, products?: any[]) => void,
-    onError?: (error: string) => void
+    onError?: (error: string) => void,
+    image?: string // Base64 encoded image
   ): Promise<void> {
     const payload = {
       message,
       history,
       customer_key,
+      image, // Include image in payload
     };
 
     // Use centralized API client for consistency

@@ -32,6 +32,9 @@ interface SidebarChatLayoutProps {
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   onTagClick?: (tag: string) => void;
+  onImageUpload?: (file: File) => void;
+  selectedImage?: File | null;
+  onImageRemove?: () => void;
 }
 
 export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
@@ -59,6 +62,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   onScroll,
   scrollContainerRef,
   onTagClick,
+  onImageUpload,
+  selectedImage,
+  onImageRemove,
 }) => {
   // Handle body scroll and layout adjustment when sidebar is open
   useEffect(() => {
@@ -130,6 +136,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 disabled={false}
                 placeholder="Ask your question here"
                 isEmbedded={true}
+                onImageUpload={onImageUpload}
+                selectedImage={selectedImage}
+                onImageRemove={onImageRemove}
               />
             </>
           ) : (
@@ -204,6 +213,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   onKeyPress={onKeyPress}
                   disabled={false}
                   placeholder="What do you want to learn?"
+                  onImageUpload={onImageUpload}
+                  selectedImage={selectedImage}
+                  onImageRemove={onImageRemove}
                 />
               </>
             ) : (
