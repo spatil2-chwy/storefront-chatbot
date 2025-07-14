@@ -16,6 +16,9 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 # Download required NLTK data (run once)
 try:
     # Splits text into words and punctuation
@@ -46,126 +49,148 @@ collection = client.get_collection(name="products")
 
 class SearchAnalyzer:
     def __init__(self):
-        self.metadata_filters = self.build_metadata_filters()
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
         
         # Initialize Semantic Model
         logger.info("Loading semantic model...")
         self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.similarity_threshold = 0.7
+        self.similarity_threshold = 0.8
 
-        logger.info(f"Search Analyzer initialized with {sum(len(v) for v in self.metadata_filters.values())} discoverable criteria")
-
+        logger.info(f"Search Analyzer initialized")
+    
     def extract_query_terms(self, query: str) -> List[str]:
-            """
-            Use NLTK to break down user question and extract search criteria
-            """
-            
-            # Tokenize and clean the query
-            tokens = word_tokenize(query.lower())
-            
-            # Remove stop words and lemmatize
-            meaningful_terms = []
-            for token in tokens:
-                if token.isalnum() and token not in self.stop_words:
-                    lemmatized = self.lemmatizer.lemmatize(token)
-                    meaningful_terms.append(lemmatized)
-
-           return meaningful_terms
-            
-    def semantic_similarity(self, query_terms: List[str], product_terms: List[str]) -> List[tuple]:
         """
-        Calculate semantic similarity between query terms and product terms
-        Returns list of (query_term, product_term, similarity_score)
+        Extract meaningful terms from user query and lemmatize them to root words
+        """
+        
+        # Tokenize the query
+        tokens = word_tokenize(query.lower())
+        
+        # Remove stop words and lemmatize
+        meaningful_terms = []
+        for token in tokens:
+            # Remove punctuation and clean
+            cleaned_token = re.sub(r'[^\w\s]', '', token)
+            if cleaned_token and cleaned_token not in self.stop_words and len(cleaned_token) > 2:
+                # Lemmatize to root word
+                root_word = self.lemmatizer.lemmatize(cleaned_token)
+                meaningful_terms.append(root_word)
+
+        return meaningful_terms
+        
+    def exact_match_terms(self, query_terms: List[str], product_terms: List[str]) -> List[tuple]:
+        """
+        Find exact matches between query terms and product terms using root words
+        Returns list of (query_term, product_term, confidence_score)
         """
         
         if not query_terms or not product_terms:
             return []
         
-        try: 
-            # Get embeddings for query terms
-            query_embeddings = self.semantic_model.encode(query_terms)
-            
-            # Get embeddings for product terms
-            product_embeddings = self.semantic_model.encode(product_terms)
-            
-            # Calculate cosine similarity
-            similarities = cosine_similarity(query_embeddings, product_embeddings)
-            
-            # Find matches above threshold using NumPy operations
-            matches_mask = similarities >= self.similarity_threshold
-            
-            # Create matches list
-            matches = []
-            for i, j in zip(query_indices, product_indices):
-                matches.append((
-                    query_terms[i], 
-                    product_terms[j], 
-                    float(similarities[i, j])
-                ))
-
-            return matches
+        matches = []
         
-        except Exception as e:
-            logger.error(f"Error calculating semantic similarity: {e}")
+        # Lemmatize product terms to root words
+        product_root_terms = []
+        for term in product_terms:
+            root_word = self.lemmatizer.lemmatize(term.lower())
+            product_root_terms.append(root_word)
+        
+        # Find exact matches
+        for query_term in query_terms:
+            for i, product_root_term in enumerate(product_root_terms):
+                if query_term == product_root_term:
+                    # Exact match gets high confidence
+                    matches.append((
+                        query_term,
+                        product_terms[i],  # Original product term
+                        1.0  # Full confidence for exact match
+                    ))
+        
+        return matches
+        
+    def analyze_product_matches(self, metadata: dict, query: str) -> List[SearchMatch]:
+        """
+        Semantic matching - if something from user's question is very similar to product metadata, show it
+        """
+        
+        # Extract meaningful terms from user's question
+        query_terms = self.extract_query_terms(query)
+        
+        if not query_terms:
+            return []
+        
+        matches = []
+        
+        # Get all product metadata values for matching
+        product_fields = {
+            'Brands': metadata.get('PURCHASE_BRAND', ''),
+            'Categories': metadata.get('CATEGORY_LEVEL1', ''),
+            'Subcategories': metadata.get('CATEGORY_LEVEL2', ''),
+            'Product Types': metadata.get('CATEGORY_LEVEL3', ''),
+            'Ingredients': metadata.get('INGREDIENTS', ''),
+            'Pet Types': metadata.get('ATTR_PET_TYPE', ''),
+            'Life Stages': metadata.get('LIFE_STAGE', ''),
+            'Size/Weight': metadata.get('BREED_SIZE', ''),
+            'Product Forms': metadata.get('PRODUCT_TYPE', ''),
+            'Food Forms': metadata.get('ATTR_FOOD_FORM', ''),
+            'Parent Company': metadata.get('PARENT_COMPANY', ''),
+            'Merchandising 1': metadata.get('MERCH_CLASSIFICATION1', ''),
+            'Merchandising 2': metadata.get('MERCH_CLASSIFICATION2', ''),
+            'Merchandising 3': metadata.get('MERCH_CLASSIFICATION3', ''),
+            'Merchandising 4': metadata.get('MERCH_CLASSIFICATION4', ''),
+        }
+        
+        # Add diet tags from metadata keys
+        diet_tags = []
+        for key in metadata:
+            if key.startswith('specialdiettag:'):
+                diet_tag = key.split(':', 1)[1]
+                diet_tags.append(diet_tag)
+        product_fields['diet_tags'] = ', '.join(diet_tags)
+        
+        # Match query terms against all product fields
+        for field_name, field_value in product_fields.items():
+            if not field_value or not field_value.strip():
+                continue
             
-        def analyze_product_matches(self, metadata: dict, query: str) -> List[SearchMatch]:
-            """
-            Semantic matching - if something from user's question is very similar to product metadata, show it
-            """
+            # Split field value into individual terms for better matching
+            field_terms = []
+            if field_value:
+                # Split by common separators and clean
+                for term in re.split(r'[,;|&]', field_value):
+                    term = term.strip().lower()
+                    if term:
+                        # Further tokenize each term to handle multi-word values
+                        # This allows "senior" to match "Adult;Puppy;Senior" 
+                        # and "bone" to match "Bone Treats;Chew Toys"
+                        sub_terms = re.split(r'[\s\-_]', term)
+                        for sub_term in sub_terms:
+                            sub_term = sub_term.strip()
+                            if sub_term and len(sub_term) > 2:  # Skip very short terms
+                                # Lemmatize to root word for consistent matching
+                                root_word = self.lemmatizer.lemmatize(sub_term)
+                                field_terms.append(root_word)
+                        
+                        # Also keep the original term for exact matches
+                        original_root = self.lemmatizer.lemmatize(term)
+                        if original_root not in field_terms:
+                            field_terms.append(original_root)
             
-            # Extract meaningful terms from user's question
-            query_terms = self.extract_query_terms(query)
+            if not field_terms:
+                continue
             
-            if not query_terms:
-                return []
-            
-            matches = []
-            
-            # Get all product metadata values for matching
-            product_fields = {
-                'brand': metadata.get('PURCHASE_BRAND', ''),
-                'category_level_1': metadata.get('CATEGORY_LEVEL1', ''),
-                'category_level_2': metadata.get('CATEGORY_LEVEL2', ''),
-                'category_level_3': metadata.get('CATEGORY_LEVEL3', ''),
-                'ingredients': metadata.get('INGREDIENTS', ''),
-                'pet_type': metadata.get('ATTR_PET_TYPE', ''),
-                'life_stage': metadata.get('LIFE_STAGE', ''),
-                'breed_size': metadata.get('BREED_SIZE', ''),
-                'product_type': metadata.get('PRODUCT_TYPE', ''),
-                'food_form': metadata.get('ATTR_FOOD_FORM', ''),
-                'parent_company': metadata.get('PARENT_COMPANY', ''),
-                'merch_classification1': metadata.get('MERCH_CLASSIFICATION1', ''),
-                'merch_classification2': metadata.get('MERCH_CLASSIFICATION2', ''),
-                'merch_classification3': metadata.get('MERCH_CLASSIFICATION3', ''),
-                'merch_classification4': metadata.get('MERCH_CLASSIFICATION4', ''),
-            }
-            
-            # Add diet tags from metadata keys
-            diet_tags = []
-            for key in metadata:
-                if key.startswith('specialdiettag:'):
-                    diet_tag = key.split(':', 1)[1]
-                    diet_tags.append(diet_tag)
-            product_fields['diet_tags'] = ', '.join(diet_tags)
-            
-            # Match query terms against all product fields
-            for field_name, field_value in product_fields.items():
-                if not field_value or not field_value.strip():
-                    continue
-            
-            # Calculate semantic similarity between query terms and this field
-            semantic_matches = self.semantic_similarity(query_terms, [field_value])
+            # Calculate semantic similarity between query terms and field terms
+            semantic_matches = self.exact_match_terms(query_terms, field_terms)
             
             # Create SearchMatch for each semantic match
-            for query_term, product_term, similarity in semantic_matches:
+            for query_term, product_term, confidence in semantic_matches:
                 match = SearchMatch(
-                    field=field_name,
+                    field=f"{field_name}: {product_term}",
                     matched_terms=[query_term],
-                    confidence=float(similarity),  # Use similarity as confidence
+                    confidence=float(confidence),  # Use similarity as confidence
                     field_value=product_term
                 )
                 matches.append(match)
         
-            return matches
+        return matches
