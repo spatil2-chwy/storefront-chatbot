@@ -87,11 +87,11 @@ export const formatMessageContent = (content: string): string => {
           processedLines.push('</ul>');
           inTaskList = false;
         }
-        processedLines.push('<ol class="list-decimal list-inside space-y-1 my-2">');
+        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-2 ml-4">');
         inList = true;
         listType = 'ol';
       }
-      processedLines.push(`<li class="ml-2">${numberListMatch[2]}</li>`);
+      processedLines.push(`<li class="pl-2">${numberListMatch[2]}</li>`);
       return;
     }
     
