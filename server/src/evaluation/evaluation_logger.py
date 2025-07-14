@@ -31,7 +31,6 @@ class EvaluationLog:
     
     # Response generation
     assistant_response: Optional[str] = None
-    response_generation_time: Optional[float] = None
 
     # Performance metrics - detailed breakdown
     total_processing_time: Optional[float] = None
@@ -120,12 +119,11 @@ class EvaluationLogger:
         if self.current_log:
             logger.debug(f"Categories logged: {len(filtered)} filtered, {len(matched)} matched")
     
-    def log_assistant_response(self, response: str, generation_time: float):
+    def log_assistant_response(self, response: str):
         """Log the final assistant response"""
         if self.current_log:
             self.current_log.assistant_response = response
-            self.current_log.response_generation_time = generation_time
-            logger.debug(f"Assistant response logged ({generation_time:.3f}s)")
+            logger.debug(f"Assistant response logged")
     
     def log_timing(self, 
                    function_call_time: Optional[float] = None,
