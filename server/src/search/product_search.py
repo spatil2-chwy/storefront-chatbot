@@ -12,20 +12,17 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
+def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
     # build where clause for special diet and ingredients tags
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:
+    if len(category_level_1) + len(category_level_2) + len(required_ingredients) == 0:
         where_clause = {}
-    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 1:
+    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) == 1:
         # if only one special diet or ingredient, use a single condition
         if len(category_level_1) == 1:
             where_clause = {f"categorytag1:{category_level_1[0]}": {"$eq": True}}
         
         elif len(category_level_2) == 1:
             where_clause = {f"categorytag2:{category_level_2[0]}": {"$eq": True}}
-        
-        elif len(special_diet_tags) == 1:
-            where_clause = {f"specialdiettag:{special_diet_tags[0]}": {"$eq": True}}
         else:
             where_clause = {f"ingredienttag:{required_ingredients[0].lower()}": {"$eq": True}}
     else:
@@ -48,12 +45,6 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
                         "$eq": True
                     }
                 } for ingredient in required_ingredients
-            ] + [
-                {
-                    f"specialdiettag:{diet}": {
-                        "$eq": True
-                    }
-                } for diet in special_diet_tags
             ]
         }
 
@@ -61,10 +52,10 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
 
 @lru_cache(maxsize=128)
-def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple, special_diet_tags: tuple):
+def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple):
     print(query_products.cache_info())
     start_time = time.time()
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)
+    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
     if where_clause == {}:
         where_clause = None
     print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
@@ -142,126 +133,6 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
     print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
 
-# def query_products_with_followup(query: str, required_ingredients: list, excluded_ingredients: list, special_diet_tags: list, original_query: str):
-#     """
-#     Follow-up product search - re-ranks previous products based on user's follow-up response
-    
-#     Args:
-#         query: User's follow-up response/refinement
-#         required_ingredients: Required ingredients filter
-#         excluded_ingredients: Excluded ingredients filter  
-#         special_diet_tags: Special diet tags filter
-#         original_query: The original query to retrieve cached results from
-#     """
-#     start_time = time.time()
-#     print(f"Starting follow-up search for: '{query}' using original query: '{original_query}'")
-    
-#     # Get the original cached results from query_products
-#     original_results = query_products(original_query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
-    
-#     if not original_results or not original_results['metadatas'] or not original_results['metadatas'][0]:
-#         print("No original results found, falling back to regular search")
-#         return query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(special_diet_tags))
-    
-#     # Convert results to list of tuples for easier manipulation
-#     previous_products = []
-#     for i in range(len(original_results['metadatas'][0])):
-#         previous_products.append((
-#             original_results['metadatas'][0][i],
-#             original_results['documents'][0][i],
-#             original_results['ids'][0][i],
-#             original_results['distances'][0][i]
-#         ))
-    
-#     print(f"Retrieved {len(previous_products)} products from cached original query")
-    
-#     # Get the review synthesis collection for semantic similarity
-#     try:
-#         where_clause = build_where_clause(required_ingredients, special_diet_tags)
-#         if where_clause == {}:
-#             where_clause = None
-            
-#         # Query the review synthesis collection for these specific products
-#         # We'll use the review collection to get semantic similarity scores
-#         review_results = review_collection.query(
-#             query_texts=[query],
-#             n_results=len(previous_products),
-#             where=cast(Any, where_clause)
-#         )
-
-#         # Handle case where no results are returned
-#         if not review_results or not review_results['metadatas'] or not review_results['metadatas'][0]:
-#             print("No results found in review synthesis query")
-#             return original_results
-        
-#         # Filter out excluded ingredients
-#         if excluded_ingredients:
-#             filtered_metadatas = []
-#             filtered_documents = []
-#             filtered_ids = []
-#             filtered_distances = []
-#             for i in range(len(review_results['documents'][0])):
-#                 metadata = review_results['metadatas'][0][i]
-#                 # Check if any excluded ingredient appears as a substring in any ingredient tag
-#                 has_excluded_ingredient = False
-#                 for ingredient in excluded_ingredients:
-#                     ingredient_lower = ingredient.lower().strip()
-#                     # Check all metadata keys that start with "ingredienttag:"
-#                     for key in metadata.keys():
-#                         if key.startswith("ingredienttag:") and ingredient_lower in key.lower():
-#                             has_excluded_ingredient = True
-#                             break
-#                     if has_excluded_ingredient:
-#                         break
-#                 
-#                 if not has_excluded_ingredient:
-#                     filtered_metadatas.append(metadata)
-#                     filtered_documents.append(review_results['documents'][0][i])
-#                     filtered_ids.append(review_results['ids'][0][i])
-#                     filtered_distances.append(review_results['distances'][0][i])
-#             review_results = {
-#                 'metadatas': [filtered_metadatas],
-#                 'documents': [filtered_documents],
-#                 'ids': [filtered_ids],
-#                 'distances': [filtered_distances],
-#             }
-#         else:
-#             review_results = {
-#                 'metadatas': [review_results['metadatas'][0] if review_results['metadatas'] else []],
-#                 'documents': [review_results['documents'][0] if review_results['documents'] else []],
-#                 'ids': [review_results['ids'][0] if review_results['ids'] else []],
-#                 'distances': [review_results['distances'][0] if review_results['distances'] else []],
-#             }
-
-#         # Create a mapping of product_id to distance for re-ranking
-#         distance_map = {}
-#         for i, product_id in enumerate(review_results['ids'][0]):
-#             distance = review_results['distances'][0][i]
-#             distance_map[product_id] = distance
-        
-#         # Re-rank previous products based on new distances from review collection
-#         reranked_products = []
-#         for metadata, document, product_id, old_distance in previous_products:
-#             new_distance = distance_map.get(str(product_id), old_distance)
-#             reranked_products.append((metadata, document, product_id, new_distance))
-        
-#         # Sort by new distance (lower is better)
-#         reranked_products.sort(key=lambda x: x[3])
-        
-#         # Convert back to the expected format
-#         results = {
-#             'metadatas': [[p[0] for p in reranked_products]],
-#             'documents': [[p[1] for p in reranked_products]],
-#             'ids': [[p[2] for p in reranked_products]],
-#             'distances': [[p[3] for p in reranked_products]],
-#         }
-        
-#         print(f"Follow-up search completed in {time.time() - start_time:.4f} seconds")
-#         return results
-        
-#     except Exception as e:
-#         print(f"Error in follow-up search: {e}, falling back to original results")
-#         return original_results
 
 def rank_products(results, user_context=None):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""
@@ -365,25 +236,7 @@ def rank_products(results, user_context=None):
             score += 0.1
         
         return score
-    
-    def brand_preference_score(metadata, preferred_brands):
-        """
-        Score based on brand preference - products from preferred brands get higher scores
-        """
-        if not preferred_brands:
-            return 0.0
-        
-        brand = metadata.get('BRAND', '') or ''
-        if not brand:
-            return 0.0
-        
-        # Case-insensitive brand matching
-        brand_lower = brand.lower().strip()
-        for preferred_brand in preferred_brands:
-            if preferred_brand.lower().strip() in brand_lower or brand_lower in preferred_brand.lower().strip():
-                return 0.4  # Significant boost for preferred brands
-        
-        return 0.0
+
     
     scored_results = []
     for metadata, document, product_id, distance in zip(
@@ -411,8 +264,6 @@ def rank_products(results, user_context=None):
         # Method 5: Content quality (synthesized reviews and FAQs presence)
         content_quality = content_quality_score(metadata)
         
-        # Method 6: Brand preference (NEW)
-        brand_preference = brand_preference_score(metadata, preferred_brands)
         
         # Combine with weights - brand preference gets high priority
         final_score = (
@@ -420,8 +271,7 @@ def rank_products(results, user_context=None):
             (bayesian / 5.0) * 0.1 +  # Normalize to 0-1
             popularity * 0.05 +
             relevance * 0.15 +
-            content_quality * 0.3 +  # Reduced from 0.6 to make room for brand preference
-            brand_preference * 0.4  # High weight for brand preference
+            content_quality * 0.6
         )
         
         scored_results.append((metadata, document, product_id, distance, final_score))
@@ -437,10 +287,9 @@ def rank_products(results, user_context=None):
 
 # testing
 if __name__ == "__main__":
-    special_diet_needs = []
     ingredient_needs = ['Chicken', 'Pumpkin']
     excluded_ingredients = []
-    # where_clause = build_where_clause(ingredient_needs, special_diet_needs)
+    # where_clause = build_where_clause(ingredient_needs)
     # print(where_clause)
     # collection = get_collection()
     # results = collection.query(
@@ -454,13 +303,13 @@ if __name__ == "__main__":
     # print(f"Total results found: {len(results['documents'])}")
 
     start = time.time()
-    results1 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    results1 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients))
     print(f"Query 1 executed in {time.time() - start:.4f} seconds")
-    results2 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    results2 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients))
     print(f"Query 2 executed in {time.time() - start:.4f} seconds")
-    results3 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    results3 = query_products("dog food", tuple(ingredient_needs), tuple(excluded_ingredients))
     print(f"Query 3 executed in {time.time() - start:.4f} seconds")
-    results4 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients), tuple(special_diet_needs))
+    results4 = query_products("cat food", tuple(ingredient_needs), tuple(excluded_ingredients))
     print(f"Query 4 executed in {time.time() - start:.4f} seconds")
     print(results1 == results3 and results2 == results4)  # Should be True due to caching
 

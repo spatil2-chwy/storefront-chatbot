@@ -54,24 +54,8 @@ tools = [
                     },
                     "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
                 },
-                "special_diet_tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "Grain-Free",
-                            "No Corn No Wheat No Soy",
-                            "Limited Ingredient Diet",
-                            "Natural",
-                            "With Grain",
-                            "High-Protein",
-                        ],
-                        "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
-                    },
-                    "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
-                },
             },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "special_diet_tags"],
+            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1"],
             "additionalProperties": False,
             # "strict": True # although openai recommended, this seems to make things worse
         }
@@ -126,13 +110,12 @@ Key rules:
 }
 MODEL = "gpt-4.1"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list, user_context: dict | None = None):
+def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, user_context: dict | None = None):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
-        special_diet_tags (list): List of special diet tags that the product must adhere to
         user_context (dict): Optional user context containing preferences like preferred_brands
     Returns:
         list: A list of products
@@ -145,7 +128,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2), tuple(special_diet_tags))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
@@ -409,7 +392,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: dict
     # Create system message with user context if provided
     system_msg = system_message.copy()
     if user_context:
-        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Enhance user query with brand preferences and dietary needs if applicable. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
     
     full_history = (
         [system_msg] + history + [{"role": "user", "content": user_input}]
