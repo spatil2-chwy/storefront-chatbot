@@ -9,6 +9,10 @@ from src.models.product import SearchMatch
 
 logger = logging.getLogger(__name__)
 
+import chromadb
+client = chromadb.PersistentClient(path="../scripts/chroma_db")
+collection = client.get_collection(name="review_synthesis")
+
 class SearchAnalyzer:
     def __init__(self):
         self.metadata_filters = self._build_metadata_filters()
@@ -16,7 +20,7 @@ class SearchAnalyzer:
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
         """Build search filters from actual product metadata"""
-        cache_file = "data/chromadb/metadata_filters_cache.json"
+        cache_file = "metadata_filters_cache.json"
         
         # Try to load from cache first
         if os.path.exists(cache_file):
@@ -51,9 +55,9 @@ class SearchAnalyzer:
     def _discover_from_database(self) -> Dict[str, Dict[str, Set[str]]]:
         """Discover all searchable criteria from product metadata"""
         try:
-            import chromadb
-            client = chromadb.PersistentClient(path="../scripts/chroma_db")
-            collection = client.get_collection(name="products")
+            # import chromadb
+            # client = chromadb.PersistentClient(path="../scripts/chroma_db")
+            # collection = client.get_collection(name="products")
             
             # Sample products for analysis
             results = collection.get(limit=10000)
@@ -190,8 +194,6 @@ class SearchAnalyzer:
         query_lower = query.lower().strip()
         query_words = set(query_lower.split())
         
-        print(f"🔍 Analyzing query: '{query}' -> words: {query_words}")
-        
         found_criteria = {
             'Brands': [],
             'Categories': [],
@@ -238,7 +240,6 @@ class SearchAnalyzer:
         result = {k: v for k, v in found_criteria.items() if v}
         
         extraction_time = time.time() - start_time
-        print(f"📋 Found criteria: {result}")
         # print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result
