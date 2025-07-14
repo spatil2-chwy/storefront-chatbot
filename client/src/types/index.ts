@@ -23,7 +23,7 @@ export interface Pet {
   pet_breed: string;       // "Golden Retriever", etc.
   gender: string;          // "MALE", "FMLE"
   birthday: string;        // ISO date string
-  life_stage: string;      // "P" (puppy), "A" (adult), "S" (senior)
+  life_stage: string;      // "PUPPY", "ADULT", "SENIOR"
   adopted: boolean;        // Whether pet was adopted
   adoption_date: string | null; // When adopted
   weight: number;          // Weight in pounds
