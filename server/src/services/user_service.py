@@ -2,18 +2,26 @@ from typing import List
 from sqlalchemy.orm import Session, joinedload
 from src.models.user import User
 from src.models.pet import PetProfile
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UserService:
     def get_users(self, db: Session) -> List[User]:
         return db.query(User).all()
 
     def get_user(self, db: Session, customer_key: int) -> User | None:
-        return (
+        start_time = time.time()
+        user = (
             db.query(User)
               .options(joinedload(User.pets))
               .filter(User.customer_key == customer_key)
               .one_or_none()
         )
+        query_time = time.time() - start_time
+        logger.debug(f"🔍 User query for customer {customer_key} took: {query_time:.3f}s")
+        return user
 
     def create_user(self, db: Session, user_data: User) -> User:
         db.add(user_data)
@@ -42,17 +50,24 @@ class UserService:
         return True
 
     def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
+        start_time = time.time()
+        
         # First get the user to find their customer_id
         user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
         if not user:
+            logger.debug(f"🔍 No user found for customer {customer_key}")
             return []
         
         # Then find pets using the customer_id
-        return (
+        pets = (
             db.query(PetProfile)
               .filter(PetProfile.customer_id == user.customer_id)
               .all()
         )
+        
+        query_time = time.time() - start_time
+        logger.debug(f"🐾 Pet query for customer {customer_key} took: {query_time:.3f}s, found {len(pets)} pets")
+        return pets
     
     def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
         user = db.query(User).filter(User.email == email).one_or_none()
@@ -65,8 +80,12 @@ class UserService:
 
     def get_user_context_for_chat(self, db: Session, customer_key: int) -> dict | None:
         """Get user and pet information formatted for chat context"""
+        start_time = time.time()
+        logger.debug(f"👤 Getting user context for customer {customer_key}")
+        
         user = self.get_user(db, customer_key)
         if not user:
+            logger.debug(f"👤 No user found for customer {customer_key}")
             return None
         
         user_context = {
@@ -99,6 +118,8 @@ class UserService:
             }
             user_context["pets"].append(pet_info)
         
+        total_time = time.time() - start_time
+        logger.debug(f"👤 User context built in {total_time:.3f}s for customer {customer_key} with {len(pets)} pets")
         return user_context
     
     def _calculate_age_months(self, birthday) -> int:
@@ -113,7 +134,10 @@ class UserService:
     
     def format_pet_context_for_ai(self, user_context: dict) -> str:
         """Format user and pet information for AI context"""
+        start_time = time.time()
+        
         if not user_context or not user_context.get("pets"):
+            logger.debug("👤 No pets found in user context")
             return ""
         
         context_parts = [f"The user is currently signed in and has these pets. Talk to the user about their pets and ask if they are shopping for them to further enhance and refine their searches."]
@@ -165,5 +189,8 @@ class UserService:
             
             context_parts.append("\n".join(pet_desc))
         
-        return "\n".join(context_parts)
+        formatted_context = "\n".join(context_parts)
+        format_time = time.time() - start_time
+        logger.debug(f"👤 Context formatting took: {format_time:.3f}s, length: {len(formatted_context)} chars")
+        return formatted_context
 

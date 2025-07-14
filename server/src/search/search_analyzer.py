@@ -19,45 +19,56 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Download required NLTK data (run once)
-try:
-    # Splits text into words and punctuation
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
+# UNCOMMENT TO DOWNLOAD NLTK DATA
+# # Download required NLTK data (run once)
+# try:
+#     # Splits text into words and punctuation
+#     nltk.data.find('tokenizers/punkt')
+# except LookupError:
+#     nltk.download('punkt')
 
-try:
-    # Provides list of common words to filter out
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
+# try:
+#     # Provides list of common words to filter out
+#     nltk.data.find('corpora/stopwords')
+# except LookupError:
+#     nltk.download('stopwords')
 
-try:
-    # Provides synonyms, antonyms, and word relationships
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-
-try:
-    # Provides part-of-speech tagging (noun, verb, adjective, etc.)
-    nltk.data.find('taggers/averaged_perceptron_tagger')
-except LookupError:
-    nltk.download('averaged_perceptron_tagger')
+# try:
+#     # Provides synonyms, antonyms, and word relationships
+#     nltk.data.find('corpora/wordnet')
+# except LookupError:
+#     nltk.download('wordnet')
+# try:
+#     # Provides part-of-speech tagging (noun, verb, adjective, etc.)
+#     nltk.data.find('taggers/averaged_perceptron_tagger')
+# except LookupError:
+#     nltk.download('averaged_perceptron_tagger')
     
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 collection = client.get_collection(name="products")
 
 class SearchAnalyzer:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(SearchAnalyzer, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
+        # Only initialize once
+        if SearchAnalyzer._initialized:
+            return
+            
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
         
-        # Initialize Semantic Model
-        logger.info("Loading semantic model...")
+        # Initialize Semantic Model - this is the expensive operation
         self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
         self.similarity_threshold = 0.8
 
-        logger.info(f"Search Analyzer initialized")
+        SearchAnalyzer._initialized = True
     
     def extract_query_terms(self, query: str) -> List[str]:
         """
@@ -113,6 +124,8 @@ class SearchAnalyzer:
         """
         Semantic matching - if something from user's question is very similar to product metadata, show it
         """
+        
+        start_time = time.time()
         
         # Extract meaningful terms from user's question
         query_terms = self.extract_query_terms(query)
@@ -192,5 +205,8 @@ class SearchAnalyzer:
                     field_value=product_term
                 )
                 matches.append(match)
+        
+        analysis_time = time.time() - start_time
+        logger.debug(f"🔍 SearchAnalyzer analyzed {len(matches)} matches in {analysis_time:.3f}s")
         
         return matches

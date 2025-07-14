@@ -293,11 +293,11 @@ def format_products_for_llm(products, limit=10):
 
 def chat(user_input: str, history: list, user_context: str = ""):
     start_time = time.time()
-    logger.info(f"Chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
+    logger.info(f"🤖 CHAT START - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
     # Log user context if provided
     if user_context:
-        logger.info(f"User context provided: {len(user_context)} characters")
+        logger.info(f"👤 User context provided: {len(user_context)} characters")
     
     # Create system message with user context if provided
     system_msg = system_message.copy()
@@ -308,10 +308,11 @@ def chat(user_input: str, history: list, user_context: str = ""):
         [system_msg] + history + [{"role": "user", "content": user_input}]
     )
     
-    logger.debug(f"Chat history length: {len(full_history)} messages")
+    logger.debug(f"🤖 Chat history length: {len(full_history)} messages")
     
     # Step 1: Get model response
     llm_start = time.time()
+    logger.info(f"🤖 LLM API CALL 1 START - Initial response")
     response = client.responses.create(
         model=MODEL,
         input=full_history,
@@ -319,26 +320,26 @@ def chat(user_input: str, history: list, user_context: str = ""):
         temperature=0.1,
     )   
     llm_time = time.time() - llm_start
-    logger.info(f"LLM initial response received in {llm_time:.3f}s")
+    logger.info(f"🤖 LLM API CALL 1 COMPLETE - Initial response received in {llm_time:.3f}s")
     products = []
     assistant_reply = ""
 
-    logger.debug(f"LLM response type: {response.output[0].type if response.output else 'empty'}")
+    logger.debug(f"🤖 LLM response type: {response.output[0].type if response.output else 'empty'}")
     
     if len(response.output) == 1 and response.output[0].type == "message":
         # Handle direct message response (no tool calls)
         assistant_reply = response.output[0].content[0].text
         full_history.append({"role": "assistant", "content": assistant_reply})
-        logger.info(f"Direct message response generated (no tool calls)")
+        logger.info(f"🤖 Direct message response generated (no tool calls)")
     else:
         # Handle function call response
         function_start = time.time()
-        logger.info(f"Function calls detected after {function_start - start_time:.3f}s")
+        logger.info(f"🤖 Function calls detected after {function_start - start_time:.3f}s")
 
         for output_item in response.output:
             if output_item.type == "function_call":
                 tool_call = output_item
-                logger.info(f"Tool call: {tool_call.name}")
+                logger.info(f"🤖 Tool call: {tool_call.name}")
                 
                 # Convert tool_call to dict for history
                 tool_call_dict = {
@@ -351,14 +352,14 @@ def chat(user_input: str, history: list, user_context: str = ""):
                 full_history.append(tool_call_dict)
                 
                 if tool_call.name not in ["search_products", "search_articles"]:
-                    logger.error(f"Unexpected tool call: {tool_call.name}")
+                    logger.error(f"🤖 Unexpected tool call: {tool_call.name}")
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
                 args = json.loads(tool_call.arguments)
-                logger.debug(f"Tool call arguments: {args}")
+                logger.debug(f"🤖 Tool call arguments: {args}")
                 
                 tool_exec_start = time.time()
-                logger.info(f"Executing {tool_call.name} after {tool_exec_start - start_time:.3f}s from chat start")
+                logger.info(f"🤖 Executing {tool_call.name} after {tool_exec_start - start_time:.3f}s from chat start")
                 
                 if tool_call.name == "search_articles":
                     # Handle article search differently - no products returned
@@ -366,7 +367,7 @@ def chat(user_input: str, history: list, user_context: str = ""):
                     article_content = result
                     tool_exec_time = time.time() - tool_exec_start
                     
-                    logger.info(f"Article search completed in {tool_exec_time:.3f}s")
+                    logger.info(f"🤖 Article search completed in {tool_exec_time:.3f}s")
                     
                     # Add function result to history
                     full_history.append({
@@ -377,6 +378,7 @@ def chat(user_input: str, history: list, user_context: str = ""):
 
                     # generate a response
                     second_llm_start = time.time()
+                    logger.info(f"🤖 LLM API CALL 2 START - Article response")
                     second_response = client.responses.create(
                         model=MODEL,
                         input=full_history,
@@ -384,7 +386,7 @@ def chat(user_input: str, history: list, user_context: str = ""):
                         temperature=0.1,
                     )
                     second_llm_time = time.time() - second_llm_start
-                    logger.info(f"Article response generation took {second_llm_time:.3f}s")
+                    logger.info(f"🤖 LLM API CALL 2 COMPLETE - Article response generation took {second_llm_time:.3f}s")
 
                     full_history.append({
                         "role": "assistant",
@@ -397,7 +399,7 @@ def chat(user_input: str, history: list, user_context: str = ""):
                 else:
                     products = call_function(tool_call.name, args)
                     tool_exec_time = time.time() - tool_exec_start
-                    logger.info(f"Product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
+                    logger.info(f"🤖 Product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
                     
                     # Add function result to history
                     full_history.append({
@@ -410,7 +412,7 @@ def chat(user_input: str, history: list, user_context: str = ""):
                     context_start = time.time()
                     product_context = format_products_for_llm(products)
                     context_time = time.time() - context_start
-                    logger.debug(f"Product context formatting took {context_time:.3f}s")
+                    logger.debug(f"🤖 Product context formatting took {context_time:.3f}s")
                     
                     full_history.append({
                         "role": "user",
@@ -428,18 +430,19 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                     
                     # Now let the LLM generate the final message
                     final_llm_start = time.time()
+                    logger.info(f"🤖 LLM API CALL 3 START - Final response with products")
                     final_response = client.responses.create(
                         model=MODEL,
                         input=full_history,
                         temperature=0.1,
                     )
                     final_llm_time = time.time() - final_llm_start
-                    logger.info(f"Final response generation took {final_llm_time:.3f}s")
+                    logger.info(f"🤖 LLM API CALL 3 COMPLETE - Final response generation took {final_llm_time:.3f}s")
                     
                     final_reply = final_response.output[0].content[0].text
                     assistant_reply = final_reply
     total_time = time.time() - start_time
-    logger.info(f"Chat completed in {total_time:.3f}s - Response length: {len(assistant_reply)} chars")
+    logger.info(f"🤖 CHAT COMPLETE - Total: {total_time:.3f}s - Response length: {len(assistant_reply)} chars")
     return {
         "message": str(assistant_reply),
         "history": full_history[1:],  # Exclude system message

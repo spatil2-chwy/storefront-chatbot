@@ -12,21 +12,16 @@ logger = logging.getLogger(__name__)
 import chromadb
 client = chromadb.PersistentClient(path="../scripts/chroma_db")
 collection = client.get_collection(name="review_synthesis")
-search_analyzer = None  # Lazy loading for search matches
-
-logger.info("ProductService initialized successfully")
 
 class ProductService:
     def __init__(self):
-        self._search_analyzer = None
+        # Pre-load SearchAnalyzer singleton to avoid lazy loading delays
+        from src.search.search_analyzer import SearchAnalyzer
+        self._search_analyzer = SearchAnalyzer()  # This will use the singleton
 
     @property
     def search_analyzer(self):
-        """Lazy load the search analyzer only when needed"""
-        if self._search_analyzer is None:
-            from src.search.search_analyzer import SearchAnalyzer
-            logger.info("Initializing SearchAnalyzer...")
-            self._search_analyzer = SearchAnalyzer()
+        """Return the pre-loaded search analyzer singleton"""
         return self._search_analyzer
 
     @staticmethod
@@ -264,7 +259,7 @@ class ProductService:
                 search_matches = self.search_analyzer.analyze_product_matches(metadata, query)
                 match_time = time.time() - match_start
                 
-                # print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
+                logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
             except Exception as e:
                 logger.warning(f"Error analyzing search matches: {e}")
                 search_matches = None
