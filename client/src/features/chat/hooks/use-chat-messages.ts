@@ -5,14 +5,12 @@ import { ChatMessage } from '../../../types';
 interface ChatMessagesProps {
   initialQuery?: string;
   shouldClearChat?: boolean;
-  preloadedChatResponse?: {message: string, history: any[], products: any[]};
   isLiveAgent: boolean;
 }
 
 export const useChatMessages = ({
   initialQuery,
   shouldClearChat,
-  preloadedChatResponse,
   isLiveAgent
 }: ChatMessagesProps) => {
   const {
@@ -40,36 +38,15 @@ export const useChatMessages = ({
       // Create and add user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
-        content: preloadedChatResponse ? `Searching for: ${initialQuery}` : initialQuery,
+        content: `Searching for: ${initialQuery}`,
         sender: 'user',
         timestamp: new Date(),
       };
       
       addMessage(userMessage);
-      
-      // Use preloaded response if available
-      if (preloadedChatResponse) {
-        const aiResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: preloadedChatResponse.message,
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        
-        addMessage(aiResponse);
-        
-        // Update search state with products from response
-        if (preloadedChatResponse.products && preloadedChatResponse.products.length > 0) {
-          setSearchResults(preloadedChatResponse.products);
-          setCurrentSearchQuery(initialQuery);
-          setHasSearched(true);
-        }
-        return;
-      }
-      
       setIsLoading(true);
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, preloadedChatResponse, messages.length, setSearchResults, setCurrentSearchQuery, setHasSearched]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, messages.length, setSearchResults, setCurrentSearchQuery, setHasSearched]);
 
   const createUserMessage = (messageText: string): ChatMessage => {
     return {

@@ -7,7 +7,6 @@ import { useChatMessages } from './use-chat-messages';
 interface ChatEngineProps {
   initialQuery?: string;
   shouldClearChat?: boolean;
-  preloadedChatResponse?: {message: string, history: any[], products: any[]};
   isLiveAgent: boolean;
   showInitialSearchGreeting: (query: string) => Promise<void>;
   showSearchGreeting: (message: string) => Promise<void>;
@@ -16,7 +15,6 @@ interface ChatEngineProps {
 export const useChatEngine = ({
   initialQuery,
   shouldClearChat,
-  preloadedChatResponse,
   isLiveAgent,
   showInitialSearchGreeting,
   showSearchGreeting
@@ -42,7 +40,6 @@ export const useChatEngine = ({
   } = useChatMessages({
     initialQuery,
     shouldClearChat,
-    preloadedChatResponse,
     isLiveAgent
   });
 

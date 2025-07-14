@@ -113,18 +113,5 @@ export const chatApi = {
       payload
     );
     return response.response;
-  },
-
-  // Combined search and chat
-  async searchAndChat(
-    query: string, 
-    customer_key?: number
-  ): Promise<{searchResults: {products: Product[], reply: string}, chatResponse: {message: string, history: any[], products: any[]}}> {
-    const chatResponse = await this.chatbot(query, [], customer_key);
-
-    return {
-      searchResults: { products: chatResponse.products || [], reply: "" },
-      chatResponse
-    };
   }
 }; 

@@ -33,12 +33,12 @@ class ChatRequest(BaseModel):
 class ComparisonRequest(BaseModel):
     message: str
     products: List[dict]
-    history: Optional[list] = []  # Add conversation history
+    history: List[Dict[str, Any]] = []  # Add conversation history
 
 class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
-    history: Optional[list] = []  # Add conversation history
+    history: List[Dict[str, Any]] = []  # Add conversation history
 
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
