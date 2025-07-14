@@ -19,6 +19,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Set up logging
 logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
 # UNCOMMENT TO DOWNLOAD NLTK DATA
 # # Download required NLTK data (run once)
 # try:
@@ -46,6 +47,12 @@ logger = logging.getLogger(__name__)
     
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 collection = client.get_collection(name="products")
+=======
+import chromadb
+# client = chromadb.PersistentClient(path="../scripts/chroma_db")
+client = chromadb.HttpClient(host='localhost', port=8001)
+collection = client.get_collection(name="review_synthesis")
+>>>>>>> origin/dev
 
 class SearchAnalyzer:
     _instance = None

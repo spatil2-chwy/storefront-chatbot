@@ -1,6 +1,5 @@
 from typing import List, Optional
 from src.models.product import Product
-from src.chat.chatbot_engine import chat
 import time
 import logging
 
@@ -10,7 +9,8 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 import chromadb
-client = chromadb.PersistentClient(path="../scripts/chroma_db")
+# client = chromadb.PersistentClient(path="../scripts/chroma_db")
+client = chromadb.HttpClient(host='localhost', port=8001)
 collection = client.get_collection(name="review_synthesis")
 
 class ProductService:

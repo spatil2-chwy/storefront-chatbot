@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional, Union, cast, Generator
 from src.search.product_search import query_products, rank_products
 from src.search.article_search import ArticleService
 from src.config.openai_loader import get_openai_client
+from src.chat.prompts import function_call_system_prompt, tools
 
 # Initialize logging first
 from src.utils.logging_config import setup_logging
@@ -13,163 +14,19 @@ logger = logging.getLogger(__name__)
 
 # Get the centralized OpenAI client
 client = get_openai_client()
-# refactor needed, tools, system prompt, model, etc should be in a separate file
-tools = [
-    {
-        "type": "function",
-        "name": "search_products",
-        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein. should i switch to salmon? idk'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags. ",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": """Structured, product-focused search query. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients information like "chicken" or "salmon" here since they have seperate filters"""
-                },
-                "required_ingredients": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
-                    },
-                    "description": "List of required ingredients that must be present in the product. Leave empty if no specific ingredients are required. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
-                },
-                "excluded_ingredients": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "description": "Ingredients must be concrete foods like 'chicken', 'salmon', 'peas'. Do not use generic terms like 'protein', 'grain', or nutrient types — they are not ingredients."
-                    },
-                    "description": "List of ingredients that must not be present in the product. Leave empty if no specific ingredients should be excluded. Ingredients should be in lowercase. Ingredients should be in the format of 'ingredient_name' (e.g. 'chicken', 'peas')."
-                },
-                "category_level_1": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": ['Farm', 'Bird', 'Cat', 'Dog', 'Fish', 'Wild Bird', 'Reptile', 'Horse', 'Small Pet', 'Gifts & Books', 'Pharmacy', 'Gift Cards', 'Virtual Bundle', 'Services', 'ARCHIVE', 'Programs'],
-                        "description": "The category of the product, e.g. 'Dog', 'Cat'.. if applicable"
-                    },
-                    "description": "The first level category of the product, e.g. 'Dog', 'Cat'.. if applicable. Leave empty if no category is required."
-                },
-                "category_level_2": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": ['Chicken', 'Litter & Nesting', 'Beds, Crates & Gear', 'Flea & Tick', 'Treats', 'Grooming', 'Food', 'Bowls & Feeders', 'Water Care', 'Sand & Gravel', 'Tools & Hobby Products', 'Cleaning & Maintenance', 'Filters & Media', 'Dog Apparel', 'Aquariums & Stands', 'Litter & Accessories', 'Leashes & Collars', 'Horse Tack', 'Stable Supplies', 'Toys', 'Health & Wellness', 'Cleaning', 'Waste Management', 'Habitat Accessories', 'Cages & Stands', 'Heating & Lighting', 'Decor & Accessories', 'Terrariums & Habitats', 'Beds & Hideouts', 'Cages & Habitats', 'Habitat Decor', 'Feed & Treats', 'Equestrian Riding Gear', 'Supplies', 'Farrier Supplies', 'Home Goods', 'Bedding & Litter', 'Training', 'Flea, Tick, Mite & Dewormers', 'Memorials & Keepsakes', 'Gift Cards', 'Drinkware & Kitchenware', 'Feeding Accessories', 'Books & Calendars', 'Prescription Food', 'Apparel & Accessories', 'Magnets & Decals', 'Harnesses & Carriers', 'Habitats', 'Virtual Bundle', 'Substrate & Bedding', 'Grooming & Topicals', 'Cleaning & Training', 'Healthcare Services', 'Apparel', 'Prescription Treats', 'Frozen Food', 'Human Food', 'Loyalty', 'Electronics & Accessories', 'Promotional'],
-                        "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable."
-                    },
-                    "description": "The second level category of the product, e.g. 'Treats', 'Grooming'.. if applicable. Leave empty if no category is required."
-                },
-                "special_diet_tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "Grain-Free",
-                            "No Corn No Wheat No Soy",
-                            "Limited Ingredient Diet",
-                            "Natural",
-                            "With Grain",
-                            "High-Protein",
-                        ],
-                        "description": "Special diet tags that the food product must adhere to, e.g. 'Grain-Free', 'Organic'. Leave empty if no specific diet tags are required, or if the product is not food."
-                    },
-                    "description": "List of special diet tags that the product must adhere to. Leave empty if no specific diet tags are required."
-                },
-            },
-            "required": ["query", "required_ingredients", "excluded_ingredients", "category_level_1", "special_diet_tags"],
-            "additionalProperties": False,
-            # "strict": True # although openai recommended, this seems to make things worse
-        }
-    },
-    {
-        "type": "function",
-        "name": "search_articles",
-        "description": "Use this tool when the user asks for general pet care advice, tips, or information that doesn't directly involve shopping for products. Examples: 'I just got a new puppy', 'my dog has separation anxiety', 'how to train my cat', 'puppy care tips'. This searches through Chewy's expert articles and advice content.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search query for pet care articles and advice. Use natural language describing the pet situation, concern, or topic the user is asking about."
-                }
-            },
-            "required": ["query"],
-            "additionalProperties": False
-        }
-    }
-]
 
+MODEL = "gpt-4.1"
 
-system_message = {
-    "role": "system",
-    "content": """
-You are a helpful, fast, emotionally intelligent shopping assistant for pet parents on Chewy.
-
-Your job is to help users find the best products for their pet’s specific needs and provide helpful pet care advice.
-
----
-
-### 🛠️ Tools You Can Use:
-1. **Product Search** – Use this when the user is shopping or describing product needs. Always consider the entire chat history, including any pet profile data.
-2. **Article Search** – Use this when the user asks for general pet care advice or behavioral help. After summarizing helpful article content, suggest relevant product categories if appropriate. Always include links using this markdown format:
-   `For more information, see: [link]`
-
----
-
-### 🧠 Core Behavior Guidelines:
-
-- **Run product search immediately** when the user expresses shopping intent (e.g. “dog food,” “puppy bed”) — even if pet profile information is incomplete or missing. You can follow up afterward with helpful clarifying questions.
-    - ❗ Do *not* pause the flow by asking “Which pet?” before running the search.
-    - Use whatever pet profile data you already have. If unknown, follow up gently after returning products.
-- **Be concise and mobile-friendly.**
-- **Avoid suggesting articles if the user is clearly shopping**, and vice versa.
-- **Only ask clarifying questions when absolutely necessary.**
-- **Avoid repeating follow-up questions** unless the user’s reply is unclear.
-- **Do not suggest specific products unless the user asks.** Provide relevant product follow-up questions instead.
-- **Prioritize helpful follow-up questions after tool calls.** For example: “Would you prefer wet or dry food?” or “Is your dog a picky eater?”
-- **Be conservative with message length.** Focus on the most useful points first, then offer to show more if needed.
-
----
-
-### 🧪 Product Query Behavior:
-- Tailor queries to user concerns (e.g. allergies, training, chewing).
-- Convert vague user language into precise Chewy-relevant product types.
-- Never include abstract ingredient types like “protein” or “grains.” Only use specific food items (e.g. “chicken,” “salmon,” “sweet potato”).
-
----
-
-### 🧩 Tag Instructions (Frontend Auto Response Buttons):
-
-At the **end of your message**, include **only tags directly related to suggestions made in that message**. These appear as tap-to-respond buttons.
-
-**Tag examples:**
-- Food Ingredients: `<Chicken> <Beef> <Salmon> <Lamb>`
-- Formats: `<Dry> <Wet> <Mix>`
-- Product Types: `<Crate> <Bed> <Harness> <Shampoo>`
-- Concerns: `<Allergies> <Picky Eater> <Chewer> <Anxiety>`
-
-**Example:**
-> “Would you like to focus on dry or wet food options? <Dry><Wet>”
-
-**Important:** Tags must appear on a line by themselves at the end of your message, with **no extra text after them.**
-
-"""
-}
-
-MODEL = "gpt-4o"
-
-def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), special_diet_tags=()):
+def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
-        special_diet_tags (list): List of special diet tags that the product must adhere to
     Returns:
         list: A list of products
     """
-    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}, special diet tags: {special_diet_tags}")
+    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}")
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
@@ -178,7 +35,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2), tuple(special_diet_tags))
+    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
@@ -449,8 +306,6 @@ You're not being chatty — you're being helpful, warm, and efficient."""
         "products": products,
     }
 
-
-
 def chat_stream_with_products(user_input: str, history: list, user_context: str = ""):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
@@ -458,16 +313,31 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
     """
     start_time = time.time()
+    print(f"User context: {user_context}")
     logger.info(f"Streaming chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
     # Create system message with user context if provided
-    system_msg = system_message.copy()
+    system_msg = function_call_system_prompt.copy()
     if user_context:
-        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nUse this information to provide personalized recommendations and for any logical follow-ups."
-        logger.info(f"User context provided for streaming: {len(user_context)} characters")
+        system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Enhance user query with brand preferences and dietary needs if applicable. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
+    
+    # Create user message with optional image
+    if image_base64:
+        user_message = {
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": user_input},
+                {
+                    "type": "input_image",
+                    "image_url": f"data:image/jpeg;base64,{image_base64}",
+                },
+            ],
+        }
+    else:
+        user_message = {"role": "user", "content": user_input}
     
     full_history = (
-        [system_msg] + history + [{"role": "user", "content": user_input}]
+        [system_msg] + history + [user_message]
     )
     
     # Step 1: Get model response (non-streaming for function call detection)
@@ -527,6 +397,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     logger.error(f"Unexpected streaming tool call: {tool_call.name}")
                     raise ValueError(f"Unexpected tool call: {tool_call.name}")
                 
+                import json
                 args = json.loads(tool_call.arguments)
                 logger.debug(f"Streaming tool call arguments: {args}")
                 

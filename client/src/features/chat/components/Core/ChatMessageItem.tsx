@@ -366,6 +366,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                     })()
                   ) : (
                     <div className="text-sm">
+                      {/* Display image if present */}
+                      {message.imageUrl && (
+                        <div className="mb-2">
+                          <img 
+                            src={message.imageUrl} 
+                            alt="User uploaded" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '200px' }}
+                          />
+                        </div>
+                      )}
                       {message.content}
                     </div>
                   )}

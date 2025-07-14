@@ -28,11 +28,12 @@ export const productsApi = {
   },
 
   // Compare multiple products
-  async compareProducts(message: string, products: Product[], history: any[] = []): Promise<string> {
+  async compareProducts(message: string, products: Product[], history: any[] = [], image?: string): Promise<string> {
     const payload = {
       message,
       products,
       history,
+      image,
     };
     
     const response = await apiPost<{response: string}>(`/chats/compare`, payload);
@@ -40,11 +41,12 @@ export const productsApi = {
   },
 
   // Ask about a specific product
-  async askAboutProduct(message: string, product: Product, history: any[] = []): Promise<string> {
+  async askAboutProduct(message: string, product: Product, history: any[] = [], image?: string): Promise<string> {
     const payload = {
       message,
       product,
       history,
+      image,
     };
     
     const response = await apiPost<{response: string}>(`/chats/ask_about_product`, payload);

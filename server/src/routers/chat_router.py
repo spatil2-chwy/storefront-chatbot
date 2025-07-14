@@ -9,7 +9,7 @@ from src.schemas import ChatMessage as ChatSchema
 from src.models.chat import ChatMessage
 from src.services.chat_service import ChatService
 from src.services.user_service import UserService
-from src.chat.chatbot_engine import chat, chat_stream_with_products
+from src.chat.chatbot_engine import chat_stream_with_products
 from src.chat.chat_modes import compare_products, ask_about_product
 import json
 import time
@@ -32,16 +32,19 @@ class ChatRequest(BaseModel):
     message: str
     history: list
     customer_key: Optional[int] = None
+    image: Optional[str] = None  # Base64 encoded image
 
 class ComparisonRequest(BaseModel):
     message: str
     products: List[dict]
-    history: Optional[list] = []  # Add conversation history
+    history: List[Dict[str, Any]] = []  # Add conversation history
+    image: Optional[str] = None  # Base64 encoded image
 
 class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
-    history: Optional[list] = []  # Add conversation history
+    history: List[Dict[str, Any]] = []  # Add conversation history
+    image: Optional[str] = None  # Base64 encoded image
 
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
@@ -170,7 +173,8 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             stream_generator, products = chat_stream_with_products(
                 user_input=request.message,
                 history=request.history,
-                user_context=user_context
+                user_context=user_context,
+                image_base64=request.image
             )
             chat_time = time.time() - chat_start
             logger.info(f"🤖 Chat processing completed in {chat_time:.3f}s")

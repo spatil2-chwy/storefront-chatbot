@@ -16,6 +16,7 @@ def generate_personalized_greeting(db: Session, customer_key: Optional[int] = No
     - If a pet's birthday is near (±7 days), give a gentle heads-up like "getting ready to celebrate?"
     - If they have multiple pets, mention all by name.
     - Keep tone friendly, playful, and warm.
+    - If possible_next_buys data is available, incorporate it naturally into the greeting.
     """
     
     fallback_greetings = [
@@ -34,11 +35,12 @@ def generate_personalized_greeting(db: Session, customer_key: Optional[int] = No
     
     try:
         user_context = user_svc.get_user_context_for_chat(db, customer_key)
-        if not user_context or not user_context.get("pets"):
+        if not user_context:
             return random.choice(fallback_greetings)
         
-        pets = user_context["pets"]
+        pets = user_context.get("pets", [])
         customer_name = user_context.get("name", "").split()[0] if user_context.get("name") else ""
+        possible_next_buys = user_context.get("possible_next_buys", "")
         
         today = date.today()
         upcoming_birthday_pets = []
@@ -130,6 +132,15 @@ def generate_personalized_greeting(db: Session, customer_key: Optional[int] = No
                 f"Hey{' ' + customer_name if customer_name else ''}! Always happy to help you and {pet_name}{details}. Let me know what you're looking for today!"
             ]
             return random.choice(single_pet_greetings)
+        
+        # Priority 5: Incorporate possible_next_buys if available
+        if possible_next_buys and possible_next_buys.strip():
+            next_buys_greetings = [
+                f"Hi{' ' + customer_name if customer_name else ''}! I noticed you might be interested in {possible_next_buys.lower()}. I'd love to help you find the perfect options for your pets today!",
+                f"Hello{' ' + customer_name if customer_name else ''}! Ready to explore some {possible_next_buys.lower()}? I'm here to help you find exactly what you're looking for.",
+                f"Hey{' ' + customer_name if customer_name else ''}! I see {possible_next_buys.lower()} might be on your shopping list. Let me help you discover some great options!"
+            ]
+            return random.choice(next_buys_greetings)
         
         # Fallback with customer name if available
         if customer_name:

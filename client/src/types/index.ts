@@ -13,6 +13,18 @@ export interface User {
   customer_address_zip?: string;
   customer_address_city?: string;
   customer_address_state?: string;
+
+  // Persona fields
+  persona_summary?: string;
+  preferred_brands?: string[];
+  special_diet?: string[];
+  possible_next_buys?: string;
+  price_range_food?: { min: number; max: number };
+  price_range_treats?: { min: number; max: number };
+  price_range_waste_management?: { min: number; max: number };
+  price_range_beds?: { min: number; max: number };
+  price_range_feeders?: { min: number; max: number };
+  price_range_leashes_and_collars?: { min: number; max: number };
 }
 
 // Pet profile data
@@ -126,6 +138,8 @@ export interface ChatMessage {
   productData?: Product; // For product transition messages to store full product data
   isTransition?: boolean; // For transition messages between contexts
   transitionType?: 'general' | 'product' | 'comparison'; // Type of transition for styling
+  image?: string; // Base64 encoded image data for user messages with images
+  imageUrl?: string; // URL for displaying the image
 }
 
 // Chat context for different conversation modes

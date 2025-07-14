@@ -8,7 +8,8 @@ export const chatApi = {
   async chatbot(
     message: string, 
     history: any[] = [], 
-    customer_key?: number
+    customer_key?: number,
+    image?: string // Base64 encoded image
   ): Promise<{message: string, history: any[], products: any[]}> {
     const startTime = performance.now();
     console.log(`🚀 CHAT API CALL START - Message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
@@ -17,6 +18,7 @@ export const chatApi = {
       message,
       history,
       customer_key,
+      image, // Include image in payload
     };
     
     try {
@@ -46,7 +48,8 @@ export const chatApi = {
     onChunk?: (chunk: string) => void,
     onProducts?: (products: any[]) => void,
     onComplete?: (fullMessage: string, products?: any[]) => void,
-    onError?: (error: string) => void
+    onError?: (error: string) => void,
+    image?: string // Base64 encoded image
   ): Promise<void> {
     const startTime = performance.now();
     console.log(`🌊 STREAM API CALL START - Message: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
@@ -55,6 +58,7 @@ export const chatApi = {
       message,
       history,
       customer_key,
+      image, // Include image in payload
     };
 
     // Use centralized API client for consistency
@@ -148,49 +152,10 @@ export const chatApi = {
       customer_key,
     };
     
-    try {
-      const response = await apiPost<{response: {greeting: string}}>(
-        `/chats/personalized_greeting`, 
-        payload
-      );
-      
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.log(`✅ GREETING API CALL COMPLETE - Duration: ${duration.toFixed(0)}ms`);
-      
-      return response.response;
-    } catch (error) {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.error(`❌ GREETING API CALL FAILED - Duration: ${duration.toFixed(0)}ms - Error:`, error);
-      throw error;
-    }
-  },
-
-  // Combined search and chat
-  async searchAndChat(
-    query: string, 
-    customer_key?: number
-  ): Promise<{searchResults: {products: Product[], reply: string}, chatResponse: {message: string, history: any[], products: any[]}}> {
-    const startTime = performance.now();
-    console.log(`🔍 SEARCH AND CHAT API CALL START - Query: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"`);
-    
-    try {
-      const chatResponse = await this.chatbot(query, [], customer_key);
-
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.log(`✅ SEARCH AND CHAT API CALL COMPLETE - Duration: ${duration.toFixed(0)}ms`);
-
-      return {
-        searchResults: { products: chatResponse.products || [], reply: "" },
-        chatResponse
-      };
-    } catch (error) {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.error(`❌ SEARCH AND CHAT API CALL FAILED - Duration: ${duration.toFixed(0)}ms - Error:`, error);
-      throw error;
-    }
+    const response = await apiPost<{response: {greeting: string}}>(
+      `/chats/personalized_greeting`, 
+      payload
+    );
+    return response.response;
   }
 }; 
