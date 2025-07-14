@@ -181,31 +181,71 @@ class ProductService:
             # Extract should_you_buy_it (it's stored as a string)
             should_you_buy_it = review_synthesis.get("should_you_buy_it", "")
 
-        return Product(
-            id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
-            title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
-            brand=self.safe_str(metadata.get("PURCHASE_BRAND", "Unknown Brand")),
-            price=round(self.safe_float(metadata.get("PRICE", 0.0)), 1),
-            originalPrice=None,  # No separate original price field in database
-            autoshipPrice=round(self.safe_float(metadata.get("AUTOSHIP_PRICE", 0.0)), 1),
-            rating=self.safe_float(metadata.get("RATING_AVG", 0.0)),
-            reviewCount=self.safe_int(metadata.get("RATING_CNT", 0)),
-            image=image,
-            images=images,
-            deal=False,
-            description=self.safe_str(metadata.get("DESCRIPTION_LONG", "")),
-            inStock=True,
-            category_level_1=metadata.get("CATEGORY_LEVEL1", ""),
-            category_level_2=metadata.get("CATEGORY_LEVEL2", ""),
-            keywords=keywords,
-            search_matches=search_matches,  # Add search matches if provided
-            what_customers_love=what_customers_love,
-            what_to_watch_out_for=what_to_watch_out_for,
-            should_you_buy_it=should_you_buy_it,
-            unanswered_faqs=self.safe_str(metadata.get("unanswered_faqs", "")) or None,
-            answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
-        )
-
+    return Product(
+        # ===== CORE PRODUCT INFORMATION =====
+        id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
+        name=metadata.get("NAME", ""),
+        title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
+        brand=self.safe_str(metadata.get("PURCHASE_BRAND", "Unknown Brand")),
+        parent_company=metadata.get("PARENT_COMPANY", ""),
+        
+        # ===== PRICING & DEALS =====
+        price=round(self.safe_float(metadata.get("PRICE", 0.0)), 1),
+        originalPrice=None,  # No separate original price field in database
+        autoshipPrice=round(self.safe_float(metadata.get("AUTOSHIP_PRICE", 0.0)), 1),
+        autoship_save_description=metadata.get("AUTOSHIP_SAVE_DESCRIPTION", ""),
+        deal=False,
+        
+        # ===== RATINGS & REVIEWS =====
+        rating=self.safe_float(metadata.get("RATING_AVG", 0.0)),
+        reviewCount=self.safe_int(metadata.get("RATING_CNT", 0)),
+        
+        # ===== IMAGES & MEDIA =====
+        image=image,
+        images=images,
+        
+        # ===== PRODUCT DESCRIPTION =====
+        description=self.safe_str(metadata.get("DESCRIPTION_LONG", "")),
+        inStock=True,
+        
+        # ===== CATEGORIZATION =====
+        category_level_1=metadata.get("CATEGORY_LEVEL1", ""),
+        category_level_2=metadata.get("CATEGORY_LEVEL2", ""),
+        category_level_3=metadata.get("CATEGORY_LEVEL3", ""),
+        product_type=metadata.get("PRODUCT_TYPE", ""),
+        
+        # ===== PET & LIFE STAGE ATTRIBUTES =====
+        attr_pet_type=metadata.get("ATTR_PET_TYPE", ""),
+        pet_types=metadata.get("PET_TYPES", ""),
+        life_stage=metadata.get("LIFE_STAGE", ""),
+        lifestage=metadata.get("LIFESTAGE", ""),
+        breed_size=metadata.get("BREED_SIZE", ""),
+        
+        # ===== FOOD & DIET ATTRIBUTES =====
+        attr_food_form=metadata.get("ATTR_FOOD_FORM", ""),
+        is_food_flag=metadata.get("IS_FOOD_FLAG", ""),
+        ingredients=metadata.get("INGREDIENTS", ""),
+        
+        # ===== MERCHANDISING CLASSIFICATIONS =====
+        merch_classification1=metadata.get("MERCH_CLASSIFICATION1", ""),
+        merch_classification2=metadata.get("MERCH_CLASSIFICATION2", ""),
+        merch_classification3=metadata.get("MERCH_CLASSIFICATION3", ""),
+        merch_classification4=metadata.get("MERCH_CLASSIFICATION4", ""),
+        
+        # ===== SEARCH & FILTERING =====
+        keywords=keywords,
+        search_matches=search_matches,  # Add search matches if provided
+        
+        # ===== AI-GENERATED CONTENT =====
+        what_customers_love=what_customers_love,
+        what_to_watch_out_for=what_to_watch_out_for,
+        should_you_buy_it=should_you_buy_it,
+        
+        # ===== FAQ CONTENT =====
+        unanswered_faqs=self.safe_str(metadata.get("unanswered_faqs", "")) or None,
+        answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
+    )
+    
     def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result

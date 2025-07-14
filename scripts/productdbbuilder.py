@@ -137,29 +137,96 @@ for row in product_rows:
         clean_name += f" | Brand: {row['PURCHASE_BRAND']}"
 
     metadata = {
+        # Basic Product Info
         "PRODUCT_ID": product_id,
         "PART_NUMBER": part_number,
         "NAME": row["NAME"],
         "CLEAN_NAME": row["CLEAN_NAME"],
-        "PURCHASE_BRAND": row["PURCHASE_BRAND"],
+        
+        # Description
+        "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
+        
+        # Categories
         "CATEGORY_LEVEL1": row["CATEGORY_LEVEL1"],
         "CATEGORY_LEVEL2": row["CATEGORY_LEVEL2"],
         "CATEGORY_LEVEL3": row["CATEGORY_LEVEL3"],
+
+        # Pricing
         "PRICE": row["PRICE"],
         "AUTOSHIP_PRICE": row["AUTOSHIP_PRICE"],
+        
+        # Ratings
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
-        "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
-        "THUMBNAIL": row["THUMBNAIL"] if row["THUMBNAIL"] else images_dict.get(part_number, {}).get("THUMBNAIL", ""),
-        "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
+        
+        # Product Attributes
         "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
         "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
+        "IS_FOOD_FLAG": row["IS_FOOD_FLAG"],
+
+        # Merchandising
+        "MERCH_CLASSIFICATION1": row["MERCH_CLASSIFICATION1"],
+        "MERCH_CLASSIFICATION2": row["MERCH_CLASSIFICATION2"],
+        "MERCH_CLASSIFICATION3": row["MERCH_CLASSIFICATION3"],
+        "MERCH_CLASSIFICATION4": row["MERCH_CLASSIFICATION4"],
+        
+        # Company & Brand
+        "PARENT_COMPANY": row["PARENT_COMPANY"],
+        "PURCHASE_BRAND": row["PURCHASE_BRAND"],
+        
+        # Life Stage & Pet Info
+        "LIFE_STAGE": row["LIFE_STAGE"],
+        "LIFESTAGE": row["LIFESTAGE"],
+        "PET_TYPES": row["PET_TYPES"],
+        "BREED_SIZE": row["BREED_SIZE"],
+        
+        # Product Type
+        "PRODUCT_TYPE": row["PRODUCT_TYPE"],
+
+        # Images
+        "THUMBNAIL": row["THUMBNAIL"] if row["THUMBNAIL"] else images_dict.get(part_number, {}).get("THUMBNAIL", ""),
+        "FULLIMAGE": row["FULLIMAGE"] if row["FULLIMAGE"] else images_dict.get(part_number, {}).get("FULLIMAGE", ""),
+        
+        # Complex Data (JSON Strings)
         "items": json.dumps(items_dict.get(product_id, [])),
         "review_synthesis": json.dumps(review_map.get(part_number, default_synth)),
         "review_synthesis_flag": has_review_synthesis,
+        
+        # FAQs
         "unanswered_faqs": row["Unanswered FAQs"] or "",
         "answered_faqs": row["Answered FAQs"] or "",
     }
+
+    # Add Life Stage tags
+    if row["LIFE_STAGE"]:
+        for tag in map(str.strip, row["LIFE_STAGE"].split(',')):
+            if tag:
+                metadata[f"lifestagetag:{tag}"] = True
+
+    # Add breed size tags
+    if row["BREED_SIZE"]:
+        for tag in map(str.strip, row["BREED_SIZE"].split(',')):
+            if tag:
+                metadata[f"breedtag:{tag}"] = True
+
+    # Add product type tags
+    if row["PRODUCT_TYPE"]:
+        for tag in map(str.strip, row["PRODUCT_TYPE"].split(',')):
+            if tag:
+                metadata[f"producttypetag:{tag}"] = True
+
+    # Add parent company tags
+    if row["PARENT_COMPANY"]:
+        for tag in map(str.strip, row["PARENT_COMPANY"].split(',')):
+            if tag:
+                metadata[f"parentcompanytag:{tag}"] = True
+    
+    # Add Merch Classification tags
+    for merch_level in ["MERCH_CLASSIFICATION1", "MERCH_CLASSIFICATION2", "MERCH_CLASSIFICATION3", "MERCH_CLASSIFICATION4"]:
+        if row[merch_level]:
+            for tag in map(str.strip, row[merch_level].split(',')):
+                if tag:
+                    metadata[f"merchtag:{tag}"] = True
 
     # Add special diet tags
     if row["ATTR_SPECIAL_DIET"]:

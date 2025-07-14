@@ -125,33 +125,73 @@ class SearchMatch(BaseModel):
     field_value: Optional[str] = None  # the actual field value that matched
 
 class ProductBase(BaseModel):
+    # ===== CORE PRODUCT INFORMATION =====
     id: int
+    name: str
     title: str
     brand: str
+    parent_company: Optional[str] = None
+    
+    # ===== PRICING & DEALS =====
     price: float
     originalPrice: Optional[float]
     autoshipPrice: float
+    autoship_save_description: Optional[str] = None
+    deal: Optional[bool]
+    
+    # ===== RATINGS & REVIEWS =====
     rating: float
     reviewCount: int
+    
+    # ===== IMAGES & MEDIA =====
     image: str
     images: list
-    deal: Optional[bool]
+    
+    # ===== PRODUCT DESCRIPTION =====
     description: str
     inStock: Optional[bool]
+    
+    # ===== CATEGORIZATION =====
     category_level_1: str
     category_level_2: str
+    category_level_3: Optional[str] = None
+    product_type: Optional[str] = None
+    
+    # ===== PET & LIFE STAGE ATTRIBUTES =====
+    attr_pet_type: Optional[str] = None
+    pet_types: Optional[str] = None
+    life_stage: Optional[str] = None
+    lifestage: Optional[str] = None
+    breed_size: Optional[str] = None
+    
+    # ===== FOOD & DIET ATTRIBUTES =====
+    attr_food_form: Optional[str] = None
+    is_food_flag: Optional[str] = None
+    ingredients: Optional[str] = None
+    
+    # ===== MERCHANDISING CLASSIFICATIONS =====
+    merch_classification1: Optional[str] = None
+    merch_classification2: Optional[str] = None
+    merch_classification3: Optional[str] = None
+    merch_classification4: Optional[str] = None
+    
+    # ===== SEARCH & FILTERING =====
     keywords: list
     search_matches: Optional[List[SearchMatch]] = None
+    
+    # ===== AI-GENERATED CONTENT =====
     what_customers_love: Optional[str]
     what_to_watch_out_for: Optional[str]
     should_you_buy_it: Optional[str]
+    
+    # ===== FAQ CONTENT =====
     unanswered_faqs: Optional[str] = None
     answered_faqs: Optional[str] = None
 
 class Product(ProductBase):
     class Config:
         from_attributes = True
-
+        
 class SearchResponse(BaseModel):
     products: List[Product]
     reply: str
