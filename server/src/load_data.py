@@ -10,11 +10,11 @@ def main():
     # Updated paths
     BASE = Path(__file__).resolve().parent.parent.parent  # storefront-chatbot
     DATA = BASE / "data" / "core"
-    USERS_TSV = DATA / "customers.tsv"
+    USERS_TSV = DATA / "customers_with_personas.tsv"  # Use enhanced customer data
     PETS_TSV  = DATA / "pet_profiles.tsv"
 
     try:
-        # 1) load users
+        # 1) load users with persona data
         users_df = pd.read_csv(
             USERS_TSV, sep="\t",
             parse_dates=["CUSTOMER_ORDER_FIRST_PLACED_DTTM"]
@@ -29,7 +29,7 @@ def main():
             if_exists="replace",
             index=False
         )
-        print(f"  • Loaded {len(users_df)} users")
+        print(f"  • Loaded {len(users_df)} users with persona data")
 
         # 2) load pets
         pets_df = pd.read_csv(

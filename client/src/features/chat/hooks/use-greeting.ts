@@ -90,7 +90,7 @@ export const useGreeting = () => {
         setSearchGreetingShown(true);
         
         // Add delay so greeting appears before main response
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       } else {
         // Fallback if greeting not preloaded
         try {
@@ -105,7 +105,7 @@ export const useGreeting = () => {
           setSearchGreetingShown(true);
           
           // Add delay so greeting appears before main response
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
           console.error('Failed to fetch personalized search greeting:', error);
         }

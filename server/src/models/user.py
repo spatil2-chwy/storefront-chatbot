@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, String
+from sqlalchemy import Column, Integer, Float, DateTime, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, String as SQLString
 from datetime import datetime
@@ -32,6 +32,18 @@ class User(Base):
     customer_address_zip             = Column(String)
     customer_address_city            = Column(String)
     customer_address_state           = Column(String)
+    
+    # Persona fields
+    persona_summary = Column(Text)
+    preferred_brands = Column(Text)  # JSON string
+    special_diet = Column(Text)  # JSON string
+    possible_next_buys = Column(Text)
+    price_range_food = Column(Text)  # JSON string
+    price_range_treats = Column(Text)  # JSON string
+    price_range_waste_management = Column(Text)  # JSON string
+    price_range_beds = Column(Text)  # JSON string
+    price_range_feeders = Column(Text)  # JSON string
+    price_range_leashes_and_collars = Column(Text)  # JSON string
     
     pets = relationship(
         "PetProfile",

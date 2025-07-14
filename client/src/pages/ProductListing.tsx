@@ -28,7 +28,7 @@ export default function ProductListing() {
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
   const [birthdayPet, setBirthdayPet] = useState<{pet_name: string, image: string} | null>(null);
-  const [preloadedChatResponse, setPreloadedChatResponse] = useState<any>(null);
+
   const contextInitialized = useRef(false);
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -320,39 +320,16 @@ export default function ProductListing() {
     setSelectedMatchFilters([]);
     setMinMatchCount(0);
 
-    // Add timing for performance analysis
-    const searchStartTime = performance.now();
-
     try {
-      // Use the updated searchAndChat method that only calls the chat endpoint
-      const customer_key = user?.customer_key;
-      const { searchResults: searchData, chatResponse } = await chatApi.searchAndChat(trimmedQuery, customer_key);
+      // Instead of making a separate API call, integrate directly with chat widget
+      // This will trigger the chat widget to handle the search query through its streaming flow
+      setChatQuery(trimmedQuery);
+      setShouldOpenChat(true);
       
-      const searchEndTime = performance.now();
-      console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);
-      
-      // Handle search results
-      if (searchData && typeof searchData === 'object' && 'products' in searchData) {
-        setSearchResults(searchData.products);
-        console.log(`📊 Received ${searchData.products.length} products`);
-      } else {
-        // Handle fallback case
-        setSearchResults(Array.isArray(searchData) ? searchData : []);
-      }
-
-      // Handle chat response - set it for the chat widget to use
-      if (chatResponse && chatResponse.message) {
-        setPreloadedChatResponse(chatResponse);
-        setChatQuery(trimmedQuery);
-        setShouldOpenChat(true);
-        console.log(`💬 Chat response: ${chatResponse.message}`);
-        
-        // Reset the trigger after a delay
-        setTimeout(() => {
-          setShouldOpenChat(false);
-          setPreloadedChatResponse(null); // Clear the preloaded response
-        }, 1000);
-      }
+      // Reset the trigger after a delay to ensure ChatWidget has time to process
+      setTimeout(() => {
+        setShouldOpenChat(false);
+      }, 2000);
       
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
@@ -617,9 +594,8 @@ export default function ProductListing() {
       <ChatWidget 
         initialQuery={chatQuery}
         shouldOpen={shouldOpenChat}
-        shouldClearChat={hasSearched}
+        shouldClearChat={false}
         onClearChat={handleClearChat}
-        preloadedChatResponse={preloadedChatResponse}
       />
 
       <ComparisonFooter />

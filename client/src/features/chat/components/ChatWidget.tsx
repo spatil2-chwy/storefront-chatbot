@@ -12,15 +12,13 @@ interface ChatWidgetProps {
   shouldClearChat?: boolean;
   onClearChat?: () => void;
   chatContext?: ChatContext;
-  preloadedChatResponse?: {message: string, history: any[], products: any[]};
 }
 export default function ChatWidget({ 
   initialQuery, 
   shouldOpen, 
   shouldClearChat, 
   onClearChat, 
-  chatContext, 
-  preloadedChatResponse 
+  chatContext
 }: ChatWidgetProps) {
   const { 
     messages, 
@@ -85,20 +83,24 @@ export default function ChatWidget({
         clearMessages();
       }
       if (isLiveAgent) return;
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        content: initialQuery,
-        sender: 'user',
-        timestamp: new Date(),
-      };
-      addMessage(userMessage);
-      setIsLoading(true);
+      
       const generateResponse = async () => {
+        // Show greeting first if it hasn't been shown yet
+        await showInitialSearchGreeting(initialQuery);
+        
+        const userMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `Searching for: ${initialQuery}`,
+          sender: 'user',
+          timestamp: new Date(),
+        };
+        addMessage(userMessage);
+        setIsLoading(true);
         try {
           const chatHistory = messages.map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'assistant',
             content: msg.content
-          })).concat({ role: 'user', content: initialQuery });
+          }));
           const responseId = (Date.now() + 1).toString();
           const streamingMessage: ChatMessage = {
             id: responseId,
@@ -152,7 +154,7 @@ export default function ChatWidget({
       };
       generateResponse();
     }
-  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, messages, user, preloadedChatResponse, updateMessage, setSearchResults, setCurrentSearchQuery, setHasSearched]);
+  }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, messages, user, updateMessage, setSearchResults, setCurrentSearchQuery, setHasSearched, showInitialSearchGreeting]);
   // Check if user is near the bottom of the messages container
   const isNearBottom = () => {
     if (!messagesContainerRef.current) return true;
@@ -220,7 +222,7 @@ export default function ChatWidget({
       const chatHistory = messages.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.content
-      })).concat({ role: 'user', content: messageToSend });
+      }));
       const responseId = (Date.now() + 1).toString();
       const streamingMessage: ChatMessage = {
         id: responseId,
