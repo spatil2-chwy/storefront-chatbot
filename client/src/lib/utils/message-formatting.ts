@@ -149,8 +149,9 @@ export const formatMessageContent = (content: string): string => {
 
 // Extract tags from content for quick response buttons
 export const extractQuickResponseTags = (content: string): { cleanContent: string; tags: string[] } => {
-  // Regular expression to match tags like <Wet><Dry><Senior> at the end of the message
-  const tagRegex = /(<[^>]+>)+\s*$/;
+  // Regular expression to match tags like <Wet><Dry><Senior> or <Wet> <Dry> <Senior> at the end of the message
+  // Allow for optional spaces between tags
+  const tagRegex = /(<[^>]+>(\s*<[^>]+>)*)\s*$/;
   const match = content.match(tagRegex);
   
   if (!match) {
@@ -158,7 +159,7 @@ export const extractQuickResponseTags = (content: string): { cleanContent: strin
   }
   
   // Extract individual tags
-  const tagString = match[0];
+  const tagString = match[1];
   const individualTagRegex = /<([^>]+)>/g;
   const tags: string[] = [];
   let tagMatch;

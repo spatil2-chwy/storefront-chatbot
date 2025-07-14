@@ -153,6 +153,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     Returns:
         list: A list of products
     """
+    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}, special diet tags: {special_diet_tags}")
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects

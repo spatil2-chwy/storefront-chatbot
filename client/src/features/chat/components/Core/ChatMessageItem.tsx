@@ -338,7 +338,15 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 <div>
                   {message.sender === 'ai' ? (
                     (() => {
+                      // Debug: Log the original content
+                      console.log('Original message content:', message.content);
+                      
                       const { cleanContent, tags } = extractQuickResponseTags(message.content);
+                      
+                      // Debug: Log extraction results
+                      console.log('Extracted tags:', tags);
+                      console.log('Clean content:', cleanContent);
+                      
                       return (
                         <>
                           <div className="text-sm">
@@ -376,4 +384,4 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       )}
     </div>
   );
-}; 
+};

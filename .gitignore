@@ -25,3 +25,5 @@ metadata_filters_cache.json
 
 server/logs/
 */__pycache__/
+
+scripts/

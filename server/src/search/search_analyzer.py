@@ -9,6 +9,10 @@ from src.models.product import SearchMatch
 
 logger = logging.getLogger(__name__)
 
+import chromadb
+client = chromadb.PersistentClient(path="../scripts/chroma_db")
+collection = client.get_collection(name="review_synthesis")
+
 class SearchAnalyzer:
     def __init__(self):
         self.metadata_filters = self._build_metadata_filters()
@@ -51,9 +55,9 @@ class SearchAnalyzer:
     def _discover_from_database(self) -> Dict[str, Dict[str, Set[str]]]:
         """Discover all searchable criteria from product metadata"""
         try:
-            import chromadb
-            client = chromadb.PersistentClient(path="../scripts/chroma_db")
-            collection = client.get_collection(name="products")
+            # import chromadb
+            # client = chromadb.PersistentClient(path="../scripts/chroma_db")
+            # collection = client.get_collection(name="products")
             
             # Sample products for analysis
             results = collection.get(limit=10000)
