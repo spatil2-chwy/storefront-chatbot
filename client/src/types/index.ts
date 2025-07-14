@@ -98,6 +98,8 @@ export interface ChatMessage {
   productData?: Product; // For product transition messages to store full product data
   isTransition?: boolean; // For transition messages between contexts
   transitionType?: 'general' | 'product' | 'comparison'; // Type of transition for styling
+  image?: string; // Base64 encoded image data for user messages with images
+  imageUrl?: string; // URL for displaying the image
 }
 
 // Chat context for different conversation modes

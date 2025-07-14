@@ -29,20 +29,22 @@ class ChatRequest(BaseModel):
     message: str
     history: list
     customer_key: Optional[int] = None
+    image: Optional[str] = None  # Base64 encoded image
 
 class ComparisonRequest(BaseModel):
     message: str
     products: List[dict]
     history: List[Dict[str, Any]] = []  # Add conversation history
+    image: Optional[str] = None  # Base64 encoded image
 
 class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
     history: List[Dict[str, Any]] = []  # Add conversation history
+    image: Optional[str] = None  # Base64 encoded image
 
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
-
 
 @router.post("/compare")
 async def compare_products_endpoint(request: ComparisonRequest):
@@ -102,7 +104,8 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             stream_generator, products = chat_stream_with_products(
                 user_input=request.message,
                 history=request.history,
-                user_context=user_context
+                user_context=user_context,
+                image_base64=request.image
             )
             
             print(f"Streaming response for: {request.message}")

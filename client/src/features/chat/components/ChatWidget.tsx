@@ -50,6 +50,7 @@ export default function ChatWidget({
   const [isStreaming, setIsStreaming] = useState(false); // Track if currently streaming
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [userHasScrolled, setUserHasScrolled] = useState(false); // Track if user has manually scrolled
+  const [selectedImage, setSelectedImage] = useState<File | null>(null); // Track selected image for upload
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null); // Ref for the messages container
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
@@ -136,7 +137,8 @@ export default function ChatWidget({
               updateMessage(responseId, (msg) => ({ ...msg, content: "Sorry, I'm having trouble processing your request right now." }));
               setIsStreaming(false);
               setStreamingMessageId(null);
-            }
+            },
+            undefined // No image for initial query
           );
         } catch (error) {
           const errorMessage: ChatMessage = {
@@ -208,21 +210,76 @@ export default function ChatWidget({
   };
   const sendMessage = async (messageText?: string) => {
     const messageToSend = messageText || inputValue;
-    if (!messageToSend.trim() || isLiveAgent) return;
+    if ((!messageToSend.trim() && !selectedImage) || isLiveAgent) return;
+    
     setInputValue('');
+    
+    let imageBase64: string | undefined;
+    let imageUrl: string | undefined;
+    
+    // Handle image conversion if present
+    if (selectedImage) {
+      try {
+        imageBase64 = await convertImageToBase64(selectedImage);
+        imageUrl = URL.createObjectURL(selectedImage);
+      } catch (error) {
+        console.error('Error converting image to base64:', error);
+        return;
+      }
+    }
+    
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: messageToSend,
       sender: 'user',
       timestamp: new Date(),
+      image: imageBase64,
+      imageUrl: imageUrl,
     };
+    
     addMessage(userMessage);
+    setSelectedImage(null); // Clear selected image after sending
     setIsLoading(true);
     try {
-      const chatHistory = messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));
+      const chatHistory = messages.map(msg => {
+        if (msg.sender === 'user' && msg.image) {
+          // Format message with image for LLM
+          return {
+            role: 'user',
+            content: [
+              { type: "input_text", text: msg.content },
+              {
+                type: "input_image",
+                image_url: `data:image/jpeg;base64,${msg.image}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          };
+        }
+      });
+      
+      // Add current message to history if it has an image
+      if (imageBase64) {
+        chatHistory.push({
+          role: 'user',
+          content: [
+            { type: "input_text", text: messageToSend },
+            {
+              type: "input_image", 
+              image_url: `data:image/jpeg;base64,${imageBase64}`,
+            },
+          ],
+        });
+      } else {
+        chatHistory.push({
+          role: 'user',
+          content: messageToSend
+        });
+      }
       const responseId = (Date.now() + 1).toString();
       const streamingMessage: ChatMessage = {
         id: responseId,
@@ -237,7 +294,7 @@ export default function ChatWidget({
       // Route to the correct endpoint based on context
       if (isInComparisonMode && comparingProducts.length >= 2) {
         // Use compare endpoint for comparison mode
-        const response = await productsApi.compareProducts(messageToSend, comparingProducts, chatHistory);
+        const response = await productsApi.compareProducts(messageToSend, comparingProducts, chatHistory, imageBase64);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -248,7 +305,7 @@ export default function ChatWidget({
         setStreamingMessageId(null);
       } else if (currentContext.type === 'product' && currentContext.product) {
         // Use ask about product endpoint for product context
-        const response = await productsApi.askAboutProduct(messageToSend, currentContext.product, chatHistory);
+        const response = await productsApi.askAboutProduct(messageToSend, currentContext.product, chatHistory, imageBase64);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -258,7 +315,7 @@ export default function ChatWidget({
         setStreamingMessageId(null);
       } else if (currentContext.type === 'comparison' && currentContext.products) {
         // Use compare endpoint for comparison context
-        const response = await productsApi.compareProducts(messageToSend, currentContext.products, chatHistory);
+        const response = await productsApi.compareProducts(messageToSend, currentContext.products, chatHistory, imageBase64);
         updateMessage(responseId, (msg) => ({ 
           ...msg, 
           content: response,
@@ -293,7 +350,8 @@ export default function ChatWidget({
             updateMessage(responseId, (msg) => ({ ...msg, content: "Sorry, I'm having trouble processing your request right now." }));
             setIsStreaming(false);
             setStreamingMessageId(null);
-          }
+          },
+          imageBase64 // Pass image if present
         );
       }
     } catch (error) {
@@ -326,6 +384,7 @@ export default function ChatWidget({
   const handleClearChat = () => {
     clearMessages();
     setInputValue('');
+    setSelectedImage(null);
     resetProcessedQuery();
     resetComparisonTracker();
     resetGreeting();
@@ -346,6 +405,33 @@ export default function ChatWidget({
 
   const handleExitProductChat = () => {
     handleExitToGeneralChat();
+  };
+
+  // Image handling functions
+  const handleImageUpload = (file: File) => {
+    setSelectedImage(file);
+  };
+
+  const handleImageRemove = () => {
+    setSelectedImage(null);
+  };
+
+  // Convert image to base64
+  const convertImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result && typeof reader.result === 'string') {
+          // Remove the data:image/jpeg;base64, prefix to get just the base64 string
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        } else {
+          reject(new Error('Failed to convert image to base64'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   // Hide chat when product modal is active
@@ -379,6 +465,9 @@ export default function ChatWidget({
       onScroll={handleScroll}
       scrollContainerRef={messagesContainerRef}
       onTagClick={handleTagClick}
+      onImageUpload={handleImageUpload}
+      selectedImage={selectedImage}
+      onImageRemove={handleImageRemove}
     />
   );
 }

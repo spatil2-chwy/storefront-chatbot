@@ -149,7 +149,7 @@ def format_products_for_llm(products, limit=10):
 
 
 
-def chat_stream_with_products(user_input: str, history: list, user_context: str = ""):
+def chat_stream_with_products(user_input: str, history: list, user_context: str = "", image_base64: Optional[str] = None):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
     Only streams the final response, not during function calls.
@@ -164,8 +164,23 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     if user_context:
         system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Enhance user query with brand preferences and dietary needs if applicable. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
     
+    # Create user message with optional image
+    if image_base64:
+        user_message = {
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": user_input},
+                {
+                    "type": "input_image",
+                    "image_url": f"data:image/jpeg;base64,{image_base64}",
+                },
+            ],
+        }
+    else:
+        user_message = {"role": "user", "content": user_input}
+    
     full_history = (
-        [system_msg] + history + [{"role": "user", "content": user_input}]
+        [system_msg] + history + [user_message]
     )
     
     # Step 1: Get model response (non-streaming for function call detection)
