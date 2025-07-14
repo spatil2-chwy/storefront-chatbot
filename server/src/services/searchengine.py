@@ -66,7 +66,7 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
 
 @lru_cache(maxsize=128)
-def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple, special_diet_tags: tuple):
+def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), special_diet_tags=()):
     logger.debug(f"Query cache info: {query_products.cache_info()}")
     start_time = time.time()
     where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)

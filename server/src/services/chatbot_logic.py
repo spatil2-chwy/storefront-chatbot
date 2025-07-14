@@ -159,7 +159,7 @@ At the **end of your message**, include **only tags directly related to suggesti
 
 MODEL = "gpt-4o"
 
-def search_products(query: str, required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list):
+def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), special_diet_tags=()):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -169,6 +169,7 @@ def search_products(query: str, required_ingredients: list, excluded_ingredients
     Returns:
         list: A list of products
     """
+    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}, special diet tags: {special_diet_tags}")
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
