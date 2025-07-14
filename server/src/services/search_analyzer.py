@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 import chromadb
 client = chromadb.PersistentClient(path="../scripts/chroma_db")
-collection = client.get_collection(name="products")
+collection = client.get_collection(name="review_synthesis")
 
 class SearchAnalyzer:
     def __init__(self):
