@@ -13,6 +13,7 @@ __pycache__
 data/chromadb/results.jsonl
 data/chromadb/all_chewy_products_with_qanda.csv
 data/chromadb/chroma_db
+scripts/chroma_db/
 server/src/seed.db
 data/chromadb/all_wp_posts.json
 data/chromadb/metadata_filters_cache.json
@@ -21,3 +22,6 @@ all_chewy_products_with_qanda.csv
 chroma_db
 all_wp_posts.json
 metadata_filters_cache.json
+
+server/logs/
+*/__pycache__/

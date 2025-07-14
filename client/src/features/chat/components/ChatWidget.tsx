@@ -334,6 +334,11 @@ export default function ChatWidget({
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
   };
+
+  const handleTagClick = (tag: string) => {
+    sendMessage(tag);
+  };
+
   const handleClearComparison = () => {
     clearComparison();
     resetComparisonTracker();
@@ -373,6 +378,7 @@ export default function ChatWidget({
       userHasScrolled={userHasScrolled}
       onScroll={handleScroll}
       scrollContainerRef={messagesContainerRef}
+      onTagClick={handleTagClick}
     />
   );
 }

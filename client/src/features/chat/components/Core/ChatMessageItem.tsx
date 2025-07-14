@@ -3,7 +3,8 @@ import { User, Bot, ShoppingCart, X, Star, Package, LogOut } from 'lucide-react'
 import { Button } from '../../../../ui/Buttons/Button';
 import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
-import { getTransitionStyling, isTransitionMessage, formatMessageContent } from "../../../../lib/utils";
+import { getTransitionStyling, isTransitionMessage, formatMessageContent, extractQuickResponseTags } from "../../../../lib/utils";
+import { QuickResponseButtons } from './QuickResponseButtons';
 
 // Safe HTML renderer component
 const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {
@@ -36,6 +37,7 @@ interface ChatMessageItemProps {
   isMobile?: boolean;
   isStreaming?: boolean;
   showExitButton?: boolean;
+  onTagClick?: (tag: string) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -46,6 +48,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   isMobile = false,
   isStreaming = false,
   showExitButton = false,
+  onTagClick,
 }) => {
   const isUser = message.sender === 'user';
   const isTransition = isTransitionMessage(message);
@@ -332,14 +335,31 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   <span className="text-sm">Tylee is typing...</span>
                 </div>
               ) : (
-                <div className="text-sm">
+                <div>
                   {message.sender === 'ai' ? (
-                    <SafeHtmlRenderer 
-                      html={formatMessageContent(message.content)} 
-                      className="prose prose-sm max-w-none"
-                    />
+                    (() => {
+                      const { cleanContent, tags } = extractQuickResponseTags(message.content);
+                      return (
+                        <>
+                          <div className="text-sm">
+                            <SafeHtmlRenderer 
+                              html={formatMessageContent(cleanContent)} 
+                              className="prose prose-sm max-w-none"
+                            />
+                          </div>
+                          {tags.length > 0 && onTagClick && (
+                            <QuickResponseButtons 
+                              tags={tags} 
+                              onTagClick={onTagClick} 
+                            />
+                          )}
+                        </>
+                      );
+                    })()
                   ) : (
-                    message.content
+                    <div className="text-sm">
+                      {message.content}
+                    </div>
                   )}
                 </div>
               )}

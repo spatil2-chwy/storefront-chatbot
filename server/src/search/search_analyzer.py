@@ -2,14 +2,17 @@ import re
 import json
 import os
 import time
+import logging
 from typing import List, Dict, Set
 from collections import Counter
 from src.models.product import SearchMatch
 
+logger = logging.getLogger(__name__)
+
 class SearchAnalyzer:
     def __init__(self):
         self.metadata_filters = self._build_metadata_filters()
-        print(f"Search Analyzer initialized with {sum(len(v) for v in self.metadata_filters.values())} discoverable criteria")
+        logger.info(f"Search Analyzer initialized with {sum(len(v) for v in self.metadata_filters.values())} discoverable criteria")
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
         """Build search filters from actual product metadata"""
@@ -187,6 +190,8 @@ class SearchAnalyzer:
         query_lower = query.lower().strip()
         query_words = set(query_lower.split())
         
+        print(f"🔍 Analyzing query: '{query}' -> words: {query_words}")
+        
         found_criteria = {
             'Brands': [],
             'Categories': [],
@@ -233,7 +238,8 @@ class SearchAnalyzer:
         result = {k: v for k, v in found_criteria.items() if v}
         
         extraction_time = time.time() - start_time
-        print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
+        print(f"📋 Found criteria: {result}")
+        # print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result
 

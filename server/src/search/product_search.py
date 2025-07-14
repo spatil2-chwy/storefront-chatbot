@@ -2,8 +2,13 @@ import chromadb
 from functools import lru_cache
 import time
 import math
+import logging
 from typing import cast, Any
 
+# Initialize logging first
+from src.utils.logging_config import setup_logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 # client = chromadb.HttpClient(host='localhost', port=8001)
@@ -53,15 +58,15 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
 @lru_cache(maxsize=128)
 def query_products(query: str, required_ingredients: tuple, excluded_ingredients: tuple, category_level_1: tuple, category_level_2: tuple):
-    print(query_products.cache_info())
+    logger.debug(f"Query cache info: {query_products.cache_info()}")
     start_time = time.time()
     where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
     if where_clause == {}:
         where_clause = None
-    print(f"Where clause built in {time.time() - start_time:.4f} seconds") 
+    logger.debug(f"Where clause built in {time.time() - start_time:.4f} seconds") 
     
     query_start = time.time()
-    print(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
+    logger.debug(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
     
     db_start = time.time()
     results = review_collection.query(
@@ -73,7 +78,7 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
     
     # Handle case where no results are returned
     if not results or not results['metadatas'] or not results['metadatas'][0]:
-        print("No results found in database query")
+        logger.warning("No results found in database query")
         return {
             'metadatas': [[]],
             'documents': [[]],
@@ -81,7 +86,7 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
             'distances': [[]],
         }
     
-    print(f"Number of results: {len(results['metadatas'][0])}")
+    logger.debug(f"Number of results: {len(results['metadatas'][0])}")
     
     # Filter out excluded ingredients
     if excluded_ingredients:
@@ -128,9 +133,9 @@ def query_products(query: str, required_ingredients: tuple, excluded_ingredients
             'distances': [results['distances'][0] if results['distances'] else []],
         }
 
-    print(f"Database query completed in {time.time() - db_start:.4f} seconds")
+    logger.debug(f"Database query completed in {time.time() - db_start:.4f} seconds")
     
-    print(f"Total query_products time: {time.time() - start_time:.4f} seconds")
+    logger.info(f"Total query_products time: {time.time() - start_time:.4f} seconds")
     return results
 
 

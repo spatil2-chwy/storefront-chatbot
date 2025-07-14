@@ -87,11 +87,11 @@ export const formatMessageContent = (content: string): string => {
           processedLines.push('</ul>');
           inTaskList = false;
         }
-        processedLines.push('<ol class="list-decimal list-inside space-y-1 my-2">');
+        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-2 ml-4">');
         inList = true;
         listType = 'ol';
       }
-      processedLines.push(`<li class="ml-2">${numberListMatch[2]}</li>`);
+      processedLines.push(`<li class="pl-2">${numberListMatch[2]}</li>`);
       return;
     }
     
@@ -147,9 +147,35 @@ export const formatMessageContent = (content: string): string => {
   return formattedContent;
 };
 
+// Extract tags from content for quick response buttons
+export const extractQuickResponseTags = (content: string): { cleanContent: string; tags: string[] } => {
+  // Regular expression to match tags like <Wet><Dry><Senior> at the end of the message
+  const tagRegex = /(<[^>]+>)+\s*$/;
+  const match = content.match(tagRegex);
+  
+  if (!match) {
+    return { cleanContent: content, tags: [] };
+  }
+  
+  // Extract individual tags
+  const tagString = match[0];
+  const individualTagRegex = /<([^>]+)>/g;
+  const tags: string[] = [];
+  let tagMatch;
+  
+  while ((tagMatch = individualTagRegex.exec(tagString)) !== null) {
+    tags.push(tagMatch[1].trim());
+  }
+  
+  // Remove tags from content
+  const cleanContent = content.replace(tagRegex, '').trim();
+  
+  return { cleanContent, tags };
+};
+
 // Escape HTML in code blocks
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
-} 
+}
