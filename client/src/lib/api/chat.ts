@@ -4,25 +4,6 @@ import { Product } from '../../types';
 import { apiPost, apiRequest } from './client';
 
 export const chatApi = {
-  // Send message to chatbot
-  async chatbot(
-    message: string, 
-    history: any[] = [], 
-    customer_key?: number
-  ): Promise<{message: string, history: any[], products: any[]}> {
-    const payload = {
-      message,
-      history,
-      customer_key,
-    };
-    
-    const response = await apiPost<{response: {message: string, history: any[], products: any[]}}>(
-      `/chats/chatbot`, 
-      payload
-    );
-    return response.response;
-  },
-
   // Stream chatbot responses in real-time
   async chatbotStream(
     message: string, 
