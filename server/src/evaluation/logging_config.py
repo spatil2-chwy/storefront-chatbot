@@ -29,7 +29,7 @@ def setup_logging():
     
     return logging.getLogger(__name__)
 
-def get_logger(name: str = None):
+def get_logger(name: str):
     """Get a logger instance with the given name"""
     return logging.getLogger(name or __name__)
 

@@ -8,7 +8,9 @@ from src.config.openai_loader import get_openai_client
 from src.chat.prompts import function_call_system_prompt, tools
 
 # Initialize logging first
-from src.utils.logging_config import setup_logging
+from src.evaluation.logging_config import setup_logging
+from src.evaluation.evaluation_logger import evaluation_logger
+from src.evaluation.streaming_capture import capture_streaming_response
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -35,12 +37,15 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
+    product_search_start = time.time()
     results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
-    print(f"Query executed in {time.time() - start:.4f} seconds")
+    product_search_time = time.time() - product_search_start
+    print(f"Query executed in {product_search_time:.4f} seconds")
     
     ranking_start = time.time()
     ranked_products = rank_products(results)
-    print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
+    ranking_time = time.time() - ranking_start
+    print(f"Ranking completed in {ranking_time:.4f} seconds")
     
     if not ranked_products:
         return []
@@ -57,7 +62,17 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     conversion_time = time.time() - conversion_start
     print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
 
-    print(f"Total search_products time: {time.time() - start:.4f} seconds")
+    total_tool_time = time.time() - start
+    print(f"Total search_products time: {total_tool_time:.4f} seconds")
+    
+    # Log detailed timing breakdown
+    evaluation_logger.log_timing(
+        tool_execution_time=total_tool_time,
+        product_search_time=product_search_time,
+        ranking_time=ranking_time,
+        conversion_time=conversion_time
+    )
+    
     return products
 
 # Initialize ArticleService instance
@@ -75,7 +90,11 @@ def search_articles(query: str):
     # Search for relevant articles
     articles = article_service.search_articles(query, n_results=3)
     
-    print(f"Article search completed in {time.time() - start:.4f} seconds")
+    article_search_time = time.time() - start
+    print(f"Article search completed in {article_search_time:.4f} seconds")
+    
+    # Log article search timing
+    evaluation_logger.log_timing(article_search_time=article_search_time)
     
     if not articles:
         return "No relevant articles found for this topic."
@@ -159,6 +178,13 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     print(f"User context: {user_context}")
     logger.info(f"Streaming chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
+    # Start evaluation logging
+    _ = evaluation_logger.start_new_query(
+        raw_user_query=user_input,
+        user_context=user_context,
+        has_image=bool(image_base64)
+    )
+    
     # Create system message with user context if provided
     system_msg = function_call_system_prompt.copy()
     if user_context:
@@ -191,8 +217,14 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         tools=tools,
         temperature=0.1,
     )   
-    llm_time = time.time() - llm_start
-    logger.info(f"Streaming LLM initial response received in {llm_time:.3f}s")
+    function_call_time = time.time() - llm_start
+    logger.info(f"Streaming LLM initial response received in {function_call_time:.3f}s")
+    
+    # Log LLM timing
+    evaluation_logger.log_timing(function_call_time=function_call_time)
+    
+    # Log chat history
+    evaluation_logger.log_chat_history(full_history)
     
     products = []
     assistant_reply = ""
@@ -215,7 +247,14 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         def simple_generator():
             yield assistant_reply
         
-        return simple_generator(), products
+        # Capture the streaming response for evaluation
+        def on_simple_complete(response: str, response_time: float):
+            total_time = time.time() - start_time
+            evaluation_logger.log_assistant_response(response)
+            evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
+            evaluation_logger.save_log()
+        
+        return capture_streaming_response(simple_generator(), on_simple_complete), products
     else:
         function_start = time.time()
         logger.info(f"Streaming function calls detected after {function_start - start_time:.3f}s")
@@ -255,6 +294,12 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     
                     logger.info(f"Streaming article search completed in {tool_exec_time:.3f}s")
                     
+                    # Log tool call with actual execution time
+                    evaluation_logger.log_tool_call(tool_call.name, args, tool_exec_time)
+                    
+                    # Log article results and timing
+                    evaluation_logger.log_timing(article_search_time=tool_exec_time)
+                    
                     # Add function result to history
                     full_history.append({
                         "type": "function_call_output",
@@ -288,12 +333,30 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                             logger.error(f"Error in article streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
-                    return article_generator(), products
+                    # Capture the streaming response for evaluation
+                    def on_article_complete(response: str, response_time: float):
+                        total_time = time.time() - start_time
+                        evaluation_logger.log_assistant_response(response)
+                        evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
+                        evaluation_logger.save_log()
+                    
+                    return capture_streaming_response(article_generator(), on_article_complete), products
                     
                 else:
                     products = call_function(tool_call.name, args)
                     tool_exec_time = time.time() - tool_exec_start
                     logger.info(f"Streaming product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
+                    
+                    # Log tool call info (timing is already logged by search_products function)
+                    if evaluation_logger.current_log:
+                        tool_call_data = {
+                            "tool_name": tool_call.name,
+                            "arguments": args,
+                        }
+                        evaluation_logger.current_log.tool_calls.append(tool_call_data)
+                    
+                    # Log product results
+                    evaluation_logger.log_product_results(products, limit=10)
                     
                     # Add function result to history
                     full_history.append({
@@ -307,6 +370,9 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     product_context = format_products_for_llm(products)
                     context_time = time.time() - context_start
                     logger.debug(f"Streaming product context formatting took {context_time:.3f}s")
+                    
+                    # Log context formatting time
+                    evaluation_logger.log_timing(context_formatting_time=context_time)
                     
                     full_history.append({
                         "role": "user",
@@ -348,12 +414,16 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                             logger.error(f"Error in product streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
-                    return product_generator(), products
+                    # Capture the streaming response for evaluation
+                    def on_product_complete(response: str, response_time: float):
+                        total_time = time.time() - start_time
+                        evaluation_logger.log_assistant_response(response)
+                        evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
+                        evaluation_logger.save_log()
+                    
+                    return capture_streaming_response(product_generator(), on_product_complete), products
     
-    total_time = time.time() - start_time
-    logger.info(f"Streaming chat completed in {total_time:.3f}s")
-    
-    # Fallback generator
+    # Fallback generator (this should never be reached in normal operation)
     def fallback_generator():
         yield "Sorry, I couldn't process your request."
     

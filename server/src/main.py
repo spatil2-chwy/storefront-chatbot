@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import engine, Base
 from src.routers.routes import router
-from src.utils.logging_config import setup_logging
+from src.evaluation.logging_config import setup_logging
 import logging
 
 # Initialize logging
