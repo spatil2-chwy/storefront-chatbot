@@ -6,8 +6,8 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "data/chromadb/all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "data/chromadb/results.jsonl"
+CSV_PATH = "../data/chromadb/all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "../data/chromadb/results.jsonl"
 
 COLLECTION_NAME = "products"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -17,6 +17,17 @@ BATCH_SIZE = 1000
 # === Step 1: Load Data ===
 df = pd.read_csv(
     CSV_PATH,
+    header=None,  # No header row in CSV
+    names=[
+        "PRODUCT_ID", "PART_NUMBER", "PARENT_ID", "PARENT_PART_NUMBER", "TYPE", "NAME", 
+        "DESCRIPTION_LONG", "CATEGORY_LEVEL1", "CATEGORY_LEVEL2", "CATEGORY_LEVEL3", 
+        "PRICE", "RATING_AVG", "RATING_CNT", "ATTR_PET_TYPE", "ATTR_FOOD_FORM", 
+        "ATTR_SPECIAL_DIET", "IS_FOOD_FLAG", "INGREDIENTS", "MERCH_CLASSIFICATION1", 
+        "MERCH_CLASSIFICATION2", "PARENT_COMPANY", "LIFE_STAGE", "MERCH_CLASSIFICATION3", 
+        "AUTOSHIP_PRICE", "AUTOSHIP_SAVE_DESCRIPTION", "PRODUCT_TYPE", "BREED_SIZE", 
+        "LIFESTAGE", "PET_TYPES", "FULLIMAGE", "THUMBNAIL", "MERCH_CLASSIFICATION4", 
+        "PURCHASE_BRAND", "CLEAN_NAME", "Unanswered FAQs", "Answered FAQs"
+    ],
     dtype={
         "PRODUCT_ID": str,
         "PART_NUMBER": str,
@@ -198,55 +209,55 @@ for row in product_rows:
     }
 
     # Add Life Stage tags
-    if row["LIFE_STAGE"]:
-        for tag in map(str.strip, row["LIFE_STAGE"].split(',')):
+    if row["LIFE_STAGE"] and pd.notna(row["LIFE_STAGE"]):
+        for tag in map(str.strip, str(row["LIFE_STAGE"]).split(',')):
             if tag:
                 metadata[f"lifestagetag:{tag}"] = True
 
     # Add breed size tags
-    if row["BREED_SIZE"]:
-        for tag in map(str.strip, row["BREED_SIZE"].split(',')):
+    if row["BREED_SIZE"] and pd.notna(row["BREED_SIZE"]):
+        for tag in map(str.strip, str(row["BREED_SIZE"]).split(',')):
             if tag:
                 metadata[f"breedtag:{tag}"] = True
 
     # Add product type tags
-    if row["PRODUCT_TYPE"]:
-        for tag in map(str.strip, row["PRODUCT_TYPE"].split(',')):
+    if row["PRODUCT_TYPE"] and pd.notna(row["PRODUCT_TYPE"]):
+        for tag in map(str.strip, str(row["PRODUCT_TYPE"]).split(',')):
             if tag:
                 metadata[f"producttypetag:{tag}"] = True
 
     # Add parent company tags
-    if row["PARENT_COMPANY"]:
-        for tag in map(str.strip, row["PARENT_COMPANY"].split(',')):
+    if row["PARENT_COMPANY"] and pd.notna(row["PARENT_COMPANY"]):
+        for tag in map(str.strip, str(row["PARENT_COMPANY"]).split(',')):
             if tag:
                 metadata[f"parentcompanytag:{tag}"] = True
-    
+
     # Add Merch Classification tags
     for merch_level in ["MERCH_CLASSIFICATION1", "MERCH_CLASSIFICATION2", "MERCH_CLASSIFICATION3", "MERCH_CLASSIFICATION4"]:
-        if row[merch_level]:
-            for tag in map(str.strip, row[merch_level].split(',')):
+        if row[merch_level] and pd.notna(row[merch_level]):
+            for tag in map(str.strip, str(row[merch_level]).split(',')):
                 if tag:
                     metadata[f"merchtag:{tag}"] = True
 
     # Add special diet tags
-    if row["ATTR_SPECIAL_DIET"]:
-        for tag in map(str.strip, row["ATTR_SPECIAL_DIET"].split(',')):
+    if row["ATTR_SPECIAL_DIET"] and pd.notna(row["ATTR_SPECIAL_DIET"]):
+        for tag in map(str.strip, str(row["ATTR_SPECIAL_DIET"]).split(',')):
             if tag:
                 metadata[f"specialdiettag:{tag}"] = True
 
     # Add ingredient tags
-    if row["INGREDIENTS"]:
-        for tag in map(str.strip, row["INGREDIENTS"].split(',')):
+    if row["INGREDIENTS"] and pd.notna(row["INGREDIENTS"]):
+        for tag in map(str.strip, str(row["INGREDIENTS"]).split(',')):
             if tag:
                 metadata[f"ingredienttag:{tag.lower()}"] = True
 
     # Add category tags
-    if row["CATEGORY_LEVEL1"]:
-        tag = row["CATEGORY_LEVEL1"].strip()
+    if row["CATEGORY_LEVEL1"] and pd.notna(row["CATEGORY_LEVEL1"]):
+        tag = str(row["CATEGORY_LEVEL1"]).strip()
         if tag:
             metadata[f"categorytag1:{tag}"] = True
-    if row["CATEGORY_LEVEL2"]:
-        tag = row["CATEGORY_LEVEL2"].strip()
+    if row["CATEGORY_LEVEL2"] and pd.notna(row["CATEGORY_LEVEL2"]):
+        tag = str(row["CATEGORY_LEVEL2"]).strip()
         if tag:
             metadata[f"categorytag2:{tag}"] = True
 
