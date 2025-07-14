@@ -9,7 +9,7 @@ from src.schemas import ChatMessage as ChatSchema
 from src.models.chat import ChatMessage
 from src.services.chat_service import ChatService
 from src.services.user_service import UserService
-from src.chat.chatbot_engine import chat, chat_stream_with_products
+from src.chat.chatbot_engine import chat_stream_with_products
 from src.chat.chat_modes import compare_products, ask_about_product
 import json
 
@@ -43,28 +43,6 @@ class AskAboutProductRequest(BaseModel):
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
 
-@router.post("/chatbot")
-async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
-    # Main chatbot endpoint - processes user messages with AI
-    user_context = ""
-    
-    # Get user context if customer_key is provided
-    if request.customer_key:
-        try:
-            user_context_data = user_svc.get_user_context_for_chat(db, request.customer_key)
-            if user_context_data:
-                user_context = user_svc.format_pet_context_for_ai(user_context_data)
-                # print(f"User context for customer {request.customer_key}:\n{user_context}")
-        except Exception as e:
-            print(f"Error getting user context for customer {request.customer_key}: {e}")
-    
-    reply = chat(
-        user_input=request.message,
-        history=request.history,
-        user_context=user_context
-    )
-
-    return {"response": reply}
 
 @router.post("/compare")
 async def compare_products_endpoint(request: ComparisonRequest):

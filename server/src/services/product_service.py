@@ -1,6 +1,5 @@
 from typing import List, Optional
 from src.models.product import Product
-from src.chat.chatbot_engine import chat
 import time
 import logging
 
@@ -206,7 +205,7 @@ class ProductService:
             answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
         )
 
-    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: Optional[str] = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
