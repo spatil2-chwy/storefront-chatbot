@@ -139,22 +139,9 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
     return results
 
 
-def rank_products(results, user_context=None):
+def rank_products(results):
     """Advanced ranking with multiple non-linear scoring strategies and follow-up question generation"""
     start_time = time.time()
-    
-    # Parse preferred brands from user context
-    preferred_brands = []
-    if user_context and user_context.get('preferred_brands'):
-        try:
-            import json
-            preferred_brands = json.loads(user_context['preferred_brands'])
-            if not isinstance(preferred_brands, list):
-                preferred_brands = []
-        except (json.JSONDecodeError, TypeError):
-            preferred_brands = []
-
-    print(f"Preferred brands: {preferred_brands}")
     
     # Debug: Count products with reviews and FAQs
     total_products = len(results['metadatas'][0]) if results['metadatas'] and results['metadatas'][0] else 0

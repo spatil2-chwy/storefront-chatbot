@@ -143,13 +143,12 @@ At the **end of your message**, include **only tags directly related to suggesti
 
 MODEL = "gpt-4.1"
 
-def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), user_context: dict | None = None):
+def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
-        user_context (dict): Optional user context containing preferences like preferred_brands
     Returns:
         list: A list of products
     """
@@ -166,7 +165,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     print(f"Query executed in {time.time() - start:.4f} seconds")
     
     ranking_start = time.time()
-    ranked_products = rank_products(results, user_context)
+    ranked_products = rank_products(results)
     print(f"Ranking completed in {time.time() - ranking_start:.4f} seconds")
     
     if not ranked_products:
@@ -217,25 +216,18 @@ function_mapping = {
 }
 
 
-def call_function(name, args, user_context: dict | None = None):
+def call_function(name, args):
     """Calls a tool function by its name with the provided arguments.
     Parameters:
         name (str): The name of the function to call
         args (dict): A dictionary of input arguments for the function
-        user_context (dict): Optional user context for personalized results
     Returns:
         The result of the function call
     Raises:
         ValueError: If the function name is not recognized
     """
     if name in function_mapping:
-        if name == "search_products" and user_context:
-            # Add user_context to args for search_products
-            args_with_context = args.copy()
-            args_with_context['user_context'] = user_context
-            return function_mapping[name](**args_with_context)
-        else:
-            return function_mapping[name](**args)
+        return function_mapping[name](**args)
     raise ValueError(f"Unknown function: {name}")
 
 
@@ -439,7 +431,7 @@ You're not being chatty — you're being helpful, warm, and efficient."""
 
 
 
-def chat_stream_with_products(user_input: str, history: list, user_context: dict | None = None):
+def chat_stream_with_products(user_input: str, history: list, user_context: str = ""):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
     Only streams the final response, not during function calls.
@@ -566,7 +558,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: dict
                     return article_generator(), products
                     
                 else:
-                    products = call_function(tool_call.name, args, user_context)
+                    products = call_function(tool_call.name, args)
                     tool_exec_time = time.time() - tool_exec_start
                     logger.info(f"Streaming product search completed in {tool_exec_time:.3f}s - found {len(products)} products")
                     
