@@ -2,7 +2,7 @@ from .product_service import ProductService
 from .pet_service import PetService
 from .user_service import UserService
 from .chat_service import ChatService
-from .chatmodes_service import compare_products, get_product_comparison_data, ask_about_product
+from src.chat.chat_modes import compare_products, get_product_comparison_data, ask_about_product
 
 # Create singleton instances
 product_service = ProductService()

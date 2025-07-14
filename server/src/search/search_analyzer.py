@@ -20,7 +20,7 @@ class SearchAnalyzer:
     
     def _build_metadata_filters(self) -> Dict[str, Dict[str, Set[str]]]:
         """Build search filters from actual product metadata"""
-        cache_file = "metadata_filters_cache.json"
+        cache_file = "data/chromadb/metadata_filters_cache.json"
         
         # Try to load from cache first
         if os.path.exists(cache_file):
@@ -194,6 +194,8 @@ class SearchAnalyzer:
         query_lower = query.lower().strip()
         query_words = set(query_lower.split())
         
+        print(f"🔍 Analyzing query: '{query}' -> words: {query_words}")
+        
         found_criteria = {
             'Brands': [],
             'Categories': [],
@@ -240,6 +242,7 @@ class SearchAnalyzer:
         result = {k: v for k, v in found_criteria.items() if v}
         
         extraction_time = time.time() - start_time
+        print(f"📋 Found criteria: {result}")
         # print(f"      📋 Criteria extraction took: {extraction_time:.3f}s (found {len(result)} categories)")
         
         return result

@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict, Any
 from .prompts import get_comparison_prompt, get_ask_about_product_prompt
-from .openai_client import get_openai_client
+from src.config.openai_loader import get_openai_client
 
 # Get the centralized OpenAI client
 client = get_openai_client()

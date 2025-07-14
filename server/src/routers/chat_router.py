@@ -1,3 +1,4 @@
+# Chat router - handles all chat-related endpoints including chatbot, product comparison, and streaming
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -8,8 +9,8 @@ from src.schemas import ChatMessage as ChatSchema
 from src.models.chat import ChatMessage
 from src.services.chat_service import ChatService
 from src.services.user_service import UserService
-from src.services.chatbot_logic import chat, chat_stream_with_products
-from src.services.chatmodes_service import compare_products, ask_about_product
+from src.chat.chatbot_engine import chat, chat_stream_with_products
+from src.chat.chat_modes import compare_products, ask_about_product
 import json
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -18,6 +19,7 @@ user_svc = UserService()
 
 @router.get("/{chat_id}", response_model=ChatSchema)
 def get_chat_message(chat_id: str, db: Session = Depends(get_db)):
+    # Get a specific chat message by ID
     msg = chat_svc.get_message(db, chat_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Chat message not found")
@@ -43,6 +45,7 @@ class PersonalizedGreetingRequest(BaseModel):
 
 @router.post("/chatbot")
 async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
+    # Main chatbot endpoint - processes user messages with AI
     user_context = ""
     
     # Get user context if customer_key is provided
@@ -65,9 +68,7 @@ async def chatbot(request: ChatRequest, db: Session = Depends(get_db)):
 
 @router.post("/compare")
 async def compare_products_endpoint(request: ComparisonRequest):
-    """
-    Handle product comparison requests.
-    """
+    # Compare multiple products based on user question
     try:
         response = compare_products(request.message, request.products, request.history)
         return {"response": response}
@@ -77,9 +78,7 @@ async def compare_products_endpoint(request: ComparisonRequest):
 
 @router.post("/ask_about_product")
 async def ask_about_product_endpoint(request: AskAboutProductRequest):
-    """
-    Handle product question requests
-    """
+    # Ask specific questions about a single product
     try:
         response = ask_about_product(request.message, request.product, request.history)
         return {"response": response}
@@ -88,15 +87,14 @@ async def ask_about_product_endpoint(request: AskAboutProductRequest):
 
 @router.post("/", response_model=ChatSchema)
 def create_chat_message(payload: ChatSchema, db: Session = Depends(get_db)):
+    # Create a new chat message
     return chat_svc.create_message(db, ChatMessage(**payload.dict()))
 
 @router.post("/personalized_greeting")
 async def personalized_greeting(request: PersonalizedGreetingRequest, db: Session = Depends(get_db)):
-    """
-    Generate a personalized greeting for a customer based on their profile and pets.
-    """
+    # Generate personalized greeting based on user's pets and profile
     try:
-        from src.services.greeting_service import generate_personalized_greeting
+        from src.chat.greeting_generator import generate_personalized_greeting
         
         greeting = generate_personalized_greeting(db, request.customer_key)
         return {"response": {"greeting": greeting}}
@@ -108,9 +106,7 @@ async def personalized_greeting(request: PersonalizedGreetingRequest, db: Sessio
 
 @router.post("/chatbot/stream")
 async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
-    """
-    Streaming version of the chatbot endpoint that returns Server-Sent Events.
-    """
+    # Streaming chatbot endpoint - returns Server-Sent Events with real-time responses
     user_context = ""
     
     # Get user context if customer_key is provided

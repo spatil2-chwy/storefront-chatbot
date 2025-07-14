@@ -1,16 +1,17 @@
 from pathlib import Path
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
-from src.database import engine, Base
+from database import engine, Base
 
 def main():
     # ensure all ORM tables are created
     Base.metadata.create_all(bind=engine)
 
-    BASE = Path(__file__).resolve().parent.parent  # server/src
-    DATA = BASE / "data"
-    USERS_TSV = DATA / "customers_full_with_creds.tsv"
-    PETS_TSV  = DATA / "pet_profiles_assigned.tsv"
+    # Updated paths
+    BASE = Path(__file__).resolve().parent.parent.parent  # storefront-chatbot
+    DATA = BASE / "data" / "core"
+    USERS_TSV = DATA / "customers.tsv"
+    PETS_TSV  = DATA / "pet_profiles.tsv"
 
     try:
         # 1) load users
