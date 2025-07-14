@@ -10,10 +10,13 @@ __pycache__
 .env
 
 # product db sources
-scripts/results.jsonl
-scripts/all_chewy_products_with_qanda.csv
-scripts/chroma_db
-server/scripts/chroma_db/
+data/chromadb/results.jsonl
+data/chromadb/all_chewy_products_with_qanda.csv
+data/chromadb/chroma_db
+scripts/chroma_db/
 server/src/seed.db
-scripts/all_wp_posts.json
-server/metadata_filters_cache.json
+data/chromadb/all_wp_posts.json
+data/chromadb/metadata_filters_cache.json
+
+server/logs/
+*/__pycache__/

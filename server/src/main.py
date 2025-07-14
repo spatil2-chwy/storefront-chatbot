@@ -2,10 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.database import engine, Base
 from src.routers.routes import router
+from src.utils.logging_config import setup_logging
+import logging
+
+# Initialize logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Storefront Chatbot API", version="1.0.0")
+    
+    logger.info("Starting Storefront Chatbot API")
 
     Base.metadata.create_all(bind=engine)
 
@@ -18,6 +26,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
     
+    logger.info("Application initialized successfully")
     return app
 
 

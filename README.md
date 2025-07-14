@@ -34,11 +34,8 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-Load the data from server:
-
-```bash
-python -m src.scripts.load_data
-````
+# Load the data from server:
+python -m src.load_data
 
 # Start FastAPI server
 uvicorn src.main:app --reload --host localhost --port 8000
@@ -52,30 +49,37 @@ The backend will be available at `http://localhost:8000`
 ## 🏗️ Project Structure
 
 ```
-├── client/                # React frontend
+storefront-chatbot/
+├── client/                    # React frontend
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
-│   │   ├── lib/           # Utilities and hooks
-│   │   ├── types/         # TypeScript type definitions
-│   │   └── main.tsx       # Entry point
-│   ├── public/            # Static assets
-│   ├── package.json       # Frontend dependencies
-│   ├── vite.config.ts     # Vite configuration
-│   ├── tailwind.config.ts # Tailwind CSS configuration
-│   ├── tsconfig.json      # TypeScript configuration
-│   ├── postcss.config.js  # PostCSS configuration
-│   ├── components.json    # shadcn/ui configuration
-│   └── index.html         # HTML template
-├── server/                # FastAPI backend
-│   ├── main.py            # FastAPI application
-│   ├── routes.py          # API routes
-│   ├── storage.py         # In-memory data storage
-│   ├── schemas.py         # Pydantic models
-│   └── requirements.txt   # Python dependencies
-├── dist/                  # Production build output
-├── .gitignore            # Git ignore rules
-└── README.md             # This file
+│   │   ├── features/          # Feature-based organization
+│   │   │   ├── Chat/          # Chat functionality
+│   │   │   └── Product/       # Product functionality
+│   │   ├── pages/             # Page components
+│   │   ├── layout/            # Layout components
+│   │   ├── lib/               # Utilities and configurations
+│   │   ├── types/             # TypeScript type definitions
+│   │   ├── ui/                # Reusable UI components
+│   │   └── hooks/             # Custom React hooks
+│   ├── public/                # Static assets
+│   └── [config files]         # Build and config files
+├── server/                    # FastAPI backend
+│   ├── src/
+│   │   ├── chat/              # Chat functionality
+│   │   ├── config/            # Configuration files
+│   │   ├── models/            # Data models
+│   │   ├── routers/           # API route handlers
+│   │   ├── search/            # Search functionality
+│   │   ├── services/          # Business logic services
+│   │   └── [core files]       # Main app and utilities
+│   ├── requirements.txt       # Python dependencies
+│   └── venv/                  # Virtual environment
+├── data/                      # Data files
+│   ├── chromadb/              # ChromaDB vector database
+│   └── core/                  # Core data files
+├── scripts/                   # Data processing scripts
+├── .gitignore                 # Git ignore rules
+└── README.md                  # This file
 ```
 
 ## 🔧 Architecture

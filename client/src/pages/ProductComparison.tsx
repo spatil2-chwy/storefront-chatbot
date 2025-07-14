@@ -1,52 +1,61 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Package, Star, RotateCcw, Image as ImageIcon, ShoppingCart, Bot, X } from 'lucide-react';
-import Header from '@/components/Header';
-import ChatWidget from '@/components/ChatWidget';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
+import Header from '@/layout/Header';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
+import { Button } from '@/ui/Buttons/Button';
+import { Card, CardContent } from '@/ui/Cards/Card';
+import { Badge } from '@/ui/Display/Badge';
+import { useGlobalChat } from '@/features/Chat/context';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
   const [showAIOverview, setShowAIOverview] = useState<{show: boolean, product: any, position?: { top: number; left: number }}>({show: false, product: null});
+  const [expandedIngredients, setExpandedIngredients] = useState<{[key: number]: boolean}>({});
+  const contextInitialized = useRef(false);
   const { 
     comparingProducts, 
     currentSearchQuery,
+    currentContext,
     setCurrentContext,
     setIsOpen,
     setShouldAutoOpen,
     clearComparison,
-    clearMessages
+    addTransitionMessage,
+    isOpen: isChatSidebarOpen
   } = useGlobalChat();
 
-  // Auto-open chat when component mounts (context is set via ChatWidget chatContext prop)
+  // Auto-open chat when component mounts and set comparison context
   useEffect(() => {
-    if (comparingProducts.length > 0) {
-      // Clear messages when entering comparison page
-      clearMessages();
+    if (comparingProducts.length > 0 && !contextInitialized.current) {
+      const newContext = { type: 'comparison' as const, products: comparingProducts };
+      
+      // Add transition message if context is changing (only when increasing products or first time)
+      if (currentContext.type !== 'comparison' || 
+          !currentContext.products || 
+          currentContext.products.length < comparingProducts.length) {
+        addTransitionMessage(currentContext, newContext);
+      }
+      
+      setCurrentContext(newContext);
       setIsOpen(true);
       setShouldAutoOpen(true);
+      
+      contextInitialized.current = true;
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [comparingProducts, setIsOpen, setShouldAutoOpen, clearMessages]);
-
-  // Redirect back if no products to compare
-  useEffect(() => {
-    if (comparingProducts.length === 0) {
-      setLocation('/');
-    }
-  }, [comparingProducts.length, setLocation]);
+  }, [comparingProducts, currentContext, setIsOpen, setShouldAutoOpen, setCurrentContext, addTransitionMessage]);
 
   const handleExitComparison = () => {
     clearComparison();
-    setCurrentContext({ type: 'general' });
+    // Always go back to the main product listing page (which is at root "/")
     setLocation('/');
+  };
+
+  const toggleIngredients = (productId: number) => {
+    setExpandedIngredients(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }));
   };
 
   const renderStars = (rating: number) => {
@@ -83,20 +92,31 @@ export default function ProductComparison() {
     }
 
     return (
-      <img 
-        src={product.image} 
-        alt={product.title}
-        className="w-full h-32 object-cover"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          target.nextElementSibling?.classList.remove('hidden');
-        }}
-      />
+      <div className="w-full h-32 bg-gray-50 flex items-center justify-center relative">
+        <img 
+          src={product.image} 
+          alt={product.title}
+          className="max-w-full max-h-full object-contain"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const fallback = target.parentElement?.querySelector('.image-fallback');
+            if (fallback) {
+              fallback.classList.remove('hidden');
+            }
+          }}
+        />
+        {/* Fallback image placeholder */}
+        <div className="image-fallback hidden absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Image not available</p>
+          </div>
+        </div>
+      </div>
     );
   };
 
-  // Extract categories from search matches for each product
   const getMatchedCategories = (product: any) => {
     if (!product.search_matches) return [];
     
@@ -117,6 +137,91 @@ export default function ProductComparison() {
     console.log('Add to cart:', product.title);
   };
 
+  // Helper functions to extract comparison data from available fields
+  const getHealthFeature = (product: any) => {
+    if (!product.keywords) return null;
+    const healthKeywords = product.keywords.filter((keyword: string) => 
+      keyword.toLowerCase().includes('health') || 
+      keyword.toLowerCase().includes('vitamin') ||
+      keyword.toLowerCase().includes('supplement') ||
+      keyword.toLowerCase().includes('probiotic') ||
+      keyword.toLowerCase().includes('digestive') ||
+      keyword.toLowerCase().includes('joint') ||
+      keyword.toLowerCase().includes('dental')
+    );
+    return healthKeywords.length > 0 ? healthKeywords.join(', ') : null;
+  };
+
+  const getSpecialDiet = (product: any) => {
+    if (!product.keywords) return null;
+    const dietKeywords = product.keywords.filter((keyword: string) => 
+      keyword.toLowerCase().includes('grain') ||
+      keyword.toLowerCase().includes('free') ||
+      keyword.toLowerCase().includes('organic') ||
+      keyword.toLowerCase().includes('natural') ||
+      keyword.toLowerCase().includes('limited') ||
+      keyword.toLowerCase().includes('sensitive') ||
+      keyword.toLowerCase().includes('allergy') ||
+      keyword.toLowerCase().includes('hypoallergenic')
+    );
+    return dietKeywords.length > 0 ? dietKeywords.join(', ') : null;
+  };
+
+  const getFlavor = (product: any) => {
+    // Check keywords first
+    if (product.keywords) {
+      const flavorKeywords = product.keywords.filter((keyword: string) => 
+        keyword.toLowerCase().includes('chicken') ||
+        keyword.toLowerCase().includes('beef') ||
+        keyword.toLowerCase().includes('salmon') ||
+        keyword.toLowerCase().includes('turkey') ||
+        keyword.toLowerCase().includes('duck') ||
+        keyword.toLowerCase().includes('lamb') ||
+        keyword.toLowerCase().includes('fish') ||
+        keyword.toLowerCase().includes('pork') ||
+        keyword.toLowerCase().includes('venison')
+      );
+      if (flavorKeywords.length > 0) return flavorKeywords.join(', ');
+    }
+    
+    // Check title for flavor information
+    if (product.title) {
+      const title = product.title.toLowerCase();
+      const flavors = ['chicken', 'beef', 'salmon', 'turkey', 'duck', 'lamb', 'fish', 'pork', 'venison'];
+      const foundFlavors = flavors.filter(flavor => title.includes(flavor));
+      if (foundFlavors.length > 0) return foundFlavors.join(', ');
+    }
+    
+    return null;
+  };
+
+  const getBreedSize = (product: any) => {
+    // Check keywords first
+    if (product.keywords) {
+      const sizeKeywords = product.keywords.filter((keyword: string) => 
+        keyword.toLowerCase().includes('small') ||
+        keyword.toLowerCase().includes('medium') ||
+        keyword.toLowerCase().includes('large') ||
+        keyword.toLowerCase().includes('puppy') ||
+        keyword.toLowerCase().includes('adult') ||
+        keyword.toLowerCase().includes('senior') ||
+        keyword.toLowerCase().includes('toy') ||
+        keyword.toLowerCase().includes('giant')
+      );
+      if (sizeKeywords.length > 0) return sizeKeywords.join(', ');
+    }
+    
+    // Check title for size information
+    if (product.title) {
+      const title = product.title.toLowerCase();
+      const sizes = ['small breed', 'medium breed', 'large breed', 'toy breed', 'giant breed', 'puppy', 'adult', 'senior'];
+      const foundSizes = sizes.filter(size => title.includes(size));
+      if (foundSizes.length > 0) return foundSizes.join(', ');
+    }
+    
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
@@ -133,10 +238,10 @@ export default function ProductComparison() {
             onMouseLeave={() => setShowAIOverview({show: false, product: null})}
           >
             <div className="flex items-center space-x-2 mb-3">
-              <div className="w-6 h-6 bg-chewy-blue rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-gray-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Should You Buy It?</h3>
+              <h3 className="text-sm font-semibold text-gray-900">AI Synthesis</h3>
             </div>
             <div className="text-gray-700 text-xs leading-relaxed mb-2">
               <div className="font-medium text-gray-900 mb-1 text-xs">
@@ -150,7 +255,7 @@ export default function ProductComparison() {
         </div>
       )}
       
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" data-main-content>
         {/* Header with Exit Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -175,137 +280,348 @@ export default function ProductComparison() {
           </div>
         </div>
 
-        {/* Product Comparison Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-          {comparingProducts.map((product) => {
-            const matchedCategories = getMatchedCategories(product);
+        {/* Comparison Table */}
+        {comparingProducts.length > 0 && (
+          <div className="mt-8">
             
-            return (
-              <Card key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
-                <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
-                  {/* Product Image */}
-                  <div className="relative w-full h-32">
-                    {renderImage(product)}
-                    {/* Fallback image (hidden by default) */}
-                    <div className="w-full h-32 bg-gray-100 flex items-center justify-center hidden">
-                      <div className="text-center">
-                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Image not available</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <CardContent className="p-4 flex-1 flex flex-col">
-                    {/* Original Product Information */}
-                    <div className="mb-3">
-                      <h4 className="line-clamp-4 text-sm h-15 leading-5 font-normal">
-                        <span className="font-bold text-[13px] mr-1 align-middle">{product.brand}</span>
-                        <span className="text-[13px] align-middle">{product.title}</span>
-                      </h4>
-                    </div>
-                    
-                    <div className="flex items-center mb-2">
-                      <div className="flex items-center">
-                        <div className="flex text-sm">
-                          {renderStars(product.rating || 0)}
-                        </div>
-                        <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
-                        <span className="text-xs text-gray-500 ml-1">
-                          ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-semibold text-gray-900">${product.price}</span>
-                        {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                          <span className="text-sm text-gray-500 line-through">${product.originalPrice}</span>
-                        )}
-                      </div>
-                      {(product.autoshipPrice ?? 0) > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px] table-fixed">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                      <th className="px-6 py-4 text-left w-48">
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-chewy-blue font-medium">${product.autoshipPrice}</span>
-                          <div className="flex items-center space-x-1">
-                            <RotateCcw className="w-3 h-3 text-chewy-blue" />
-                            <span className="text-xs text-chewy-blue font-medium">Autoship</span>
+                          <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
+                          <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Product</span>
+                        </div>
+                      </th>
+                      {comparingProducts.map((product, index) => (
+                        <th key={product.id} className="px-6 py-4 text-left" style={{width: `calc((100% - 12rem) / ${comparingProducts.length})`}}>
+                          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                            <div className="relative mb-3">
+                              <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                                {product.image ? (
+                                  <img 
+                                    src={product.image} 
+                                    alt={product.title}
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <Package className="w-8 h-8 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {index + 1}
+                              </div>
+                            </div>
+                            
+                            <div className="text-center">
+                              <div className="font-bold text-sm text-gray-900 mb-1">{product.brand}</div>
+                              <div className="text-xs text-gray-600 line-clamp-2 mb-3 leading-relaxed">{product.title}</div>
+                              
+                              <div className="space-y-2">
+                                <div className="text-lg font-bold text-chewy-blue">${product.price?.toFixed(2)}</div>
+                                
+                                {product.rating && (
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <div className="flex text-xs">
+                                      {renderStars(product.rating)}
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-600">{product.rating.toFixed(1)}</span>
+                                    <span className="text-xs text-gray-500">
+                                      ({product.reviewCount && product.reviewCount > 1000 ? `${(product.reviewCount / 1000).toFixed(1)}K` : product.reviewCount})
+                                    </span>
+                                  </div>
+                                )}
+                                
+                                {(product.autoshipPrice ?? 0) > 0 && (
+                                  <div className="flex items-center justify-center space-x-1">
+                                    <RotateCcw className="w-3 h-3 text-chewy-blue" />
+                                    <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {/* AI Synthesis Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">What Tylee Thinks</div>
+                            <div className="text-xs text-gray-500">AI recommendation</div>
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Categories Matched Section - Show limited categories */}
-                    {matchedCategories.length > 0 && (
-                      <div className="mb-3">
-                        <div className="text-xs font-medium text-gray-700 mb-2">Categories Matched</div>
-                        <div className="flex flex-wrap gap-1">
-                          {matchedCategories.map((category, index) => (
-                            <Badge
-                              key={index}
-                              className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md"
-                            >
-                              {category}
-                            </Badge>
-                          ))}
+                      </td>
+                      {comparingProducts.map((product) => (
+                        <td key={product.id} className="px-6 py-5">
+                          {product.should_you_buy_it ? (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                              <div className="text-sm leading-relaxed text-gray-700">
+                                {product.should_you_buy_it}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                <X className="w-4 h-4 text-gray-400" />
+                              </div>
+                              <span className="text-sm text-gray-400 italic">Not available</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Ingredients Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🥬</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Ingredients</div>
+                            <div className="text-xs text-gray-500">Key components</div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Link>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const productId = product.id ?? 0;
+                        const isExpanded = expandedIngredients[productId] || false;
+                        const showCount = isExpanded ? product.keywords?.length || 0 : 4;
+                        const visibleKeywords = product.keywords?.slice(0, showCount) || [];
+                        const hasMore = (product.keywords?.length || 0) > 4;
 
-                {/* Should You Buy It Button - Top right corner */}
-                {product.should_you_buy_it && (
-                  <div className="absolute top-2 right-2">
-                    <button
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setShowAIOverview({
-                          show: true, 
-                          product,
-                          position: { top: rect.top, left: rect.left }
-                        });
-                      }}
-                      onMouseLeave={() => setShowAIOverview({show: false, product: null})}
-                      className="w-8 h-8 bg-black hover:bg-gray-800 text-white rounded-full flex items-center justify-center shadow-lg z-10 relative"
-                      title="Should You Buy It?"
-                    >
-                      <Bot className="w-4 h-4" />
-                    </button>
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {product.keywords && product.keywords.length > 0 ? (
+                              <div className="space-y-3">
+                                {/* Ingredients container with consistent styling */}
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                  isExpanded ? 'max-h-96' : 'max-h-20'
+                                }`}>
+                                  <div className={`${isExpanded ? 'overflow-y-auto' : ''} ${isExpanded ? 'pr-2' : ''}`}>
+                                    <div className="flex flex-wrap gap-1.5 justify-center">
+                                      {visibleKeywords.map((keyword, index) => (
+                                        <div
+                                          key={index}
+                                          className="transform transition-all duration-300 ease-in-out"
+                                          style={{
+                                            transitionDelay: `${index > 3 ? (index - 4) * 50 : 0}ms`
+                                          }}
+                                        >
+                                          <Badge 
+                                            className="text-xs px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium hover:bg-green-100 transition-colors duration-200"
+                                          >
+                                            {keyword}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {hasMore && (
+                                  <div className="text-center">
+                                    <button
+                                      onClick={() => toggleIngredients(productId)}
+                                      className="inline-flex items-center space-x-1 text-xs text-chewy-blue hover:text-blue-700 font-medium transition-all duration-200 hover:scale-105"
+                                    >
+                                      <span>
+                                        {isExpanded 
+                                          ? `Show less` 
+                                          : `Show ${product.keywords.length - 4} more ingredients`
+                                        }
+                                      </span>
+                                      <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </div>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not available</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Health Feature Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">❤️</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Health Feature</div>
+                            <div className="text-xs text-gray-500">Special benefits</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const healthFeature = getHealthFeature(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {healthFeature ? (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-red-800">{healthFeature}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Special Diet Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🥗</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Special Diet</div>
+                            <div className="text-xs text-gray-500">Dietary requirements</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const specialDiet = getSpecialDiet(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {specialDiet ? (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-blue-800">{specialDiet}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Flavor Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🍖</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Flavor</div>
+                            <div className="text-xs text-gray-500">Primary taste</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const flavor = getFlavor(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {flavor ? (
+                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-orange-800">{flavor}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    
+                    {/* Breed Size Row */}
+                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🐕</span>
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">Breed Size</div>
+                            <div className="text-xs text-gray-500">Target size range</div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparingProducts.map((product) => {
+                        const breedSize = getBreedSize(product);
+                        return (
+                          <td key={product.id} className="px-6 py-5">
+                            {breedSize ? (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+                                <span className="text-sm font-medium text-indigo-800">{breedSize}</span>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4">
+                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="text-sm text-gray-400 italic">Not specified</span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Table Footer */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Package className="w-4 h-4" />
+                    <span>Comparing {comparingProducts.length} products side by side</span>
                   </div>
-                )}
-
-                {/* Add to Cart Button */}
-                <div className="px-4 pb-3">
-                  <Button
-                    onClick={() => handleAddToCart(product)}
-                    className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
-                  </Button>
+                  <div className="text-xs text-gray-500">
+                    Scroll horizontally to view all details →
+                  </div>
                 </div>
-
-                {/* Bottom Controls - View Details button only */}
-                <div className="px-4 pb-4">
-                  <Link href={`/product/${product.id}`}>
-                    <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg h-9 text-sm">
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Chat Widget - positioned higher up */}
-        <div className="h-72 border border-gray-200 bg-white">
-          <ChatWidget 
-            chatContext={{ type: 'comparison', products: comparingProducts }}
-            onClearChat={() => {}}
-          />
-        </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Use the main ChatWidget without embedded mode - it will show as sidebar */}
+      <ChatWidget />
     </div>
   );
 } 

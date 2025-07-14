@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/ui/Buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/Cards/Card';
+import { Badge } from '@/ui/Display/Badge';
+import { Separator } from '@/ui/Layout/Separator';
 import { 
   User, 
   Mail, 
@@ -16,21 +16,7 @@ import {
   Weight,
   Gift
 } from 'lucide-react';
-
-interface Pet {
-  pet_profile_id: number;
-  pet_name: string;
-  pet_type: string;
-  pet_breed: string;
-  gender: string;
-  birthday: string;
-  life_stage: string;
-  adopted: boolean;
-  adoption_date: string | null;
-  weight: number;
-  allergy_count: number;
-  status: string;
-}
+import { usersApi, Pet } from '@/lib/api/users';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
@@ -54,9 +40,8 @@ export default function Profile() {
 
   const fetchUserPets = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/customers/${user?.customer_key}/pets`);
-      if (response.ok) {
-        const petsData = await response.json();
+      if (user?.customer_key) {
+        const petsData = await usersApi.getUserPets(user.customer_key);
         setPets(petsData);
       }
     } catch (error) {
@@ -113,7 +98,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8" data-main-content>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

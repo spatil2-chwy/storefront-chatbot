@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
-import Header from '@/components/Header';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
-import SearchMatches from '@/components/SearchMatches';
-import { useProduct } from '@/hooks/useProducts';
+import Header from '@/layout/Header';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
+import ComparisonFooter from '@/features/Product/components/ComparisonFooter';
+import SearchMatches from '@/features/Product/components/SearchMatches';
+import { useProduct } from '@/features/Product/hooks';
 import { Product } from '../types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import { Button } from '@/ui/Buttons/Button';
+import { Card, CardContent } from '@/ui/Cards/Card';
+import { RadioGroup, RadioGroupItem } from '@/ui/RadioButtons/RadioGroup';
+import { Label } from '@/ui/Input/Label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
+import { Badge } from '@/ui/Display/Badge';
+import { useGlobalChat } from '@/features/Chat/context';
 
 export default function ProductDetail() {
   const [match, params] = useRoute('/product/:id');
@@ -23,9 +23,10 @@ export default function ProductDetail() {
 
   // Use the custom hook to fetch product data
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
+  const contextInitialized = useRef(false);
   
   // Get search query from global state
-  const { currentSearchQuery, setShouldAutoOpen, setCurrentContext, clearMessages } = useGlobalChat();
+  const { currentSearchQuery, setShouldAutoOpen, currentContext, setCurrentContext, addTransitionMessage } = useGlobalChat();
 
   const currentPrice = product?.price || 0;
   const autoshipPrice = product?.autoshipPrice || 0;
@@ -33,12 +34,16 @@ export default function ProductDetail() {
 
   // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    if (product) {
-      // Clear chat messages when entering product page
-      clearMessages();
+    if (product && !contextInitialized.current) {
+      const newContext = { type: 'product' as const, product: product };
+      
+      // Only add transition message if context is actually changing
+      if (currentContext.type !== 'product' || currentContext.product?.id !== product.id) {
+        addTransitionMessage(currentContext, newContext);
+      }
       
       // Set the global chat context to this product
-      setCurrentContext({ type: 'product', product: product });
+      setCurrentContext(newContext);
       
       // Check if user had closed the chatbot before
       const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
@@ -46,13 +51,10 @@ export default function ProductDetail() {
         setShouldAutoOpen(true);
         localStorage.removeItem('chatClosed'); // Reset the flag
       }
+      
+      contextInitialized.current = true;
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [product, setCurrentContext, setShouldAutoOpen, clearMessages]);
+  }, [product, currentContext, setCurrentContext, setShouldAutoOpen, addTransitionMessage]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {
@@ -153,7 +155,7 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8" data-main-content>
         {/* Breadcrumb */}
         <nav className="flex mb-6 text-sm">
           <Link href="/" className="text-chewy-blue hover:underline flex items-center space-x-1">

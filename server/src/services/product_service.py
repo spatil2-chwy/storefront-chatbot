@@ -1,22 +1,31 @@
 from typing import List, Optional
 from src.models.product import Product
-from src.services.chatbot_logic import chat
+from src.chat.chatbot_engine import chat
 import time
+import logging
+
+# Initialize logging first
+from src.utils.logging_config import setup_logging
+setup_logging()
+logger = logging.getLogger(__name__)
+
+import chromadb
+client = chromadb.PersistentClient(path="../scripts/chroma_db")
+collection = client.get_collection(name="review_synthesis")
+search_analyzer = None  # Lazy loading for search matches
+
+logger.info("ProductService initialized successfully")
 
 class ProductService:
     def __init__(self):
-        import chromadb
-        self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
-        self.collection = self.client.get_collection(name="products")
-        self._search_analyzer = None  # Lazy loading for search matches
-        print("✅ ProductService initialized successfully")
-    
+        self._search_analyzer = None
+
     @property
     def search_analyzer(self):
         """Lazy load the search analyzer only when needed"""
         if self._search_analyzer is None:
-            from src.services.search_analyzer import SearchAnalyzer
-            print("🔄 Initializing SearchAnalyzer...")
+            from src.search.search_analyzer import SearchAnalyzer
+            logger.info("Initializing SearchAnalyzer...")
             self._search_analyzer = SearchAnalyzer()
         return self._search_analyzer
 
@@ -217,35 +226,35 @@ class ProductService:
                 )
                 match_time = time.time() - match_start
                 
-                print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
+                # print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
             except Exception as e:
-                print(f"⚠️ Error analyzing search matches: {e}")
+                logger.warning(f"Error analyzing search matches: {e}")
                 search_matches = None
         
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
 
-    async def search_products(self, query: str, limit: int = 10) -> dict:
+    async def search_products(self, query: str, limit: int = 10, include_search_matches: bool = True) -> dict:
         """Search products using direct semantic search without LLM agent"""
         try:
             total_start = time.time()
-            print(f"🔍 Starting direct search for: '{query}'")
+            logger.info(f"Starting direct search for: '{query}'")
             
             # Use direct semantic search instead of going through the chat function
-            from src.services.searchengine import query_products, rank_products
+            from src.search.product_search import query_products, rank_products
             
             search_start = time.time()
             results = query_products(query, (), (), ())  # No filters for direct search
             search_time = time.time() - search_start
-            print(f"  🔍 Database search took: {search_time:.3f}s")
+            logger.debug(f"Database search took: {search_time:.3f}s")
             
             ranking_start = time.time()
             ranked_products = rank_products(results)
             ranking_time = time.time() - ranking_start
-            print(f"  📊 Ranking took: {ranking_time:.3f}s")
+            logger.debug(f"Ranking took: {ranking_time:.3f}s")
             
             if not ranked_products:
-                print(f"❌ No products found for query: '{query}'")
+                logger.warning(f"No products found for query: '{query}'")
                 return {
                     "products": [],
                 }
@@ -259,31 +268,32 @@ class ProductService:
                     product = self._ranked_result_to_product(ranked_result, query)
                     product_time = time.time() - product_start
                     if i < 3:  # Only log first 3 products to avoid spam
-                        print(f"    📦 Product {i+1} conversion: {product_time:.3f}s")
+                        logger.debug(f"Product {i+1} conversion: {product_time:.3f}s")
                     products.append(product)
                 except Exception as e:
-                    print(f"⚠️ Error converting ranked result to product: {e}")
+                    logger.warning(f"Error converting ranked result to product: {e}")
                     continue
             
             conversion_time = time.time() - conversion_start
             total_time = time.time() - total_start
             
-            print(f"  🔄 Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
-            print(f"  ✅ Total search time: {total_time:.3f}s")
+            logger.info(f"Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
+            logger.info(f"Total search time: {total_time:.3f}s")
             
             return {
                 "products": products,
             }
             
         except Exception as e:
-            print(f"❌ Error searching products: {e}")
+            logger.error(f"Error searching products: {e}")
             return {
                 "products": [],
             }
+        
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:
-            results = self.collection.get(where={"PRODUCT_ID": str(product_id)})
+            results = collection.get(where={"PRODUCT_ID": str(product_id)})
             
             if not results["metadatas"] or len(results["metadatas"]) == 0:
                 return None
@@ -303,11 +313,5 @@ class ProductService:
             product = self._metadata_to_product(meta_dict)
             return product
         except Exception as e:
-            print(f"⚠️ Error fetching product {product_id}: {e}")
+            logger.error(f"Error fetching product {product_id}: {e}")
             return None
-
-
-if __name__ == "__main__":
-    product_service = ProductService()
-    products = product_service.search_products("dry dog food")
-    print(products)

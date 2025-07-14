@@ -1,3 +1,6 @@
+/* React Resizable CSS */
+@import 'react-resizable/css/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +16,7 @@
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(207, 90%, 54%);
+  --primary: hsl(224, 75%, 44%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(60, 4.8%, 95.9%);
   --secondary-foreground: hsl(24, 9.8%, 10%);
@@ -25,7 +28,7 @@
   --radius: 0.5rem;
   
   /* Chewy Brand Colors */
-  --chewy-blue: hsl(207, 100%, 30%);
+  --chewy-blue: hsl(224, 75%, 44%);
   --chewy-yellow: hsl(48, 100%, 50%);
   --chewy-light-blue: hsl(207, 90%, 95%);
 }
@@ -71,23 +74,23 @@
 /* Chewy Brand Utilities */
 @layer utilities {
   .bg-chewy-blue {
-    background-color: #004C98;
+    background-color: #1c49c2;
   }
   
   .text-chewy-blue {
-    color: #004C98;
+    color: #1c49c2;
   }
   
   .border-chewy-blue {
-    border-color: #004C98;
+    border-color: #1c49c2;
   }
   
   .bg-chewy-yellow {
-    background-color: #FFD100;
+    background-color: #FFC001;
   }
   
   .text-chewy-yellow {
-    color: #FFD100;
+    color: #FFC001;
   }
   
   .bg-chewy-light-blue {
@@ -150,6 +153,10 @@
     @apply italic;
   }
   
+  .prose.prose-sm del {
+    @apply line-through text-gray-500;
+  }
+  
   .prose.prose-sm code {
     @apply bg-gray-100 px-1 py-0.5 rounded text-xs font-mono;
   }
@@ -160,6 +167,14 @@
   
   .prose.prose-sm blockquote {
     @apply border-l-4 border-gray-300 pl-3 italic;
+  }
+  
+  .prose.prose-sm hr {
+    @apply my-4 border-gray-300;
+  }
+  
+  .prose.prose-sm a {
+    @apply text-blue-600 hover:text-blue-800 underline break-all;
   }
   
   .prose.prose-sm h1, .prose.prose-sm h2, .prose.prose-sm h3 {
@@ -176,6 +191,28 @@
   
   .prose.prose-sm h3 {
     @apply text-sm;
+  }
+  
+  /* Task list styling - remove list-style for task lists */
+  .prose.prose-sm ul.list-none {
+    list-style: none;
+  }
+  
+  .prose.prose-sm ul.list-none li {
+    list-style: none;
+  }
+  
+  /* Table styling */
+  .prose.prose-sm table {
+    @apply w-full border-collapse border border-gray-300 my-2;
+  }
+  
+  .prose.prose-sm table td {
+    @apply border border-gray-300 px-2 py-1 text-xs;
+  }
+  
+  .prose.prose-sm table th {
+    @apply border border-gray-300 px-2 py-1 text-xs font-semibold bg-gray-50;
   }
 }
 
@@ -195,3 +232,83 @@
   -ms-user-select: none;
   user-select: none;
 }
+
+/* Chat sidebar layout adjustments */
+.chat-sidebar-open [data-main-content] {
+  transition: all 0.3s ease-in-out;
+}
+
+@media (min-width: 1024px) {
+  /* Ensure entire page content is constrained when sidebar is open */
+  body.chat-sidebar-open,
+  html.chat-sidebar-open {
+    overflow-x: hidden;
+  }
+  
+  /* Force the entire page container to stay within bounds - highest specificity */
+  body.chat-sidebar-open .min-h-screen,
+  html.chat-sidebar-open .min-h-screen {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Main content area constraint - override existing styles with highest specificity */
+  body.chat-sidebar-open [data-main-content],
+  html.chat-sidebar-open [data-main-content] {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-sizing: border-box !important;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Adjust header container when chat is open */
+  body.chat-sidebar-open header,
+  html.chat-sidebar-open header {
+    width: calc(100vw - 400px) !important;
+    max-width: calc(100vw - 400px) !important;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  body.chat-sidebar-open header .max-w-full,
+  html.chat-sidebar-open header .max-w-full {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    transition: all 0.3s ease-in-out;
+  }
+  
+}
+
+/* Mobile/Tablet: no layout changes needed, just overlay */
+@media (max-width: 1023px) {
+  .chat-sidebar-open header {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  
+  .chat-sidebar-open header .max-w-full {
+    transition: none;
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+  }
+  
+  /* Ensure mobile/tablet content doesn't adjust for sidebar (since it's overlay) */
+  .chat-sidebar-open [data-main-content] {
+    margin-right: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+

@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
-import Header from '@/components/Header';
-import ProductCard from '@/components/ProductCard';
-import ProductFilters from '@/components/ProductFilters';
-import ChatWidget from '@/components/ChatWidget';
-import ComparisonFooter from '@/components/ComparisonFooter';
-import { api } from '@/lib/api';
+import Header from '@/layout/Header';
+import ProductCard from '@/features/Product/components/ProductCard';
+import ProductFilters from '@/features/Product/components/ProductFilters';
+import ChatWidget from '@/features/Chat/components/ChatWidget';
+import ComparisonFooter from '@/features/Product/components/ComparisonFooter';
+import BirthdayPopup from '@/features/Chat/components/Core/BirthdayPopup';
+import { usersApi } from '@/lib/api/users';
+import { chatApi } from '@/lib/api/chat';
 import { Product } from '../types';
-import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/ui/Cards/Card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
+import { Badge } from '@/ui/Display/Badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useGlobalChat } from '@/contexts/ChatContext';
+import { useGlobalChat } from '@/features/Chat/context';
 import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
@@ -24,9 +26,92 @@ export default function ProductListing() {
   const [selectedMatchFilters, setSelectedMatchFilters] = useState<string[]>([]);
   const [minMatchCount, setMinMatchCount] = useState<number>(0);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
+  const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
+  const [birthdayPet, setBirthdayPet] = useState<{pet_name: string, image: string} | null>(null);
   const [preloadedChatResponse, setPreloadedChatResponse] = useState<any>(null);
+  const contextInitialized = useRef(false);
   const isMobile = useIsMobile();
   const { user } = useAuth();
+
+  useEffect(() => {
+    // Make the test function available globally
+    (window as any).testBirthdayPopup = (petName: string = 'Buddy', petImage: string = '/pug.png') => {
+      console.log(`🎉 Testing birthday popup for ${petName}`);
+      setBirthdayPet({
+        pet_name: petName,
+        image: petImage
+      });
+      setShowBirthdayPopup(true);
+
+      // Also clear the localStorage flag so it can show again
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('birthday-shown-'));
+      keys.forEach(key => localStorage.removeItem(key));
+
+      console.log(`✅ Birthday popup should now be visible for ${petName}`);
+    };
+
+    // Also add a function to close the popup
+    (window as any).closeBirthdayPopup = () => {
+      console.log('🔴 Closing birthday popup');
+      setShowBirthdayPopup(false);
+      setBirthdayPet(null);
+    };
+
+    // Add a function to simulate a real user's pet birthday
+    (window as any).testUserPetBirthday = async () => {
+      if (!user?.customer_key) {
+        console.log('❌ No user logged in. Please log in first.');
+        return;
+      }
+
+      try {
+        console.log('🔍 Fetching user pets...');
+        const pets = await usersApi.getUserPets(user.customer_key);
+        console.log('Found pets:', pets);
+
+        if (pets.length === 0) {
+          console.log('❌ No pets found for current user');
+          return;
+        }
+
+        // Use the first pet for testing
+        const firstPet = pets[0];
+        console.log(`🎉 Testing birthday popup for user's pet: ${firstPet.pet_name || 'Unnamed Pet'}`);
+
+        setBirthdayPet({
+          pet_name: firstPet.pet_name || 'Your Pet',
+          image: firstPet.image || '/pug.png'
+        });
+        setShowBirthdayPopup(true);
+
+        // Clear localStorage flag
+        const keys = Object.keys(localStorage).filter(key => key.startsWith('birthday-shown-'));
+        keys.forEach(key => localStorage.removeItem(key));
+
+      } catch (error) {
+        console.error('❌ Failed to fetch user pets:', error);
+        console.log('🎉 Falling back to default test pet');
+        (window as any).testBirthdayPopup('Buddy', '/pug.png');
+      }
+    };
+
+    // Log instructions to console
+    console.log(`
+🎂 Birthday Popup Test Functions Available:
+• testBirthdayPopup() - Test with default pet "Buddy"
+• testBirthdayPopup("MyPet", "/pug.png") - Test with custom pet name and image
+• testUserPetBirthday() - Test with current user's actual pet data
+• closeBirthdayPopup() - Close the popup manually
+    `);
+
+    // Cleanup function
+    return () => {
+      delete (window as any).testBirthdayPopup;
+      delete (window as any).closeBirthdayPopup;
+      delete (window as any).testUserPetBirthday;
+    };
+  }, [user?.customer_key]);
+
 
   // Use global state for search results and query
   const { 
@@ -39,15 +124,24 @@ export default function ProductListing() {
     setShouldAutoOpen,
     comparingProducts,
     isInComparisonMode,
-    clearMessages,
-    setCurrentContext
+    currentContext,
+    setCurrentContext,
+    addTransitionMessage,
+    isOpen: isChatSidebarOpen
   } = useGlobalChat();
 
   // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    // Clear chat messages and set context to general
-    clearMessages();
-    setCurrentContext({ type: 'general' });
+    if (contextInitialized.current) return;
+    
+    // Only add transition message if we're coming from a different context
+    const newContext = { type: 'general' as const };
+    
+    if (currentContext.type !== 'general') {
+      addTransitionMessage(currentContext, newContext);
+    }
+    
+    setCurrentContext(newContext);
     
     // Check if user had closed the chatbot before
     const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
@@ -55,12 +149,9 @@ export default function ProductListing() {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-
-    // Cleanup when leaving the page
-    return () => {
-      clearMessages();
-    };
-  }, [setShouldAutoOpen, clearMessages, setCurrentContext]);
+    
+    contextInitialized.current = true;
+  }, [currentContext, addTransitionMessage, setCurrentContext, setShouldAutoOpen]);
 
   useEffect(() => {
     // Listen for clear chat events
@@ -76,6 +167,57 @@ export default function ProductListing() {
   }, [setHasSearched]);
 
   useEffect(() => {
+    const checkForBirthdayPets = async () => {
+      if (!user?.customer_key) return;
+      // Only show birthday popup once per session
+      const birthdayShownToday = localStorage.getItem(`birthday-shown-${new Date().toDateString()}`);
+      if (birthdayShownToday) return;
+      try {
+        const pets = await usersApi.getUserPets(user.customer_key);
+        const today = new Date();
+
+        // Check if any pet has a birthday today
+        const birthdayPet = pets.find(pet => {
+
+
+          console.log("DEMO Showing: Forcing Birthday popup for Lucy");
+          if (pet.pet_name === 'Lucy') {
+            return true; // Force show for demo purposes
+          }
+
+
+          if (!pet.birthday) return false;
+          const birthday = new Date(pet.birthday);
+          return birthday.getMonth() === today.getMonth() && 
+                 birthday.getDate() === today.getDate();
+        });
+
+        if (birthdayPet) {
+          setBirthdayPet({
+            pet_name: birthdayPet.pet_name || 'Your Pet',
+            image: '/pug.png' // Default image, could be pet-specific in the future
+          });
+          setShowBirthdayPopup(true);
+
+          // Mark that we've shown the birthday popup today
+          localStorage.setItem(`birthday-shown-${new Date().toDateString()}`, 'true');
+        }
+      } catch (error) { 
+        console.error('Failed to check for birthday pets:', error);
+      }
+    };
+
+    checkForBirthdayPets();
+  }, [user?.customer_key, user]);
+
+  useEffect(() => {
+    console.log('🔄 Filter effect triggered:', { 
+      searchResultsLength: searchResults.length, 
+      sortBy, 
+      selectedMatchFilters, 
+      minMatchCount 
+    });
+
     if (searchResults.length > 0) {
       applyFilters();
     } else {
@@ -184,7 +326,7 @@ export default function ProductListing() {
     try {
       // Use the updated searchAndChat method that only calls the chat endpoint
       const customer_key = user?.customer_key;
-      const { searchResults: searchData, chatResponse } = await api.searchAndChat(trimmedQuery, customer_key);
+      const { searchResults: searchData, chatResponse } = await chatApi.searchAndChat(trimmedQuery, customer_key);
       
       const searchEndTime = performance.now();
       console.log(`🔍 Frontend search took: ${(searchEndTime - searchStartTime).toFixed(2)}ms`);
@@ -283,7 +425,7 @@ export default function ProductListing() {
         hasSearched={hasSearched}
       />
       
-      <main className="max-w-full mx-auto px-8 sm:px-12 lg:px-16 py-8">
+      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" data-main-content>
         {/* Autoship Banner */}
         <Card className="bg-chewy-light-blue mb-6">
           <CardContent className="p-4 flex items-center space-x-3">
@@ -297,59 +439,62 @@ export default function ProductListing() {
 
         {/* Show search results header only when there's a search */}
         {hasSearched && (
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Your Search for "{currentSearchQuery}"
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Showing {filteredResults.length} of {searchResults.length} results
-                {(minMatchCount > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
-                  <span className="text-blue-600 ml-1">(filtered)</span>
-                )}
-              </p>
-            </div>
-            
-            {/* Sort and Filter Dropdowns - only show when there are results */}
-            {filteredResults.length > 0 && (
-              <div className="flex items-center space-x-4">
-                {/* Match Count Filter */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Minimum Categories Matched</span>
-                  <Select value={minMatchCount.toString()} onValueChange={(value) => setMinMatchCount(parseInt(value))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Any</SelectItem>
-                      <SelectItem value="1">1+</SelectItem>
-                      <SelectItem value="2">2+</SelectItem>
-                      <SelectItem value="3">3+</SelectItem>
-                      <SelectItem value="4">4+</SelectItem>
-                      <SelectItem value="5">5+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Sort Dropdown */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Sort By</span>
-                  <Select value={sortBy} onValueChange={handleSortChange}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="relevance">Relevance</SelectItem>
-                      <SelectItem value="matches">Most Matches</SelectItem>
-                      <SelectItem value="price-low">Price: Low to High</SelectItem>
-                      <SelectItem value="price-high">Price: High to Low</SelectItem>
-                      <SelectItem value="rating">Customer Rating</SelectItem>
-                      <SelectItem value="bestsellers">Best Sellers</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Your Search for "{currentSearchQuery}"
+                </h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Showing {filteredResults.length} of {searchResults.length} results
+                  {(minMatchCount > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
+                    <span className="text-blue-600 ml-1">(filtered)</span>
+                  )}
+                </p>
               </div>
-            )}
+              
+              {/* Sort and Filter Dropdowns - only show when there are results */}
+              {filteredResults.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                  {/* Match Count Filter */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600 hidden sm:inline">Min Categories</span>
+                    <span className="text-sm text-gray-600 sm:hidden">Categories Matched</span>
+                    <Select value={minMatchCount.toString()} onValueChange={(value) => setMinMatchCount(parseInt(value))}>
+                      <SelectTrigger className="w-24 sm:w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Any</SelectItem>
+                        <SelectItem value="1">1+</SelectItem>
+                        <SelectItem value="2">2+</SelectItem>
+                        <SelectItem value="3">3+</SelectItem>
+                        <SelectItem value="4">4+</SelectItem>
+                        <SelectItem value="5">5+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sort Dropdown */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Sort By</span>
+                    <Select value={sortBy} onValueChange={handleSortChange}>
+                      <SelectTrigger className="w-40 sm:w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="relevance">Relevance</SelectItem>
+                        <SelectItem value="matches">Most Matches</SelectItem>
+                        <SelectItem value="price-low">Price: Low to High</SelectItem>
+                        <SelectItem value="price-high">Price: High to Low</SelectItem>
+                        <SelectItem value="rating">Customer Rating</SelectItem>
+                        <SelectItem value="bestsellers">Best Sellers</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -428,8 +573,22 @@ export default function ProductListing() {
 
             {/* Product Grid */}
             <div className="flex-1">
+              {/* Mobile Filter Button */}
+              {isMobile && filteredResults.length > 0 && (
+                <div className="mb-4">
+                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                    <Filter className="w-4 h-4" />
+                    <span>Filters</span>
+                  </button>
+                </div>
+              )}
+
               {filteredResults.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 auto-rows-fr">
+                <div className={`grid gap-6 auto-rows-fr product-grid ${
+                  isChatSidebarOpen 
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' // With sidebar: 1, 2, 3, 4 columns
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'  // Without sidebar: 1, 2, 4, 5 columns
+                }`}>
                   {filteredResults.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -464,6 +623,14 @@ export default function ProductListing() {
       />
 
       <ComparisonFooter />
+      {birthdayPet && showBirthdayPopup && (
+        <BirthdayPopup 
+          petName={birthdayPet.pet_name}
+          petImage={birthdayPet.image}
+          onClose={() => setShowBirthdayPopup(false)}
+        />
+      )}
+
     </div>
   );
 }
