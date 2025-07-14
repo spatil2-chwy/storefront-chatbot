@@ -10,8 +10,8 @@ from src.utils.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-client = chromadb.PersistentClient(path="./../scripts/chroma_db")
-# client = chromadb.HttpClient(host='localhost', port=8001)
+# client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+client = chromadb.HttpClient(host='localhost', port=8001)
 # PRODUCT_COLLECTION_NAME = "products"
 REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)

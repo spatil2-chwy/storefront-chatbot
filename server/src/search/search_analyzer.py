@@ -10,7 +10,8 @@ from src.models.product import SearchMatch
 logger = logging.getLogger(__name__)
 
 import chromadb
-client = chromadb.PersistentClient(path="../scripts/chroma_db")
+# client = chromadb.PersistentClient(path="../scripts/chroma_db")
+client = chromadb.HttpClient(host='localhost', port=8001)
 collection = client.get_collection(name="review_synthesis")
 
 class SearchAnalyzer:
