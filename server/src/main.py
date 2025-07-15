@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Storefront Chatbot API", version="1.0.0")
-    
-    logger.info("Starting Storefront Chatbot API")
 
     Base.metadata.create_all(bind=engine)
 
@@ -26,7 +24,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
     
-    logger.info("Application initialized successfully")
     return app
 
 

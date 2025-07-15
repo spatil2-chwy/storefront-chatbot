@@ -10,14 +10,14 @@ def setup_logging():
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
-    # Configure the root logger
+    # Configure the root logger - change to WARNING to suppress INFO messages
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             # File handler for all logs
             logging.FileHandler(log_dir / "app.log"),
-            # Console handler for INFO and above
+            # Console handler for WARNING and above
             logging.StreamHandler(sys.stdout)
         ]
     )
@@ -26,6 +26,20 @@ def setup_logging():
     logging.getLogger("chromadb").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    
+    # Disable SQLAlchemy SQL logging to reduce noise
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.orm").setLevel(logging.WARNING)
+    
+    # Disable sentence_transformers logging
+    logging.getLogger("sentence_transformers.SentenceTransformer").setLevel(logging.WARNING)
+    
+    # Disable Uvicorn INFO messages
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
     
     return logging.getLogger(__name__)
 
