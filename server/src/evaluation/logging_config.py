@@ -27,6 +27,20 @@ def setup_logging():
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     
+    # Disable SQLAlchemy SQL logging to reduce noise
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.orm").setLevel(logging.WARNING)
+    
+    # Disable sentence_transformers logging
+    logging.getLogger("sentence_transformers.SentenceTransformer").setLevel(logging.WARNING)
+    
+    # Disable Uvicorn INFO messages
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    
     return logging.getLogger(__name__)
 
 def get_logger(name: str):
