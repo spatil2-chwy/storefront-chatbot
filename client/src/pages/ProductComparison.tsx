@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
 import Header from '@/layout/Header';
@@ -231,7 +231,6 @@ export default function ProductComparison() {
       id: 'section_ai',
       type: 'section_header',
       title: 'AI Analysis',
-      subtitle: 'AI-powered insights',
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
@@ -291,7 +290,6 @@ export default function ProductComparison() {
       id: 'section_metadata',
       type: 'section_header',
       title: 'Product Details',
-      subtitle: 'Key specifications',
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
@@ -332,21 +330,31 @@ export default function ProductComparison() {
       });
     }
 
-    // Pet Type
+    // Pet Type (only if different from product type)
     const hasPetType = comparingProducts.some(p => p.attr_pet_type || p.pet_types);
+    
     if (hasPetType) {
-      rows.push({
-        id: 'pet_type',
-        title: 'Pet Type',
-        subtitle: 'Dog, cat, or other',
-        icon: '🐕',
-        color: 'from-indigo-500 to-indigo-600',
-        bgColor: 'bg-indigo-50',
-        borderColor: 'border-indigo-200',
-        textColor: 'text-indigo-800',
-        getValue: (product: any) => product.attr_pet_type || product.pet_types,
-        type: 'metadata'
+      // Check if pet type and product type are the same for all products
+      const sameValues = comparingProducts.every(product => {
+        const petType = product.attr_pet_type || product.pet_types;
+        const productType = product.product_type || product.category_level_1;
+        return petType === productType;
       });
+      
+      if (!sameValues) {
+        rows.push({
+          id: 'pet_type',
+          title: 'Pet Type',
+          subtitle: 'Dog, cat, or other',
+          icon: '🐕',
+          color: 'from-indigo-500 to-indigo-600',
+          bgColor: 'bg-indigo-50',
+          borderColor: 'border-indigo-200',
+          textColor: 'text-indigo-800',
+          getValue: (product: any) => product.attr_pet_type || product.pet_types,
+          type: 'metadata'
+        });
+      }
     }
 
     // Breed Size (if available)
@@ -441,7 +449,6 @@ export default function ProductComparison() {
         id: 'section_ingredients',
         type: 'section_header',
         title: 'Ingredients & Components',
-        subtitle: 'Key ingredients and features',
         color: 'from-green-500 to-green-600',
         bgColor: 'bg-green-50',
         borderColor: 'border-green-200',
@@ -476,9 +483,12 @@ export default function ProductComparison() {
     }));
   };
 
-  const truncateText = (text: string, maxLength: number = 150) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+  // Function to check if text needs truncation based on height
+  const checkTextHeight = (textRef: React.RefObject<HTMLDivElement>) => {
+    if (!textRef.current) return false;
+    const lineHeight = 20; // Approximate line height for text-sm
+    const maxHeight = lineHeight * 3; // 3 lines
+    return textRef.current.scrollHeight > maxHeight;
   };
 
   return (
@@ -548,7 +558,7 @@ export default function ProductComparison() {
                 <table className="w-full min-w-[800px] table-fixed">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200 shadow-md">
-                      <th className="px-6 py-6 text-left w-48 bg-white/80 backdrop-blur-sm">
+                      <th className="px-6 py-6 text-left w-56 bg-white/80 backdrop-blur-sm">
                         <div className="flex items-center space-x-3">
                           <div className="w-3 h-3 bg-chewy-blue rounded-full shadow-sm"></div>
                           <span className="text-sm font-bold text-gray-800 uppercase tracking-wider">Product</span>
@@ -599,6 +609,14 @@ export default function ProductComparison() {
                                     <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
                                   </div>
                                 )}
+                                
+                                <button
+                                  onClick={() => handleAddToCart(product)}
+                                  className="w-full bg-chewy-blue hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
+                                >
+                                  <ShoppingCart className="w-3 h-3" />
+                                  <span>Add to Cart</span>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -613,14 +631,8 @@ export default function ProductComparison() {
                         return (
                           <tr key={row.id} className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                             <td colSpan={comparingProducts.length + 1} className="px-6 py-4">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-10 h-10 bg-gradient-to-r ${row.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                                  <span className="text-white text-lg font-bold">{row.icon || '📋'}</span>
-                                </div>
-                                <div>
-                                  <div className="text-lg font-bold text-gray-900">{row.title}</div>
-                                  <div className="text-sm text-gray-600">{row.subtitle}</div>
-                                </div>
+                              <div className="flex items-center">
+                                <div className="text-lg font-bold text-gray-900">{row.title}</div>
                               </div>
                             </td>
                           </tr>
@@ -633,14 +645,14 @@ export default function ProductComparison() {
                       
                       return (
                         <tr key={row.id} className={`${rowBgClass} hover:bg-blue-50/50 transition-all duration-300 group`}>
-                          <td className="px-6 py-6 border-r border-gray-100">
-                            <div className="flex items-center space-x-4">
-                              <div className={`w-12 h-12 bg-gradient-to-r ${row.color} rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 transform group-hover:scale-110`}>
-                                <span className="text-white text-lg font-bold">{row.icon}</span>
+                          <td className="px-6 py-6 border-r border-gray-100 w-56">
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-8 h-8 bg-gradient-to-r ${row.color} rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 transform group-hover:scale-110 flex-shrink-0 mt-1`}>
+                                <span className="text-white text-sm font-bold">{row.icon}</span>
                               </div>
-                              <div>
-                                <div className="text-base font-semibold text-gray-900">{row.title}</div>
-                                <div className="text-sm text-gray-500">{row.subtitle}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold text-gray-900 leading-tight whitespace-normal">{row.title}</div>
+                                <div className="text-xs text-gray-500 leading-tight mt-1 whitespace-normal">{row.subtitle}</div>
                               </div>
                             </div>
                           </td>
@@ -655,9 +667,9 @@ export default function ProductComparison() {
                               const visibleKeywords = value.slice(0, showCount) || [];
                               const hasMore = (value.length || 0) > 4;
 
-                              return (
-                                <td key={product.id} className="px-6 py-6">
-                                  {value && value.length > 0 ? (
+                                                           return (
+                               <td key={product.id} className="px-6 py-6 align-top">
+                                 {value && value.length > 0 ? (
                                     <div className="space-y-4">
                                       <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
                                         isExpanded ? 'max-h-96' : 'max-h-24'
@@ -720,15 +732,32 @@ export default function ProductComparison() {
                             if (row.type === 'ai_synthesis' && typeof value === 'string') {
                               const textKey = `${row.id}_${product.id}`;
                               const isTextExpanded = expandedText[textKey] || false;
-                              const displayText = isTextExpanded ? value : truncateText(value);
-                              const needsTruncation = value.length > 150;
+                              const textRef = useRef<HTMLDivElement>(null);
+                              const [needsTruncation, setNeedsTruncation] = useState(false);
+
+                              // Check if text needs truncation after render
+                              useEffect(() => {
+                                if (textRef.current) {
+                                  const lineHeight = 24; // Actual line height for text-sm leading-relaxed
+                                  const maxHeight = lineHeight * 3; // 3 lines
+                                  setNeedsTruncation(textRef.current.scrollHeight > maxHeight);
+                                }
+                              }, [value]);
 
                               return (
-                                <td key={product.id} className="px-6 py-6">
+                                <td key={product.id} className="px-6 py-6 align-top">
                                   {value ? (
                                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors duration-200">
-                                      <div className="text-sm leading-relaxed text-gray-700 text-left">
-                                        {displayText}
+                                      <div 
+                                        ref={textRef}
+                                        className={`text-sm leading-relaxed text-gray-700 text-left ${
+                                          !isTextExpanded && needsTruncation ? 'overflow-hidden' : ''
+                                        }`}
+                                        style={{
+                                          maxHeight: !isTextExpanded && needsTruncation ? '70px' : 'none'
+                                        }}
+                                      >
+                                        {value}
                                       </div>
                                       {needsTruncation && (
                                         <button
@@ -753,9 +782,11 @@ export default function ProductComparison() {
                             
                             // Default handling for metadata rows
                             return (
-                              <td key={product.id} className="px-6 py-6">
+                              <td key={product.id} className="px-6 py-6 align-top">
                                 {value ? (
-                                  <div className={`${row.bgColor} border-2 ${row.borderColor} rounded-lg p-4 text-left hover:shadow-md transition-all duration-200`}>
+                                  <div className={`${row.bgColor} border-2 ${row.borderColor} rounded-lg p-4 text-left hover:shadow-md transition-all duration-200 ${
+                                    row.id === 'product_type' || row.id === 'pet_type' ? 'inline-block' : 'w-full'
+                                  }`}>
                                     <span className={`text-sm font-medium ${row.textColor}`}>{value}</span>
                                   </div>
                                 ) : (
