@@ -22,7 +22,7 @@ export const QuickResponseButtons: React.FC<QuickResponseButtonsProps> = ({
           variant="outline"
           size="sm"
           onClick={() => onTagClick(tag)}
-          className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700 hover:text-blue-800 hover:border-blue-300 px-3 py-1 text-xs font-medium rounded-full transition-colors"
+          className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-200 hover:border-blue-300 text-blue-700 hover:text-blue-800 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
         >
           {tag}
         </Button>

@@ -217,7 +217,7 @@ export default function ProductChatModal({ product, isOpen, onClose, onHideMainC
                 <button
                   key={index}
                   onClick={() => handleSampleQuestionClick(question)}
-                  className="block w-full text-left text-sm text-chewy-blue bg-blue-50 border border-chewy-blue p-3 transition-colors hover:bg-blue-100"
+                  className="block w-full text-left text-sm bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 hover:border-blue-300 text-blue-700 hover:text-blue-800 p-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   {question}
                 </button>

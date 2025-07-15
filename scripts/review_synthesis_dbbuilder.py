@@ -6,23 +6,35 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "../data/chromadb/all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "../data/chromadb/results.jsonl"
+CSV_PATH = "all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "results.jsonl"
 
 COLLECTION_NAME = "review_synthesis"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHROMADB_PATH = "../scripts/chroma_db"
+CHROMADB_PATH = "chroma_db"
 BATCH_SIZE = 1000
 
 # === Step 1: Load Data ===
 df = pd.read_csv(
     CSV_PATH,
+    header=None,  # No header row in CSV
+    names=[
+        "PRODUCT_ID", "PART_NUMBER", "PARENT_ID", "PARENT_PART_NUMBER", "TYPE", "NAME", 
+        "DESCRIPTION_LONG", "CATEGORY_LEVEL1", "CATEGORY_LEVEL2", "CATEGORY_LEVEL3", 
+        "PRICE", "RATING_AVG", "RATING_CNT", "ATTR_PET_TYPE", "ATTR_FOOD_FORM", 
+        "ATTR_SPECIAL_DIET", "IS_FOOD_FLAG", "INGREDIENTS", "MERCH_CLASSIFICATION1", 
+        "MERCH_CLASSIFICATION2", "PARENT_COMPANY", "LIFE_STAGE", "MERCH_CLASSIFICATION3", 
+        "AUTOSHIP_PRICE", "AUTOSHIP_SAVE_DESCRIPTION", "PRODUCT_TYPE", "BREED_SIZE", 
+        "LIFESTAGE", "PET_TYPES", "FULLIMAGE", "THUMBNAIL", "MERCH_CLASSIFICATION4", 
+        "PURCHASE_BRAND", "CLEAN_NAME", "Unanswered FAQs", "Answered FAQs"
+    ],
     dtype={
         "PRODUCT_ID": str,
         "PART_NUMBER": str,
         "PARENT_ID": str,
         "PARENT_PART_NUMBER": str
-    }
+    },
+    low_memory=False
 )
 
 # === Step 2: Build Item Variant Map ===
@@ -241,7 +253,7 @@ except:
     pass
 
 # Create new collection with proper embedding function
-collection = client.create_collection(
+collection = client.get_or_create_collection(
     name=COLLECTION_NAME,
     metadata={"hnsw:space": "cosine"}
 )

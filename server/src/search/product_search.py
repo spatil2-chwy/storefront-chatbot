@@ -236,8 +236,16 @@ def rank_products(results):
         results['ids'][0], 
         results['distances'][0]
     ):
-        rating_avg = metadata.get('RATING_AVG', 0) or 2.5
-        rating_count = metadata.get('RATING_CNT', 0) or 0
+        # Convert to float/number, handling string values
+        try:
+            rating_avg = float(metadata.get('RATING_AVG', 0) or 2.5)
+        except (ValueError, TypeError):
+            rating_avg = 2.5
+        
+        try:
+            rating_count = int(metadata.get('RATING_CNT', 0) or 0)
+        except (ValueError, TypeError):
+            rating_count = 0
         
         # Method 1: Wilson Score (treating 4+ stars as "positive")
         positive_ratings = max(0, (rating_avg - 3) * rating_count / 2)  # Approximate
