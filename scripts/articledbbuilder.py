@@ -5,7 +5,7 @@ from tqdm import tqdm
 import chromadb
 
 # === Load Articles ===
-with open('data/chromadb/all_wp_posts.json', 'r') as file:
+with open('../data/chromadb/all_wp_posts.json', 'r') as file:
     articles = json.load(file)
 
 # === HTML to Markdown Conversion ===
