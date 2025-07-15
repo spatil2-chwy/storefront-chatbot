@@ -214,82 +214,17 @@ class ProductService:
         search_matches = None
         if query:
             try:
-                analysis_start = time.time()
-                # Extract categorized search criteria
                 categorized_criteria = self.search_analyzer.extract_search_criteria(query)
-                criteria_time = time.time() - analysis_start
                 
-                # Analyze matches
-                match_start = time.time()
                 search_matches = self.search_analyzer.analyze_product_matches(
                     metadata, categorized_criteria, query
                 )
-                match_time = time.time() - match_start
-                
-                # print(f"    🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
             except Exception as e:
                 logger.warning(f"Error analyzing search matches: {e}")
                 search_matches = None
         
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
-
-    async def search_products(self, query: str, limit: int = 10, include_search_matches: bool = True) -> dict:
-        """Search products using direct semantic search without LLM agent"""
-        try:
-            total_start = time.time()
-            logger.info(f"Starting direct search for: '{query}'")
-            
-            # Use direct semantic search instead of going through the chat function
-            from src.search.product_search import query_products, rank_products
-            
-            search_start = time.time()
-            results = query_products(query, (), (), ())  # No filters for direct search
-            search_time = time.time() - search_start
-            logger.debug(f"Database search took: {search_time:.3f}s")
-            
-            ranking_start = time.time()
-            ranked_products = rank_products(results)
-            ranking_time = time.time() - ranking_start
-            logger.debug(f"Ranking took: {ranking_time:.3f}s")
-            
-            if not ranked_products:
-                logger.warning(f"No products found for query: '{query}'")
-                return {
-                    "products": [],
-                }
-            
-            # Convert ranked results to Product objects with search match analysis
-            conversion_start = time.time()
-            products = []
-            for i, ranked_result in enumerate(ranked_products[:limit]):  # Limit the results
-                try:
-                    product_start = time.time()
-                    product = self._ranked_result_to_product(ranked_result, query)
-                    product_time = time.time() - product_start
-                    if i < 3:  # Only log first 3 products to avoid spam
-                        logger.debug(f"Product {i+1} conversion: {product_time:.3f}s")
-                    products.append(product)
-                except Exception as e:
-                    logger.warning(f"Error converting ranked result to product: {e}")
-                    continue
-            
-            conversion_time = time.time() - conversion_start
-            total_time = time.time() - total_start
-            
-            logger.info(f"Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
-            logger.info(f"Total search time: {total_time:.3f}s")
-            
-            return {
-                "products": products,
-            }
-            
-        except Exception as e:
-            logger.error(f"Error searching products: {e}")
-            return {
-                "products": [],
-            }
-        
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:

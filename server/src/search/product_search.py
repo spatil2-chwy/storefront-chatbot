@@ -59,15 +59,11 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 @lru_cache(maxsize=128)
 def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
     logger.debug(f"Query cache info: {query_products.cache_info()}")
-    start_time = time.time()
+
     where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
     if where_clause == {}:
         where_clause = None
-    logger.debug(f"Where clause built in {time.time() - start_time:.4f} seconds") 
-    
-    query_start = time.time()
-    logger.debug(f"Query embedding retrieved in {time.time() - query_start:.4f} seconds")
-    
+      
     db_start = time.time()
     results = review_collection.query(
         # query_embeddings=query_embedding,
@@ -75,6 +71,8 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
         n_results=300,
         where=where_clause,
     )
+    db_time = time.time() - db_start
+    logger.info(f"Database query completed in {db_time:.4f} seconds")
     
     # Handle case where no results are returned
     if not results or not results['metadatas'] or not results['metadatas'][0]:
@@ -88,6 +86,7 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
     
     logger.debug(f"Number of results: {len(results['metadatas'][0])}")
     
+    filter_start = time.time()
     # Filter out excluded ingredients
     if excluded_ingredients:
         filtered_metadatas = []
@@ -133,9 +132,9 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
             'distances': [results['distances'][0] if results['distances'] else []],
         }
 
-    logger.debug(f"Database query completed in {time.time() - db_start:.4f} seconds")
-    
-    logger.info(f"Total query_products time: {time.time() - start_time:.4f} seconds")
+    filter_time = time.time() - filter_start
+    logger.info(f"Filtering out excluded ingredients completed in {filter_time:.4f} seconds")
+
     return results
 
 

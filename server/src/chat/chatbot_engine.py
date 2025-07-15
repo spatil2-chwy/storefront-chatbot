@@ -49,7 +49,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     
     if not ranked_products:
         return []
-    conversion_start = time.time()
+    search_analyzer_start = time.time()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
         try:
@@ -59,8 +59,8 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
             print(f"⚠️ Error converting ranked result to product: {e}")
             continue
     
-    conversion_time = time.time() - conversion_start
-    print(f"Product conversion took: {conversion_time:.4f} seconds ({len(products)} products)")
+    search_analyzer_time = time.time() - search_analyzer_start
+    print(f"Product conversion took: {search_analyzer_time:.4f} seconds ({len(products)} products)")
 
     total_tool_time = time.time() - start
     print(f"Total search_products time: {total_tool_time:.4f} seconds")
@@ -70,7 +70,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
         tool_execution_time=total_tool_time,
         product_search_time=product_search_time,
         ranking_time=ranking_time,
-        conversion_time=conversion_time
+        search_analyzer_time=search_analyzer_time
     )
     
     return products

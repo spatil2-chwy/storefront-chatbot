@@ -38,7 +38,7 @@ class EvaluationLog:
     tool_execution_time: Optional[float] = None  # Total time to execute tool call
     product_search_time: Optional[float] = None  # Time for database query in search_products
     ranking_time: Optional[float] = None  # Time for ranking products
-    conversion_time: Optional[float] = None  # Time to convert ranked results to Product objects
+    search_analyzer_time: Optional[float] = None  # Time to convert ranked results to Product objects
     article_search_time: Optional[float] = None  # Time for article search
     llm_response_time: Optional[float] = None  # Time for final LLM response generation
     context_formatting_time: Optional[float] = None  # Time to format products for LLM
@@ -130,7 +130,7 @@ class EvaluationLogger:
                    tool_execution_time: Optional[float] = None,
                    product_search_time: Optional[float] = None,
                    ranking_time: Optional[float] = None,
-                   conversion_time: Optional[float] = None,
+                   search_analyzer_time: Optional[float] = None,
                    article_search_time: Optional[float] = None,
                    llm_response_time: Optional[float] = None,
                    context_formatting_time: Optional[float] = None,
@@ -145,8 +145,8 @@ class EvaluationLogger:
                 self.current_log.product_search_time = product_search_time
             if ranking_time is not None:
                 self.current_log.ranking_time = ranking_time
-            if conversion_time is not None:
-                self.current_log.conversion_time = conversion_time
+            if search_analyzer_time is not None:
+                self.current_log.search_analyzer_time = search_analyzer_time
             if article_search_time is not None:
                 self.current_log.article_search_time = article_search_time
             if llm_response_time is not None:
