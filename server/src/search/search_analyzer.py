@@ -20,29 +20,29 @@ from sklearn.metrics.pairwise import cosine_similarity
 logger = logging.getLogger(__name__)
 
 # UNCOMMENT TO DOWNLOAD NLTK DATA
-# # Download required NLTK data (run once)
-# try:
-#     # Splits text into words and punctuation
-#     nltk.data.find('tokenizers/punkt')
-# except LookupError:
-#     nltk.download('punkt')
+# Download required NLTK data (run once)
+try:
+    # Splits text into words and punctuation
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
-# try:
-#     # Provides list of common words to filter out
-#     nltk.data.find('corpora/stopwords')
-# except LookupError:
-#     nltk.download('stopwords')
+try:
+    # Provides list of common words to filter out
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
 
-# try:
-#     # Provides synonyms, antonyms, and word relationships
-#     nltk.data.find('corpora/wordnet')
-# except LookupError:
-#     nltk.download('wordnet')
-# try:
-#     # Provides part-of-speech tagging (noun, verb, adjective, etc.)
-#     nltk.data.find('taggers/averaged_perceptron_tagger')
-# except LookupError:
-#     nltk.download('averaged_perceptron_tagger')
+try:
+    # Provides synonyms, antonyms, and word relationships
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet')
+try:
+    # Provides part-of-speech tagging (noun, verb, adjective, etc.)
+    nltk.data.find('taggers/averaged_perceptron_tagger')
+except LookupError:
+    nltk.download('averaged_perceptron_tagger')
     
 client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 collection = client.get_collection(name="products")

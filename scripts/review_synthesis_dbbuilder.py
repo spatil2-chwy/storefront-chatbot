@@ -6,12 +6,12 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "../data/chromadb/all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "../data/chromadb/results.jsonl"
+CSV_PATH = "data/chromadb/all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "data/chromadb/results.jsonl"
 
 COLLECTION_NAME = "review_synthesis"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHROMADB_PATH = "../scripts/chroma_db"
+CHROMADB_PATH = "chroma_db"
 BATCH_SIZE = 1000
 
 # === Step 1: Load Data ===
@@ -33,7 +33,8 @@ df = pd.read_csv(
         "PART_NUMBER": str,
         "PARENT_ID": str,
         "PARENT_PART_NUMBER": str
-    }
+    },
+    low_memory=False
 )
 
 # === Step 2: Build Item Variant Map ===
@@ -242,7 +243,7 @@ print("🔄 Loading embedding model...")
 model = SentenceTransformer(EMBEDDING_MODEL)
 
 print("🔄 Initializing ChromaDB...")
-client = chromadb.HttpClient(host='localhost', port=8001)
+client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
 # Delete existing review synthesis collection if it exists
 try:
@@ -252,7 +253,7 @@ except:
     pass
 
 # Create new collection with proper embedding function
-collection = client.create_collection(
+collection = client.get_or_create_collection(
     name=COLLECTION_NAME,
     metadata={"hnsw:space": "cosine"}
 )

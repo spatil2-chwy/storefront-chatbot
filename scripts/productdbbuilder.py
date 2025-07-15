@@ -6,8 +6,8 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "../data/chromadb/all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "../data/chromadb/results.jsonl"
+CSV_PATH = "data/chromadb/all_chewy_products_with_qanda.csv"
+REVIEW_SYNTH_PATH = "data/chromadb/results.jsonl"
 
 COLLECTION_NAME = "products"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -33,7 +33,8 @@ df = pd.read_csv(
         "PART_NUMBER": str,
         "PARENT_ID": str,
         "PARENT_PART_NUMBER": str
-    }
+    },
+    low_memory=False
 )
 
 # === Step 2: Build Item Variant Map ===
