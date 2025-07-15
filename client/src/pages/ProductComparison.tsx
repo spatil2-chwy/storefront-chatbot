@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
 import Header from '@/layout/Header';
@@ -598,17 +598,17 @@ export default function ProductComparison() {
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px] table-fixed">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                      <th className="px-6 py-4 text-left w-48">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
-                          <span className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Product</span>
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200 shadow-md">
+                      <th className="px-6 py-6 text-left w-56 bg-white/80 backdrop-blur-sm">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-chewy-blue rounded-full shadow-sm"></div>
+                          <span className="text-sm font-bold text-gray-800 uppercase tracking-wider">Product</span>
                         </div>
                       </th>
                       {comparingProducts.map((product, index) => (
-                        <th key={product.id} className="px-6 py-4 text-left" style={{width: `calc((100% - 12rem) / ${comparingProducts.length})`}}>
-                          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                        <th key={product.id} className="px-6 py-6 text-left bg-white/80 backdrop-blur-sm" style={{width: `calc((100% - 12rem) / ${comparingProducts.length})`}}>
+                          <div className="bg-white rounded-xl border-2 border-gray-200 p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                             <div className="relative mb-3">
                               <div className="w-full h-24 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
                                 {product.image ? (
@@ -621,7 +621,7 @@ export default function ProductComparison() {
                                   <Package className="w-8 h-8 text-gray-400" />
                                 )}
                               </div>
-                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-chewy-blue text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
                                 {index + 1}
                               </div>
                             </div>
@@ -651,6 +651,14 @@ export default function ProductComparison() {
                                     <span className="text-xs text-chewy-blue font-medium">${product.autoshipPrice?.toFixed(2)} Autoship</span>
                                   </div>
                                 )}
+                                
+                                <button
+                                  onClick={() => handleAddToCart(product)}
+                                  className="w-full bg-chewy-blue hover:bg-blue-700 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
+                                >
+                                  <ShoppingCart className="w-3 h-3" />
+                                  <span>Add to Cart</span>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -659,58 +667,47 @@ export default function ProductComparison() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {/* AI Synthesis Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-gray-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">What Tylee Thinks</div>
-                            <div className="text-xs text-gray-500">AI recommendation</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => (
-                        <td key={product.id} className="px-6 py-5">
-                          {product.should_you_buy_it ? (
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                              <div className="text-sm leading-relaxed text-gray-700">
-                                {product.should_you_buy_it}
+                    {getComparisonRows().map((row, rowIndex) => {
+                      // Section header row
+                      if (row.type === 'section_header') {
+                        return (
+                          <tr key={row.id} className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+                            <td colSpan={comparingProducts.length + 1} className="px-6 py-4">
+                              <div className="flex items-center">
+                                <div className="text-lg font-bold text-gray-900">{row.title}</div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      // Regular data row with alternating colors
+                      const isEvenRow = rowIndex % 2 === 0;
+                      const rowBgClass = isEvenRow ? 'bg-white' : 'bg-gray-50/30';
+                      
+                      return (
+                        <tr key={row.id} className={`${rowBgClass} hover:bg-blue-50/50 transition-all duration-300 group`}>
+                          <td className="px-6 py-6 border-r border-gray-100 w-56">
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-8 h-8 bg-gradient-to-r ${row.color} rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 transform group-hover:scale-110 flex-shrink-0 mt-1`}>
+                                <span className="text-white text-sm font-bold">{row.icon}</span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold text-gray-900 leading-tight whitespace-normal">{row.title}</div>
+                                <div className="text-xs text-gray-500 leading-tight mt-1 whitespace-normal">{row.subtitle}</div>
                               </div>
                             </div>
-                          ) : (
-                            <div className="text-center py-4">
-                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                <X className="w-4 h-4 text-gray-400" />
-                              </div>
-                              <span className="text-sm text-gray-400 italic">Not available</span>
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    {/* Ingredients Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">🥬</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Ingredients</div>
-                            <div className="text-xs text-gray-500">Key components</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const productId = product.id ?? 0;
-                        const isExpanded = expandedIngredients[productId] || false;
-                        const showCount = isExpanded ? product.keywords?.length || 0 : 4;
-                        const visibleKeywords = product.keywords?.slice(0, showCount) || [];
-                        const hasMore = (product.keywords?.length || 0) > 4;
+                          </td>
+                          {comparingProducts.map((product) => {
+                            const value = row.getValue?.(product);
+                            
+                            // Special handling for ingredients row
+                            if (row.type === 'ingredients' && Array.isArray(value)) {
+                              const productId = product.id ?? 0;
+                              const isExpanded = expandedIngredients[productId] || false;
+                              const showCount = isExpanded ? value.length || 0 : 4;
+                              const visibleKeywords = value.slice(0, showCount) || [];
+                              const hasMore = (value.length || 0) > 4;
 
                                                            return (
                                <td key={product.id} className="px-6 py-6 align-top">
