@@ -17,15 +17,14 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
+def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list = None):
     # build where clause for special diet and ingredients tags
-<<<<<<< HEAD
     start_time = time.time()
     
+    if special_diet_tags is None:
+        special_diet_tags = []
+    
     if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:
-=======
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) == 0:
->>>>>>> origin/dev
         where_clause = {}
     elif len(category_level_1) + len(category_level_2) + len(required_ingredients) == 1:
         # if only one special diet or ingredient, use a single condition
@@ -65,19 +64,12 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
 
 
 @lru_cache(maxsize=128)
-<<<<<<< HEAD
 def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), special_diet_tags=()):
     logger.debug(f"🔍 Query cache info: {query_products.cache_info()}")
     start_time = time.time()
     logger.info(f"🔍 PRODUCT SEARCH START - Query: '{query[:50]}{'...' if len(query) > 50 else ''}'")
     
     where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)
-=======
-def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
-    logger.debug(f"Query cache info: {query_products.cache_info()}")
-    start_time = time.time()
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
->>>>>>> origin/dev
     if where_clause == {}:
         where_clause = None
     logger.debug(f"🔍 Where clause built in {time.time() - start_time:.4f} seconds") 

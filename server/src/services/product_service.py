@@ -11,7 +11,13 @@ logger = logging.getLogger(__name__)
 import chromadb
 # client = chromadb.PersistentClient(path="../scripts/chroma_db")
 client = chromadb.HttpClient(host='localhost', port=8001)
-collection = client.get_collection(name="review_synthesis")
+
+# Initialize collection - create if it doesn't exist
+try:
+    collection = client.get_collection(name="review_synthesis")
+except Exception as e:
+    logger.warning(f"Collection 'review_synthesis' not found, creating it: {e}")
+    collection = client.create_collection(name="review_synthesis")
 
 class ProductService:
     def __init__(self):
