@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
 import Header from '@/layout/Header';
-import ProductCard from '@/features/Product/components/ProductCard';
-import ProductFilters from '@/features/Product/components/ProductFilters';
-import ChatWidget from '@/features/Chat/components/ChatWidget';
-import ComparisonFooter from '@/features/Product/components/ComparisonFooter';
-import BirthdayPopup from '@/features/Chat/components/Core/BirthdayPopup';
+import ProductCard from '@/features/product/components/ProductCard';
+import ProductFilters from '@/features/product/components/ProductFilters';
+import CategoryFilterDropdown from '@/features/product/components/CategoryFilterDropdown';
+import ChatWidget from '@/features/chat/components/ChatWidget';
+import ComparisonFooter from '@/features/product/components/ComparisonFooter';
+import BirthdayPopup from '@/features/chat/components/Core/BirthdayPopup';
 import { usersApi } from '@/lib/api/users';
 import { chatApi } from '@/lib/api/chat';
 import { Product } from '../types';
@@ -24,7 +25,7 @@ export default function ProductListing() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchStats, setSearchStats] = useState<any>(null);
   const [selectedMatchFilters, setSelectedMatchFilters] = useState<string[]>([]);
-  const [minMatchCount, setMinMatchCount] = useState<number>(0);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
   const [birthdayPet, setBirthdayPet] = useState<{pet_name: string, image: string} | null>(null);
@@ -159,7 +160,7 @@ export default function ProductListing() {
       setHasSearched(false);
       setSearchStats(null);
       setSelectedMatchFilters([]);
-      setMinMatchCount(0);
+      setSelectedCategories([]);
     };
     
     window.addEventListener('clearChat', handleClearChatEvent);
@@ -215,7 +216,7 @@ export default function ProductListing() {
       searchResultsLength: searchResults.length, 
       sortBy, 
       selectedMatchFilters, 
-      minMatchCount 
+      selectedCategories 
     });
 
     if (searchResults.length > 0) {
@@ -223,26 +224,31 @@ export default function ProductListing() {
     } else {
       setFilteredResults([]);
     }
-  }, [searchResults, sortBy, selectedMatchFilters, minMatchCount]);
+  }, [searchResults, sortBy, selectedMatchFilters, selectedCategories]);
 
   const applyFilters = () => {
     let filtered = [...searchResults];
 
-    // Apply minimum match count filter - count by category types, not individual matches
-    if (minMatchCount > 0) {
+    // Apply category filter - only show products that match selected values
+    if (selectedCategories.length > 0) {
       filtered = filtered.filter(product => {
         if (!product.search_matches) return false;
         
-        // Count unique category types (the part before the colon)
-        const uniqueCategories = new Set();
+        // Check if product has matches for any of the selected values
+        const productValues = new Set();
         product.search_matches.forEach(match => {
           if (match.field.includes(':')) {
-            const [category] = match.field.split(':', 1);
-            uniqueCategories.add(category.trim());
+            const [category, value] = match.field.split(':', 2);
+            if (value && value.trim()) {
+              productValues.add(value.trim());
+            }
           }
         });
         
-        return uniqueCategories.size >= minMatchCount;
+        // Product must have at least one match for the selected values
+        return selectedCategories.some(selectedValue => 
+          productValues.has(selectedValue)
+        );
       });
     }
 
@@ -309,7 +315,7 @@ export default function ProductListing() {
       setSearchError(null);
       setSearchStats(null);
       setSelectedMatchFilters([]);
-      setMinMatchCount(0);
+      setSelectedCategories([]);
       setCurrentSearchQuery('');
       return;
     }
@@ -318,7 +324,7 @@ export default function ProductListing() {
     setSearchError(null);
     setHasSearched(true);
     setSelectedMatchFilters([]);
-    setMinMatchCount(0);
+    setSelectedCategories([]);
 
     try {
       // Instead of making a separate API call, integrate directly with chat widget
@@ -359,7 +365,7 @@ export default function ProductListing() {
     // setCurrentSearchQuery(''); // Keep search query for reference
     // setSearchStats(null);   // Keep search stats for filtering
     // setSelectedMatchFilters([]); // Keep applied filters
-    // setMinMatchCount(0);    // Keep match count filter
+    // setSelectedCategories([]);    // Keep category filter
   };
 
   const handleFilterChange = (filters: any) => {
@@ -424,7 +430,7 @@ export default function ProductListing() {
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
                   Showing {filteredResults.length} of {searchResults.length} results
-                  {(minMatchCount > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
+                  {(selectedCategories.length > 0 || selectedMatchFilters.length > 0) && filteredResults.length !== searchResults.length && (
                     <span className="text-blue-600 ml-1">(filtered)</span>
                   )}
                 </p>
@@ -433,23 +439,16 @@ export default function ProductListing() {
               {/* Sort and Filter Dropdowns - only show when there are results */}
               {filteredResults.length > 0 && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  {/* Match Count Filter */}
+                  {/* Category Filter */}
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600 hidden sm:inline">Min Categories</span>
-                    <span className="text-sm text-gray-600 sm:hidden">Categories Matched</span>
-                    <Select value={minMatchCount.toString()} onValueChange={(value) => setMinMatchCount(parseInt(value))}>
-                      <SelectTrigger className="w-24 sm:w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Any</SelectItem>
-                        <SelectItem value="1">1+</SelectItem>
-                        <SelectItem value="2">2+</SelectItem>
-                        <SelectItem value="3">3+</SelectItem>
-                        <SelectItem value="4">4+</SelectItem>
-                        <SelectItem value="5">5+</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <span className="text-sm text-gray-600 hidden sm:inline">Categories</span>
+                    <span className="text-sm text-gray-600 sm:hidden">Categories</span>
+                    <CategoryFilterDropdown
+                      products={searchResults}
+                      selectedCategories={selectedCategories}
+                      onCategoryChange={setSelectedCategories}
+                      className="w-40 sm:w-48"
+                    />
                   </div>
 
                   {/* Sort Dropdown */}

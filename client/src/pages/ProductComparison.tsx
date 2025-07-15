@@ -296,6 +296,23 @@ export default function ProductComparison() {
       textColor: 'text-purple-800'
     });
 
+    // Brand
+    const hasBrand = comparingProducts.some(p => p.brand);
+    if (hasBrand) {
+      rows.push({
+        id: 'brand',
+        title: 'Brand',
+        subtitle: 'Manufacturer',
+        icon: '🏢',
+        color: 'from-red-500 to-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        textColor: 'text-red-800',
+        getValue: (product: any) => product.brand,
+        type: 'metadata'
+      });
+    }
+
     // Product Type/Category
     const hasProductType = comparingProducts.some(p => p.product_type || p.category_level_1);
     if (hasProductType) {
@@ -309,6 +326,31 @@ export default function ProductComparison() {
         borderColor: 'border-purple-200',
         textColor: 'text-purple-800',
         getValue: (product: any) => product.product_type || product.category_level_1,
+        type: 'metadata'
+      });
+    }
+
+    // Merch Classification
+    const hasMerchClassification = comparingProducts.some(p => p.merch_classification1 || p.merch_classification2 || p.merch_classification3 || p.merch_classification4);
+    if (hasMerchClassification) {
+      rows.push({
+        id: 'merch_classification',
+        title: 'Classification',
+        subtitle: 'Merchandising category',
+        icon: '📊',
+        color: 'from-indigo-500 to-indigo-600',
+        bgColor: 'bg-indigo-50',
+        borderColor: 'border-indigo-200',
+        textColor: 'text-indigo-800',
+        getValue: (product: any) => {
+          const classifications = [
+            product.merch_classification1,
+            product.merch_classification2,
+            product.merch_classification3,
+            product.merch_classification4
+          ].filter(Boolean);
+          return classifications.length > 0 ? classifications.join(', ') : null;
+        },
         type: 'metadata'
       });
     }
@@ -784,9 +826,7 @@ export default function ProductComparison() {
                             return (
                               <td key={product.id} className="px-6 py-6 align-top">
                                 {value ? (
-                                  <div className={`${row.bgColor} border-2 ${row.borderColor} rounded-lg p-4 text-left hover:shadow-md transition-all duration-200 ${
-                                    row.id === 'product_type' || row.id === 'pet_type' ? 'inline-block' : 'w-full'
-                                  }`}>
+                                  <div className={`${row.bgColor} border-2 ${row.borderColor} rounded-lg p-4 text-left hover:shadow-md transition-all duration-200 inline-block`}>
                                     <span className={`text-sm font-medium ${row.textColor}`}>{value}</span>
                                   </div>
                                 ) : (
