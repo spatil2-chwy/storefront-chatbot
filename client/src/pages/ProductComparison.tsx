@@ -222,6 +222,214 @@ export default function ProductComparison() {
     return null;
   };
 
+  // New helper functions for AI synthesis and relevant metadata
+  const getComparisonRows = () => {
+    const rows = [];
+    
+    // AI Synthesis Row (always first)
+    rows.push({
+      id: 'ai_synthesis',
+      title: 'AI Recommendation',
+      subtitle: 'What Tylee thinks',
+      icon: '🤖',
+      color: 'from-blue-500 to-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+      textColor: 'text-blue-800',
+      getValue: (product: any) => product.should_you_buy_it,
+      type: 'ai_synthesis'
+    });
+
+    // What Customers Love (if available)
+    const hasCustomerLove = comparingProducts.some(p => p.what_customers_love);
+    if (hasCustomerLove) {
+      rows.push({
+        id: 'customer_love',
+        title: 'Customer Highlights',
+        subtitle: 'What pet parents love',
+        icon: '❤️',
+        color: 'from-pink-500 to-pink-600',
+        bgColor: 'bg-pink-50',
+        borderColor: 'border-pink-200',
+        textColor: 'text-pink-800',
+        getValue: (product: any) => product.what_customers_love,
+        type: 'ai_synthesis'
+      });
+    }
+
+    // What to Watch Out For (if available)
+    const hasWatchOut = comparingProducts.some(p => p.what_to_watch_out_for);
+    if (hasWatchOut) {
+      rows.push({
+        id: 'watch_out',
+        title: 'Considerations',
+        subtitle: 'Things to be aware of',
+        icon: '⚠️',
+        color: 'from-orange-500 to-orange-600',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200',
+        textColor: 'text-orange-800',
+        getValue: (product: any) => product.what_to_watch_out_for,
+        type: 'ai_synthesis'
+      });
+    }
+
+    // Product Type/Category
+    const hasProductType = comparingProducts.some(p => p.product_type || p.category_level_1);
+    if (hasProductType) {
+      rows.push({
+        id: 'product_type',
+        title: 'Product Type',
+        subtitle: 'Category classification',
+        icon: '🏷️',
+        color: 'from-purple-500 to-purple-600',
+        bgColor: 'bg-purple-50',
+        borderColor: 'border-purple-200',
+        textColor: 'text-purple-800',
+        getValue: (product: any) => product.product_type || product.category_level_1,
+        type: 'metadata'
+      });
+    }
+
+    // Life Stage
+    const hasLifeStage = comparingProducts.some(p => p.life_stage || p.lifestage);
+    if (hasLifeStage) {
+      rows.push({
+        id: 'life_stage',
+        title: 'Life Stage',
+        subtitle: 'Age appropriateness',
+        icon: '🐾',
+        color: 'from-green-500 to-green-600',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        textColor: 'text-green-800',
+        getValue: (product: any) => product.life_stage || product.lifestage,
+        type: 'metadata'
+      });
+    }
+
+    // Pet Type
+    const hasPetType = comparingProducts.some(p => p.attr_pet_type || p.pet_types);
+    if (hasPetType) {
+      rows.push({
+        id: 'pet_type',
+        title: 'Pet Type',
+        subtitle: 'Dog, cat, or other',
+        icon: '🐕',
+        color: 'from-indigo-500 to-indigo-600',
+        bgColor: 'bg-indigo-50',
+        borderColor: 'border-indigo-200',
+        textColor: 'text-indigo-800',
+        getValue: (product: any) => product.attr_pet_type || product.pet_types,
+        type: 'metadata'
+      });
+    }
+
+    // Breed Size (if available)
+    const hasBreedSize = comparingProducts.some(p => getBreedSize(p));
+    if (hasBreedSize) {
+      rows.push({
+        id: 'breed_size',
+        title: 'Breed Size',
+        subtitle: 'Target size range',
+        icon: '📏',
+        color: 'from-teal-500 to-teal-600',
+        bgColor: 'bg-teal-50',
+        borderColor: 'border-teal-200',
+        textColor: 'text-teal-800',
+        getValue: getBreedSize,
+        type: 'metadata'
+      });
+    }
+
+    // Food Form (for food products)
+    const hasFoodForm = comparingProducts.some(p => p.attr_food_form);
+    if (hasFoodForm) {
+      rows.push({
+        id: 'food_form',
+        title: 'Food Form',
+        subtitle: 'Dry, wet, or other',
+        icon: '🥘',
+        color: 'from-amber-500 to-amber-600',
+        bgColor: 'bg-amber-50',
+        borderColor: 'border-amber-200',
+        textColor: 'text-amber-800',
+        getValue: (product: any) => product.attr_food_form,
+        type: 'metadata'
+      });
+    }
+
+    // Special Diet (if available)
+    const hasSpecialDiet = comparingProducts.some(p => getSpecialDiet(p));
+    if (hasSpecialDiet) {
+      rows.push({
+        id: 'special_diet',
+        title: 'Special Diet',
+        subtitle: 'Dietary requirements',
+        icon: '🥗',
+        color: 'from-blue-500 to-blue-600',
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-200',
+        textColor: 'text-blue-800',
+        getValue: getSpecialDiet,
+        type: 'metadata'
+      });
+    }
+
+    // Health Features (if available)
+    const hasHealthFeatures = comparingProducts.some(p => getHealthFeature(p));
+    if (hasHealthFeatures) {
+      rows.push({
+        id: 'health_features',
+        title: 'Health Benefits',
+        subtitle: 'Special health features',
+        icon: '💊',
+        color: 'from-red-500 to-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        textColor: 'text-red-800',
+        getValue: getHealthFeature,
+        type: 'metadata'
+      });
+    }
+
+    // Flavor (if available)
+    const hasFlavor = comparingProducts.some(p => getFlavor(p));
+    if (hasFlavor) {
+      rows.push({
+        id: 'flavor',
+        title: 'Flavor',
+        subtitle: 'Primary taste',
+        icon: '🍖',
+        color: 'from-orange-500 to-orange-600',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200',
+        textColor: 'text-orange-800',
+        getValue: getFlavor,
+        type: 'metadata'
+      });
+    }
+
+    // Ingredients (always include if available)
+    const hasIngredients = comparingProducts.some(p => p.keywords && p.keywords.length > 0);
+    if (hasIngredients) {
+      rows.push({
+        id: 'ingredients',
+        title: 'Key Ingredients',
+        subtitle: 'Important components',
+        icon: '🥬',
+        color: 'from-green-500 to-green-600',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        textColor: 'text-green-800',
+        getValue: (product: any) => product.keywords,
+        type: 'ingredients'
+      });
+    }
+
+    return rows;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
@@ -348,257 +556,133 @@ export default function ProductComparison() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {/* AI Synthesis Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-gray-600" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">What Tylee Thinks</div>
-                            <div className="text-xs text-gray-500">AI recommendation</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => (
-                        <td key={product.id} className="px-6 py-5">
-                          {product.should_you_buy_it ? (
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                              <div className="text-sm leading-relaxed text-gray-700">
-                                {product.should_you_buy_it}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-center py-4">
-                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                <X className="w-4 h-4 text-gray-400" />
-                              </div>
-                              <span className="text-sm text-gray-400 italic">Not available</span>
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    {/* Ingredients Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">🥬</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Ingredients</div>
-                            <div className="text-xs text-gray-500">Key components</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const productId = product.id ?? 0;
-                        const isExpanded = expandedIngredients[productId] || false;
-                        const showCount = isExpanded ? product.keywords?.length || 0 : 4;
-                        const visibleKeywords = product.keywords?.slice(0, showCount) || [];
-                        const hasMore = (product.keywords?.length || 0) > 4;
+                                         {getComparisonRows().map((row) => (
+                       <tr key={row.id} className="hover:bg-gray-50/50 transition-colors duration-200">
+                         <td className="px-6 py-5">
+                           <div className="flex items-center space-x-3">
+                             <div className={`w-8 h-8 bg-gradient-to-r ${row.color} rounded-lg flex items-center justify-center`}>
+                               <span className="text-white text-xs font-bold">{row.icon}</span>
+                             </div>
+                             <div>
+                               <div className="text-sm font-semibold text-gray-900">{row.title}</div>
+                               <div className="text-xs text-gray-500">{row.subtitle}</div>
+                             </div>
+                           </div>
+                         </td>
+                         {comparingProducts.map((product) => {
+                           const value = row.getValue(product);
+                           
+                           // Special handling for ingredients row
+                           if (row.type === 'ingredients' && Array.isArray(value)) {
+                             const productId = product.id ?? 0;
+                             const isExpanded = expandedIngredients[productId] || false;
+                             const showCount = isExpanded ? value.length || 0 : 4;
+                             const visibleKeywords = value.slice(0, showCount) || [];
+                             const hasMore = (value.length || 0) > 4;
 
-                        return (
-                          <td key={product.id} className="px-6 py-5">
-                            {product.keywords && product.keywords.length > 0 ? (
-                              <div className="space-y-3">
-                                {/* Ingredients container with consistent styling */}
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                  isExpanded ? 'max-h-96' : 'max-h-20'
-                                }`}>
-                                  <div className={`${isExpanded ? 'overflow-y-auto' : ''} ${isExpanded ? 'pr-2' : ''}`}>
-                                    <div className="flex flex-wrap gap-1.5 justify-center">
-                                      {visibleKeywords.map((keyword, index) => (
-                                        <div
-                                          key={index}
-                                          className="transform transition-all duration-300 ease-in-out"
-                                          style={{
-                                            transitionDelay: `${index > 3 ? (index - 4) * 50 : 0}ms`
-                                          }}
-                                        >
-                                          <Badge 
-                                            className="text-xs px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium hover:bg-green-100 transition-colors duration-200"
-                                          >
-                                            {keyword}
-                                          </Badge>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {hasMore && (
-                                  <div className="text-center">
-                                    <button
-                                      onClick={() => toggleIngredients(productId)}
-                                      className="inline-flex items-center space-x-1 text-xs text-chewy-blue hover:text-blue-700 font-medium transition-all duration-200 hover:scale-105"
-                                    >
-                                      <span>
-                                        {isExpanded 
-                                          ? `Show less` 
-                                          : `Show ${product.keywords.length - 4} more ingredients`
-                                        }
-                                      </span>
-                                      <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                      </div>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="text-center py-4">
-                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                  <X className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <span className="text-sm text-gray-400 italic">Not available</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    
-                    {/* Health Feature Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">❤️</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Health Feature</div>
-                            <div className="text-xs text-gray-500">Special benefits</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const healthFeature = getHealthFeature(product);
-                        return (
-                          <td key={product.id} className="px-6 py-5">
-                            {healthFeature ? (
-                              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                                <span className="text-sm font-medium text-red-800">{healthFeature}</span>
-                              </div>
-                            ) : (
-                              <div className="text-center py-4">
-                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                  <X className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <span className="text-sm text-gray-400 italic">Not specified</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    
-                    {/* Special Diet Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">🥗</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Special Diet</div>
-                            <div className="text-xs text-gray-500">Dietary requirements</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const specialDiet = getSpecialDiet(product);
-                        return (
-                          <td key={product.id} className="px-6 py-5">
-                            {specialDiet ? (
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                                <span className="text-sm font-medium text-blue-800">{specialDiet}</span>
-                              </div>
-                            ) : (
-                              <div className="text-center py-4">
-                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                  <X className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <span className="text-sm text-gray-400 italic">Not specified</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    
-                    {/* Flavor Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">🍖</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Flavor</div>
-                            <div className="text-xs text-gray-500">Primary taste</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const flavor = getFlavor(product);
-                        return (
-                          <td key={product.id} className="px-6 py-5">
-                            {flavor ? (
-                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
-                                <span className="text-sm font-medium text-orange-800">{flavor}</span>
-                              </div>
-                            ) : (
-                              <div className="text-center py-4">
-                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                  <X className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <span className="text-sm text-gray-400 italic">Not specified</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    
-                    {/* Breed Size Row */}
-                    <tr className="hover:bg-gray-50/50 transition-colors duration-200">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">🐕</span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">Breed Size</div>
-                            <div className="text-xs text-gray-500">Target size range</div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparingProducts.map((product) => {
-                        const breedSize = getBreedSize(product);
-                        return (
-                          <td key={product.id} className="px-6 py-5">
-                            {breedSize ? (
-                              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
-                                <span className="text-sm font-medium text-indigo-800">{breedSize}</span>
-                              </div>
-                            ) : (
-                              <div className="text-center py-4">
-                                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                  <X className="w-4 h-4 text-gray-400" />
-                                </div>
-                                <span className="text-sm text-gray-400 italic">Not specified</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
+                             return (
+                               <td key={product.id} className="px-6 py-5">
+                                 {value && value.length > 0 ? (
+                                   <div className="space-y-3">
+                                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                       isExpanded ? 'max-h-96' : 'max-h-20'
+                                     }`}>
+                                       <div className={`${isExpanded ? 'overflow-y-auto' : ''} ${isExpanded ? 'pr-2' : ''}`}>
+                                         <div className="flex flex-wrap gap-1.5 justify-center">
+                                           {visibleKeywords.map((keyword: string, index: number) => (
+                                             <div
+                                               key={index}
+                                               className="transform transition-all duration-300 ease-in-out"
+                                               style={{
+                                                 transitionDelay: `${index > 3 ? (index - 4) * 50 : 0}ms`
+                                               }}
+                                             >
+                                               <Badge 
+                                                 className="text-xs px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full font-medium hover:bg-green-100 transition-colors duration-200"
+                                               >
+                                                 {keyword}
+                                               </Badge>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       </div>
+                                     </div>
+                                     
+                                     {hasMore && (
+                                       <div className="text-center">
+                                         <button
+                                           onClick={() => toggleIngredients(productId)}
+                                           className="inline-flex items-center space-x-1 text-xs text-chewy-blue hover:text-blue-700 font-medium transition-all duration-200 hover:scale-105"
+                                         >
+                                           <span>
+                                             {isExpanded 
+                                               ? `Show less` 
+                                               : `Show ${value.length - 4} more ingredients`
+                                             }
+                                           </span>
+                                           <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                             </svg>
+                                           </div>
+                                         </button>
+                                       </div>
+                                     )}
+                                   </div>
+                                 ) : (
+                                   <div className="text-center py-4">
+                                     <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                       <X className="w-4 h-4 text-gray-400" />
+                                     </div>
+                                     <span className="text-sm text-gray-400 italic">Not available</span>
+                                   </div>
+                                 )}
+                               </td>
+                             );
+                           }
+                           
+                           // Special handling for AI synthesis rows (longer text)
+                           if (row.type === 'ai_synthesis' && typeof value === 'string') {
+                             return (
+                               <td key={product.id} className="px-6 py-5">
+                                 {value ? (
+                                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                     <div className="text-sm leading-relaxed text-gray-700">
+                                       {value}
+                                     </div>
+                                   </div>
+                                 ) : (
+                                   <div className="text-center py-4">
+                                     <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                       <X className="w-4 h-4 text-gray-400" />
+                                     </div>
+                                     <span className="text-sm text-gray-400 italic">Not available</span>
+                                   </div>
+                                 )}
+                               </td>
+                             );
+                           }
+                           
+                           // Default handling for metadata rows
+                           return (
+                             <td key={product.id} className="px-6 py-5">
+                               {value ? (
+                                 <div className={`${row.bgColor} border ${row.borderColor} rounded-lg p-3 text-center`}>
+                                   <span className={`text-sm font-medium ${row.textColor}`}>{value}</span>
+                                 </div>
+                               ) : (
+                                 <div className="text-center py-4">
+                                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                     <X className="w-4 h-4 text-gray-400" />
+                                   </div>
+                                   <span className="text-sm text-gray-400 italic">Not specified</span>
+                                 </div>
+                               )}
+                             </td>
+                           );
+                         })}
+                       </tr>
+                     ))}
                   </tbody>
                 </table>
               </div>
