@@ -195,19 +195,19 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         user_message = {
             "role": "user",
             "content": [
-                {"type": "input_text", "text": user_input},
                 {
                     "type": "input_image",
                     "image_url": f"data:image/jpeg;base64,{image_base64}",
                 },
             ],
         }
-    else:
-        user_message = {"role": "user", "content": user_input}
-    
-    full_history = (
+        full_history = (
         [system_msg] + history + [user_message]
     )
+    else:
+        full_history = (
+            [system_msg] + history
+        )
     
     # Step 1: Get model response (non-streaming for function call detection)
     llm_start = time.time()
