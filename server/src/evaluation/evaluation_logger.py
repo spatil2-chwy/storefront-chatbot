@@ -51,7 +51,7 @@ class EvaluationLog:
 class EvaluationLogger:
     """Logger for capturing evaluation data from the chatbot pipeline"""
     
-    def __init__(self, log_dir: str = "logs/evaluation"):
+    def __init__(self, log_dir: str = "logs/logs"):
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.current_session_id = str(uuid.uuid4())
