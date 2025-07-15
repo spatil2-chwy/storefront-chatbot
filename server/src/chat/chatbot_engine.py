@@ -40,12 +40,12 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     product_search_start = time.time()
     results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
     product_search_time = time.time() - product_search_start
-    print(f"Query executed in {product_search_time:.4f} seconds")
+    logger.info(f"Query executed in {product_search_time:.4f} seconds")
     
     ranking_start = time.time()
     ranked_products = rank_products(results)
     ranking_time = time.time() - ranking_start
-    print(f"Ranking completed in {ranking_time:.4f} seconds")
+    logger.info(f"Ranking completed in {ranking_time:.4f} seconds")
     
     if not ranked_products:
         return []
@@ -56,14 +56,14 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
             product = product_service._ranked_result_to_product(ranked_result, query)
             products.append(product)
         except Exception as e:
-            print(f"⚠️ Error converting ranked result to product: {e}")
+            logger.error(f"⚠️ Error converting ranked result to product: {e}")
             continue
     
     search_analyzer_time = time.time() - search_analyzer_start
-    print(f"Product conversion took: {search_analyzer_time:.4f} seconds ({len(products)} products)")
+    logger.info(f"Product conversion took: {search_analyzer_time:.4f} seconds ({len(products)} products)")
 
     total_tool_time = time.time() - start
-    print(f"Total search_products time: {total_tool_time:.4f} seconds")
+    logger.info(f"Total search_products time: {total_tool_time:.4f} seconds")
     
     # Log detailed timing breakdown
     evaluation_logger.log_timing(
@@ -91,7 +91,7 @@ def search_articles(query: str):
     articles = article_service.search_articles(query, n_results=3)
     
     article_search_time = time.time() - start
-    print(f"Article search completed in {article_search_time:.4f} seconds")
+    logger.info(f"Article search completed in {article_search_time:.4f} seconds")
     
     # Log article search timing
     evaluation_logger.log_timing(article_search_time=article_search_time)
@@ -163,7 +163,6 @@ def format_products_for_llm(products, limit=10):
         
         lines.append(product_line)
     
-    # print(f"Formatted products for LLM: {lines}")
     return "Here are the top product recommendations with customer insights:\n\n" + "\n\n".join(lines)
 
 
@@ -175,7 +174,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
     """
     start_time = time.time()
-    print(f"User context: {user_context}")
+    logger.info(f"User context: {user_context}")
     logger.info(f"Streaming chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
     # Start evaluation logging
