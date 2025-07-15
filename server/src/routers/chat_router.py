@@ -1,5 +1,5 @@
 # Chat router - handles all chat-related endpoints including chatbot, product comparison, and streaming
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -11,11 +11,41 @@ from src.services.chat_service import ChatService
 from src.services.user_service import UserService
 from src.chat.chatbot_engine import chat_stream_with_products
 from src.chat.chat_modes import compare_products, ask_about_product
+from src.services.persona_updater import update_persona
 import json
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 chat_svc = ChatService()
 user_svc = UserService()
+
+# Message counter for persona updates - tracks messages per customer
+PERSONA_UPDATE_INTERVAL = 5  # Update persona every N messages (default: 5)
+
+def update_persona_background_task(customer_key: int, history: List[Dict[str, Any]]):
+    """Background task to update user persona based on chat history"""
+    # Get a new database session for the background task
+    db = next(get_db())
+    try:
+        print(f"Starting persona update background task for customer {customer_key}")
+        success = update_persona(customer_key, history, db)
+        if success:
+            print(f"Persona updated successfully for customer {customer_key}")
+        else:
+            print(f"No persona update needed for customer {customer_key}")
+    except Exception as e:
+        print(f"Error updating persona for customer {customer_key}: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        db.close()
+
+def should_update_persona(history: List[Dict[str, Any]]) -> bool:
+    """Check if we should trigger a persona update based on message count"""
+    # Count user messages in history (exclude system messages)
+    user_message_count = len([msg for msg in history if msg.get("role") == "user"])
+    
+    # Trigger update if user message count is a multiple of the interval and > 0
+    return user_message_count > 0 and user_message_count % PERSONA_UPDATE_INTERVAL == 0 or user_message_count % (1 + PERSONA_UPDATE_INTERVAL) == 0
 
 @router.get("/{chat_id}", response_model=ChatSchema)
 def get_chat_message(chat_id: str, db: Session = Depends(get_db)):
@@ -35,32 +65,60 @@ class ComparisonRequest(BaseModel):
     message: str
     products: List[dict]
     history: List[Dict[str, Any]] = []  # Add conversation history
+    customer_key: Optional[int] = None  # Add customer_key for persona updates
     image: Optional[str] = None  # Base64 encoded image
 
 class AskAboutProductRequest(BaseModel):
     message: str
     product: dict
     history: List[Dict[str, Any]] = []  # Add conversation history
+    customer_key: Optional[int] = None  # Add customer_key for persona updates
     image: Optional[str] = None  # Base64 encoded image
 
 class PersonalizedGreetingRequest(BaseModel):
     customer_key: Optional[int] = None
 
+class ManualPersonaUpdateRequest(BaseModel):
+    customer_key: int
+    history: List[Dict[str, Any]]
+
 @router.post("/compare")
-async def compare_products_endpoint(request: ComparisonRequest):
+async def compare_products_endpoint(request: ComparisonRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Compare multiple products based on user question
     try:
         response = compare_products(request.message, request.products, request.history)
+        
+        # Trigger persona update background task if conditions are met
+        updated_history = request.history + [{"role": "user", "content": request.message}]
+        if request.customer_key and should_update_persona(updated_history):
+            print(f"Triggering persona update background task for customer {request.customer_key} (compare endpoint)")
+            background_tasks.add_task(
+                update_persona_background_task,
+                request.customer_key,
+                updated_history
+            )
+        
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
 
 
 @router.post("/ask_about_product")
-async def ask_about_product_endpoint(request: AskAboutProductRequest):
+async def ask_about_product_endpoint(request: AskAboutProductRequest, background_tasks: BackgroundTasks):
     # Ask specific questions about a single product
     try:
         response = ask_about_product(request.message, request.product, request.history)
+        
+        # Trigger persona update background task if conditions are met
+        updated_history = request.history + [{"role": "user", "content": request.message}]
+        if request.customer_key and should_update_persona(updated_history):
+            print(f"Triggering persona update background task for customer {request.customer_key} (ask_about_product endpoint)")
+            background_tasks.add_task(
+                update_persona_background_task,
+                request.customer_key,
+                updated_history
+            )
+        
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Product question failed: {str(e)}")
@@ -84,8 +142,22 @@ async def personalized_greeting(request: PersonalizedGreetingRequest, db: Sessio
         greeting = "Hey there! What can I help you find for your furry friends today?"
         return {"response": {"greeting": greeting}}
 
+# @router.post("/update_persona_manual")
+# async def manual_persona_update(request: ManualPersonaUpdateRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+#     """Manual endpoint to trigger persona update for testing purposes"""
+#     try:
+#         print(f"Manual persona update triggered for customer {request.customer_key}")
+#         background_tasks.add_task(
+#             update_persona_background_task,
+#             request.customer_key,
+#             request.history
+#         )
+#         return {"message": f"Persona update triggered for customer {request.customer_key}"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Manual persona update failed: {str(e)}")
+
 @router.post("/chatbot/stream")
-async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
+async def chatbot_stream(request: ChatRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Streaming chatbot endpoint - returns Server-Sent Events with real-time responses
     user_context = ""
     
@@ -185,6 +257,18 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             traceback.print_exc()
             # Send error signal
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    # Trigger persona update background task if conditions are met
+    if request.customer_key:
+        # Create new history including the current message
+        updated_history = request.history + [{"role": "user", "content": request.message}]
+        if should_update_persona(updated_history):
+            print(f"Triggering persona update background task for customer {request.customer_key}")
+            background_tasks.add_task(
+                update_persona_background_task,
+                request.customer_key,
+                updated_history
+            )
     
     return StreamingResponse(
         generate_stream(),
