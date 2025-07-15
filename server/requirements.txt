@@ -23,3 +23,5 @@ sentence-transformers==4.1.0
 chromadb==1.0.13
 openai==1.96.0
 nltk==3.9.1
+dash==3.1.1
+plotly==6.2.0

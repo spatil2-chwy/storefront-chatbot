@@ -1,256 +1,163 @@
-# Logging System
+# Chatbot Pipeline Evaluation System
 
-This logging system captures comprehensive data about your chatbot pipeline's performance and provides tools to analyze and improve it.
-
-## Overview
-
-The logging system logs every aspect of a user query through your chatbot pipeline, including:
-
-1. **Raw user query** - The original user input
-2. **User context** - Customer context and preferences
-3. **Chat history** - Complete conversation history
-4. **Tool calls** - Which tools were called (product search, article search, or none)
-5. **Search parameters** - Category levels, required/excluded ingredients
-6. **Product results** - Top 10 recommended products with details (rank, title, brand, price, rating, etc.)
-7. **Assistant response** - The final response to the user
-8. **Performance metrics** - Detailed timing breakdown for each component
-9. **Errors** - Any errors that occurred during processing
-
-## How It Works
-
-### 1. Automatic Logging
-
-The logging system is automatically integrated into your chatbot pipeline. Every time a user makes a query, the system:
-
-- Creates a unique session ID
-- Logs the raw user input and context
-- Captures the complete chat history
-- Tracks all tool calls and their parameters
-- Records search results and top 10 product recommendations
-- Captures the final assistant response
-- Measures detailed performance timing
-- Saves everything to a structured JSON file
-
-### 2. Log Files
-
-Evaluation logs are saved in `logs/evaluation/` with the format:
-```
-eval_YYYYMMDD_HHMMSS_<query_id>.json
-```
-
-Each log file contains a complete record of one user interaction.
-
-## Performance Metrics
-
-The system captures detailed timing information for each component:
-
-- **function_call_time** - Time for LLM to generate function call arguments
-- **tool_execution_time** - Total time to execute tool calls
-- **product_search_time** - Time for database query in search_products
-- **ranking_time** - Time for ranking products
-- **conversion_time** - Time to convert ranked results to Product objects
-- **article_search_time** - Time for article search
-- **llm_response_time** - Time for final LLM response generation
-- **context_formatting_time** - Time to format products for LLM
-- **total_processing_time** - Total time for the entire request
-
-## Product Results
-
-The system automatically logs the top 10 recommended products with:
-- Rank position
-- Product ID
-- Title
-- Brand
-- Category
-- Price
-- Rating
-- Review count
-
-## Usage
-
-### Analyzing Results
-
-#### 1. Basic Pipeline Analysis
-
-Run the pipeline evaluator to get quantitative insights:
-
-```bash
-cd server/src/utils
-python evaluate_pipeline.py
-```
-
-This will provide:
-- Performance metrics (response times, tool usage)
-- Search pattern analysis
-- Product result statistics
-- Error analysis
-- Automated recommendations
-
-#### 2. LLM-Based Quality Evaluation
-
-For qualitative assessment of accuracy and relevance:
-
-```bash
-cd server/src/utils
-python llm_evaluation.py
-```
-
-This uses GPT-4 to evaluate:
-- Query understanding accuracy
-- Tool selection appropriateness
-- Search relevance
-- Product recommendation quality
-- Response helpfulness
-- Follow-up question relevance
-
-### Output Files
-
-- `pipeline_evaluation_report.json` - Detailed quantitative analysis
-- `llm_evaluations.json` - Qualitative LLM evaluations
-
-
-## Evaluation Pipeline
+A comprehensive evaluation and monitoring system for AI-powered product recommendation chatbots. This system captures, analyzes, and visualizes every aspect of your chatbot pipeline's performance to help optimize user experience and system efficiency.
 
 ## 🎯 Overview
 
-This evaluation system captures and analyzes every aspect of your chatbot pipeline's performance, including:
+The evaluation system provides:
 
-- **Performance Metrics**: Response times, bottlenecks, and efficiency
-- **Quality Assessment**: Product relevance, diversity, and user satisfaction
-- **Reliability Analysis**: Error rates and system stability
-- **LLM Evaluation**: AI-powered assessment of response quality and relevance
-- **Trend Analysis**: Performance patterns over time
-- **Actionable Recommendations**: Specific improvements to implement
+- **📊 Real-time Logging**: Automatic capture of every user interaction
+- **🔍 Quantitative Analysis**: Performance metrics without LLM costs
+- **🤖 LLM Evaluation**: AI-powered quality assessment using GPT-4
+- **📈 Interactive Dashboard**: Web-based visualization and monitoring
+- **📋 Actionable Insights**: Specific recommendations for improvement
 
+## 🔄 Logging System
 
-## 📊 What Gets Evaluated
+### Automatic Data Capture
 
-### 1. **Quantitative Metrics** (No LLM Required)
+The `evaluation_logger.py` automatically logs every user interaction through your chatbot pipeline:
+
+#### Captured Data
+- **Session Information**: Unique IDs, timestamps, processing times
+- **User Input**: Raw queries, user context, pet information
+- **Pipeline Execution**: Tool calls, search parameters, chat history
+- **Results**: Top 10 product recommendations with rankings
+- **Performance**: Detailed timing breakdown for each component
+- **Errors**: Any failures during processing
+
+### Performance Metrics
+
+The system captures detailed timing for each pipeline component:
+
+- **function_call_time**: LLM function call generation
+- **tool_execution_time**: Total tool execution time
+- **product_search_time**: Database query performance
+- **ranking_time**: Product ranking algorithm
+- **search_analyzer_time**: Result conversion time
+- **article_search_time**: Article search performance
+- **llm_response_time**: Final response generation
+- **context_formatting_time**: Product formatting for LLM
+- **total_processing_time**: End-to-end processing
+
+## 📊 Evaluation Types
+
+### 1. Quantitative Evaluation (`quantitative_evaluation.py`)
+
+**No LLM Required** - Calculates metrics from log data:
 
 #### Performance Metrics
-- **Total Processing Time**: End-to-end response time
-- **Product Search Time**: Database query performance
-- **LLM Response Time**: AI generation speed
-- **Function Call Time**: Tool selection efficiency
-- **Ranking Time**: Product ranking algorithm speed
+- Average response times for each component
+- Performance bottlenecks identification
+- Slow query analysis (>10s, >20s thresholds)
 
 #### Success Metrics
-- **Success Rate**: Percentage of queries without errors
-- **Error Rate**: System reliability
-- **Products Returned**: Search result coverage
-- **Average Product Rating**: Result quality
-- **Average Product Price**: Price range coverage
+- Success rate (queries without errors)
+- Error rate and error patterns
+- Products returned per query
+- Average product ratings and prices
 
 #### Quality Metrics
-- **Query Length Analysis**: User input patterns
-- **Tool Usage Distribution**: Which tools are used most
-- **Brand Diversity**: Variety in search results
-- **Price Range**: Economic diversity
-- **Rating Distribution**: Quality spread
+- Brand diversity in results
+- Price range coverage
+- Rating distribution analysis
+- Tool usage patterns
 
 #### User Context Analysis
-- **Context Usage**: How often user context is available
-- **Context Length**: Richness of user information
+- Context availability percentage
+- Average context length
+- Personalization effectiveness
 
-### 2. **LLM-as-a-Judge Evaluation** (Qualitative)
+### 2. LLM Evaluation (`llm_evaluation.py`)
 
-#### Query Understanding (0-10)
-- Intent interpretation accuracy
-- Constraint identification (allergies, preferences)
-- Context extraction quality
+**AI-Powered Assessment** - Uses GPT-4 to evaluate response quality:
 
-#### Tool Selection Accuracy (0-10)
-- Correct tool choice (product vs article search)
-- Parameter appropriateness
+#### Evaluation Criteria (0-10 Scale)
+- **Query Understanding**: Intent interpretation accuracy
+- **Tool Selection**: Correct tool choice and parameters
+- **Search Quality**: Query construction effectiveness
+- **Product Relevance**: Result match to user needs
+- **Product Diversity**: Option variety and representation
+- **Brand Preference Alignment**: Preferred brand prioritization
+- **Response Helpfulness**: Information usefulness and actionability
+- **Follow-up Question Quality**: Question relevance and effectiveness
 
-#### Search Quality (0-10)
-- Query construction effectiveness
-- Filter application correctness
 
-#### Product Relevance (0-10)
-- Result match to user needs
-- Pet characteristic alignment
-- Constraint satisfaction
+## 🖥️ Interactive Dashboard
 
-#### Product Diversity (0-10)
-- Option variety
-- Price point representation
-- Brand variety
+### Dashboard Features (`dashboard.py`)
 
-#### Brand Preference Alignment (0-10)
-- Preferred brand prioritization
-- Brand preference respect
+A web-based dashboard built with Dash/Plotly providing:
 
-#### Response Helpfulness (0-10)
-- Information usefulness
-- Actionability
-- Conciseness
+#### 1. Session Overview Tab
+- User query and context display
+- Pet information extraction and visualization
+- Tool usage breakdown
+- Processing time analysis
 
-#### Follow-up Question Quality (0-10)
-- Question relevance
-- Choice narrowing effectiveness
-- Product difference basis
+#### 2. Query Flow Tab
+- Step-by-step pipeline visualization
+- Chat history display
+- Tool call sequence
+- Performance timing breakdown
+
+#### 3. Product Results Tab
+- Product ranking analysis
+- Price distribution charts
+- Brand diversity visualization
+- Rating analysis
+
+#### 4. Evaluation Metrics Tab
+- LLM evaluation scores with reasoning
+- Performance analysis
+- Bottleneck identification
+- Optimization suggestions
+
+#### 5. System Metrics Tab
+- Performance trends over time
+- Error rate monitoring
+- Success rate tracking
+- Health score calculation
+
+### Data Integration (`data_parser.py`)
+
+Handles loading and parsing of:
+- Evaluation logs (`eval_*.json`)
+- LLM evaluations (`llm_eval_*.json`)
+- Quantitative reports (`quantitative_report_*.json`)
+
+Extracts structured data for visualization:
+- Pet information from user context
+- Customer preferences and demographics
+- Tool call arguments and parameters
+- Performance metrics and timing data
 
 ## 🚀 Quick Start
 
-### 1. **Run Comprehensive Evaluation**
+1. Run Quantitative Analysis
 
 ```bash
 cd server/src/evaluation
-python run_evaluation.py --print-summary
+python quantitative_evaluation.py
 ```
 
-This will:
-- Analyze all evaluation logs
-- Run both quantitative and LLM evaluation
-- Generate comprehensive report
-- Print summary to console
-- Save detailed results to JSON
-
-### 2. **Run Only Quantitative Analysis**
+### 3. Run LLM Evaluation
 
 ```bash
-python run_evaluation.py --no-llm --print-summary
+python llm_evaluation.py
 ```
 
-### 3. **Start Dashboard**
+### 4. Start Dashboard
 
 ```bash
 python dashboard.py
 ```
 
-Then visit `http://localhost:8000` for the web dashboard.
+Then visit `http://localhost:8050` for the interactive dashboard.
 
-## 📈 Understanding Your Results
 
-### Health Score Breakdown
+## 📋 Output Files
 
-The system calculates an overall **Health Score (0-100)** based on:
-
-- **Performance Score (40%)**: Response times and efficiency
-- **Quality Score (40%)**: Result relevance and diversity  
-- **Reliability Score (20%)**: Error rates and stability
-
-### Status Levels
-
-- **Excellent (80-100)**: System performing optimally
-- **Good (60-79)**: Minor optimizations needed
-- **Fair (40-59)**: Significant improvements required
-- **Poor (0-39)**: Critical issues need immediate attention
-
-### Key Metrics to Monitor
-
-#### 🚨 Critical Metrics
-- **Response Time > 15s**: Unacceptable user experience
-- **Error Rate > 5%**: System reliability issues
-- **Success Rate < 95%**: Core functionality problems
-
-#### ⚠️ Warning Metrics
-- **Slow Queries > 20%**: Performance degradation
-- **Product Count < 5**: Poor search coverage
-- **Brand Diversity < 0.3**: Limited variety
-
-#### 💡 Optimization Opportunities
-- **LLM Score < 6.0**: Response quality improvements
-- **Context Usage < 50%**: Personalization opportunities
-- **Tool Usage Imbalance**: Workflow optimization
+- `logs/logs/eval_*.json` - Raw evaluation logs
+- `logs/llm_evaluations/llm_eval_*.json` - LLM evaluation results
+- `logs/quantitative_reports/quantitative_report_*.json` - Quantitative analysis reports
