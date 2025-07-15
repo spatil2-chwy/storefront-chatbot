@@ -55,7 +55,6 @@ export const formatMessageContent = (content: string): string => {
   let inList = false;
   let listType = '';
   let inTaskList = false;
-  let currentListStart = 1;
   const processedLines: string[] = [];
   
   lines.forEach(line => {
@@ -82,15 +81,13 @@ export const formatMessageContent = (content: string): string => {
     // Handle numbered lists (1. item)
     const numberListMatch = trimmedLine.match(/^(\d+)\.\s(.+)$/);
     if (numberListMatch) {
-      const itemNumber = parseInt(numberListMatch[1]);
       if (!inList || listType !== 'ol') {
         if (inList) processedLines.push(`</${listType}>`);
         if (inTaskList) {
           processedLines.push('</ul>');
           inTaskList = false;
         }
-        currentListStart = itemNumber;
-        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-2 ml-4" start="' + currentListStart + '">');
+        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-2 ml-4">');
         inList = true;
         listType = 'ol';
       }
@@ -120,7 +117,6 @@ export const formatMessageContent = (content: string): string => {
         processedLines.push(`</${listType}>`);
         inList = false;
         listType = '';
-        currentListStart = 1;
       }
       if (inTaskList) {
         processedLines.push('</ul>');

@@ -10,14 +10,14 @@ def setup_logging():
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
-    # Configure the root logger - change to WARNING to suppress INFO messages
+    # Configure the root logger
     logging.basicConfig(
-        level=logging.WARNING,
+        level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             # File handler for all logs
             logging.FileHandler(log_dir / "app.log"),
-            # Console handler for WARNING and above
+            # Console handler for INFO and above
             logging.StreamHandler(sys.stdout)
         ]
     )
@@ -43,7 +43,7 @@ def setup_logging():
     
     return logging.getLogger(__name__)
 
-def get_logger(name: str = None):
+def get_logger(name: str):
     """Get a logger instance with the given name"""
     return logging.getLogger(name or __name__)
 

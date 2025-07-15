@@ -17,17 +17,6 @@ BATCH_SIZE = 1000
 # === Step 1: Load Data ===
 df = pd.read_csv(
     CSV_PATH,
-    header=None,  # No header row in CSV
-    names=[
-        "PRODUCT_ID", "PART_NUMBER", "PARENT_ID", "PARENT_PART_NUMBER", "TYPE", "NAME", 
-        "DESCRIPTION_LONG", "CATEGORY_LEVEL1", "CATEGORY_LEVEL2", "CATEGORY_LEVEL3", 
-        "PRICE", "RATING_AVG", "RATING_CNT", "ATTR_PET_TYPE", "ATTR_FOOD_FORM", 
-        "ATTR_SPECIAL_DIET", "IS_FOOD_FLAG", "INGREDIENTS", "MERCH_CLASSIFICATION1", 
-        "MERCH_CLASSIFICATION2", "PARENT_COMPANY", "LIFE_STAGE", "MERCH_CLASSIFICATION3", 
-        "AUTOSHIP_PRICE", "AUTOSHIP_SAVE_DESCRIPTION", "PRODUCT_TYPE", "BREED_SIZE", 
-        "LIFESTAGE", "PET_TYPES", "FULLIMAGE", "THUMBNAIL", "MERCH_CLASSIFICATION4", 
-        "PURCHASE_BRAND", "CLEAN_NAME", "Unanswered FAQs", "Answered FAQs"
-    ],
     dtype={
         "PRODUCT_ID": str,
         "PART_NUMBER": str,
@@ -242,7 +231,7 @@ print("🔄 Loading embedding model...")
 model = SentenceTransformer(EMBEDDING_MODEL)
 
 print("🔄 Initializing ChromaDB...")
-client = chromadb.HttpClient(host='localhost', port=8001)
+client = chromadb.PersistentClient(path=CHROMADB_PATH)
 
 # Delete existing review synthesis collection if it exists
 try:

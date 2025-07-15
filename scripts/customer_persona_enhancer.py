@@ -1,25 +1,16 @@
 import pandas as pd
 import json
 import ast
-import os
 from pathlib import Path
 
 # === Config ===
-def get_project_paths():
-    """Get absolute paths relative to project root"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-    
-    return {
-        'customers_tsv': os.path.join(project_root, "data", "core", "customers.tsv"),
-        'personas_json': os.path.join(project_root, "data", "core", "user_personas_openai.json"),
-        'output_tsv': os.path.join(project_root, "data", "core", "customers_with_personas.tsv")
-    }
+CUSTOMERS_TSV_PATH = "data/core/customers.tsv"
+PERSONAS_JSON_PATH = "data/core/user_personas_openai.json"
+OUTPUT_TSV_PATH = "data/core/customers_with_personas.tsv"
 
 def load_personas():
     """Load and parse the persona data from JSON"""
-    paths = get_project_paths()
-    with open(paths['personas_json'], 'r') as f:
+    with open(PERSONAS_JSON_PATH, 'r') as f:
         persona_strings = json.load(f)
     
     personas = []
@@ -53,14 +44,12 @@ def extract_persona_fields(persona_dict):
     }
 
 def main():
-    paths = get_project_paths()
-    
     print("🔄 Loading personas...")
     personas = load_personas()
     print(f"✅ Loaded {len(personas)} personas")
     
     print("🔄 Loading customer data...")
-    customers_df = pd.read_csv(paths['customers_tsv'], sep='\t')
+    customers_df = pd.read_csv(CUSTOMERS_TSV_PATH, sep='\t')
     print(f"✅ Loaded {len(customers_df)} customers")
     
     print("🔄 Enhancing customer data with personas...")
@@ -85,13 +74,10 @@ def main():
     
     print("🔄 Saving enhanced customer data...")
     
-    # Ensure output directory exists
-    os.makedirs(os.path.dirname(paths['output_tsv']), exist_ok=True)
-    
     # Save with proper JSON handling - don't escape JSON strings
-    customers_df.to_csv(paths['output_tsv'], sep='\t', index=False, quoting=1)  # quoting=1 for QUOTE_ALL
+    customers_df.to_csv(OUTPUT_TSV_PATH, sep='\t', index=False, quoting=1)  # quoting=1 for QUOTE_ALL
     
-    print(f"✅ Enhanced customer data saved to {paths['output_tsv']}")
+    print(f"✅ Enhanced customer data saved to {OUTPUT_TSV_PATH}")
     print(f"📊 Total customers: {len(customers_df)}")
     print(f"🎯 Personas assigned: {len(personas)}")
     

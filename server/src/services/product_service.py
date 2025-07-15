@@ -4,30 +4,29 @@ import time
 import logging
 
 # Initialize logging first
-from src.utils.logging_config import setup_logging
+from src.evaluation.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
 import chromadb
 # client = chromadb.PersistentClient(path="../scripts/chroma_db")
 client = chromadb.HttpClient(host='localhost', port=8001)
+collection = client.get_collection(name="review_synthesis")
+search_analyzer = None  # Lazy loading for search matches
 
-# Initialize collection - create if it doesn't exist
-try:
-    collection = client.get_collection(name="review_synthesis")
-except Exception as e:
-    logger.warning(f"Collection 'review_synthesis' not found, creating it: {e}")
-    collection = client.create_collection(name="review_synthesis")
+logger.info("ProductService initialized successfully")
 
 class ProductService:
     def __init__(self):
-        # Pre-load SearchAnalyzer singleton to avoid lazy loading delays
-        from src.search.search_analyzer import SearchAnalyzer
-        self._search_analyzer = SearchAnalyzer()  # This will use the singleton
+        self._search_analyzer = None
 
     @property
     def search_analyzer(self):
-        """Return the pre-loaded search analyzer singleton"""
+        """Lazy load the search analyzer only when needed"""
+        if self._search_analyzer is None:
+            from src.search.search_analyzer import SearchAnalyzer
+            logger.info("Initializing SearchAnalyzer...")
+            self._search_analyzer = SearchAnalyzer()
         return self._search_analyzer
 
     @staticmethod
@@ -183,71 +182,31 @@ class ProductService:
             should_you_buy_it = review_synthesis.get("should_you_buy_it", "")
 
         return Product(
-            # ===== CORE PRODUCT INFORMATION =====
             id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
-            name=metadata.get("NAME", ""),
             title=self.safe_str(metadata.get("CLEAN_NAME", "Unnamed Product")),
             brand=self.safe_str(metadata.get("PURCHASE_BRAND", "Unknown Brand")),
-            parent_company=metadata.get("PARENT_COMPANY", ""),
-            
-            # ===== PRICING & DEALS =====
             price=round(self.safe_float(metadata.get("PRICE", 0.0)), 1),
             originalPrice=None,  # No separate original price field in database
             autoshipPrice=round(self.safe_float(metadata.get("AUTOSHIP_PRICE", 0.0)), 1),
-            autoship_save_description=metadata.get("AUTOSHIP_SAVE_DESCRIPTION", ""),
-            deal=False,
-            
-            # ===== RATINGS & REVIEWS =====
             rating=self.safe_float(metadata.get("RATING_AVG", 0.0)),
             reviewCount=self.safe_int(metadata.get("RATING_CNT", 0)),
-            
-            # ===== IMAGES & MEDIA =====
             image=image,
             images=images,
-            
-            # ===== PRODUCT DESCRIPTION =====
+            deal=False,
             description=self.safe_str(metadata.get("DESCRIPTION_LONG", "")),
             inStock=True,
-            
-            # ===== CATEGORIZATION =====
             category_level_1=metadata.get("CATEGORY_LEVEL1", ""),
             category_level_2=metadata.get("CATEGORY_LEVEL2", ""),
-            category_level_3=metadata.get("CATEGORY_LEVEL3", ""),
-            product_type=metadata.get("PRODUCT_TYPE", ""),
-            
-            # ===== PET & LIFE STAGE ATTRIBUTES =====
-            attr_pet_type=metadata.get("ATTR_PET_TYPE", ""),
-            pet_types=metadata.get("PET_TYPES", ""),
-            life_stage=metadata.get("LIFE_STAGE", ""),
-            lifestage=metadata.get("LIFESTAGE", ""),
-            breed_size=metadata.get("BREED_SIZE", ""),
-            
-            # ===== FOOD & DIET ATTRIBUTES =====
-            attr_food_form=metadata.get("ATTR_FOOD_FORM", ""),
-            is_food_flag=metadata.get("IS_FOOD_FLAG", ""),
-            ingredients=metadata.get("INGREDIENTS", ""),
-            
-            # ===== MERCHANDISING CLASSIFICATIONS =====
-            merch_classification1=metadata.get("MERCH_CLASSIFICATION1", ""),
-            merch_classification2=metadata.get("MERCH_CLASSIFICATION2", ""),
-            merch_classification3=metadata.get("MERCH_CLASSIFICATION3", ""),
-            merch_classification4=metadata.get("MERCH_CLASSIFICATION4", ""),
-            
-            # ===== SEARCH & FILTERING =====
             keywords=keywords,
             search_matches=search_matches,  # Add search matches if provided
-            
-            # ===== AI-GENERATED CONTENT =====
             what_customers_love=what_customers_love,
             what_to_watch_out_for=what_to_watch_out_for,
             should_you_buy_it=should_you_buy_it,
-            
-            # ===== FAQ CONTENT =====
             unanswered_faqs=self.safe_str(metadata.get("unanswered_faqs", "")) or None,
             answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
         )
-    
-    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
+
+    def _ranked_result_to_product(self, ranked_result, query: Optional[str] = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
@@ -255,80 +214,17 @@ class ProductService:
         search_matches = None
         if query:
             try:
-                analysis_start = time.time()
-                # Extract query terms
-                query_terms = self.search_analyzer.extract_query_terms(query)
-                criteria_time = time.time() - analysis_start
+                categorized_criteria = self.search_analyzer.extract_search_criteria(query)
                 
-                # Analyze matches
-                match_start = time.time()
-                search_matches = self.search_analyzer.analyze_product_matches(metadata, query)
-                match_time = time.time() - match_start
-                
-                logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
+                search_matches = self.search_analyzer.analyze_product_matches(
+                    metadata, categorized_criteria, query
+                )
             except Exception as e:
                 logger.warning(f"Error analyzing search matches: {e}")
                 search_matches = None
         
         # Use the existing _metadata_to_product method
         return self._metadata_to_product(metadata, search_matches)
-
-    async def search_products(self, query: str, limit: int = 10, include_search_matches: bool = True) -> dict:
-        """Search products using direct semantic search without LLM agent"""
-        try:
-            total_start = time.time()
-            logger.info(f"Starting direct search for: '{query}'")
-            
-            # Use direct semantic search instead of going through the chat function
-            from src.search.product_search import query_products, rank_products
-            
-            search_start = time.time()
-            results = query_products(query, (), (), ())  # No filters for direct search
-            search_time = time.time() - search_start
-            logger.debug(f"Database search took: {search_time:.3f}s")
-            
-            ranking_start = time.time()
-            ranked_products = rank_products(results)
-            ranking_time = time.time() - ranking_start
-            logger.debug(f"Ranking took: {ranking_time:.3f}s")
-            
-            if not ranked_products:
-                logger.warning(f"No products found for query: '{query}'")
-                return {
-                    "products": [],
-                }
-            
-            # Convert ranked results to Product objects with search match analysis
-            conversion_start = time.time()
-            products = []
-            for i, ranked_result in enumerate(ranked_products[:limit]):  # Limit the results
-                try:
-                    product_start = time.time()
-                    product = self._ranked_result_to_product(ranked_result, query)
-                    product_time = time.time() - product_start
-                    if i < 3:  # Only log first 3 products to avoid spam
-                        logger.debug(f"Product {i+1} conversion: {product_time:.3f}s")
-                    products.append(product)
-                except Exception as e:
-                    logger.warning(f"Error converting ranked result to product: {e}")
-                    continue
-            
-            conversion_time = time.time() - conversion_start
-            total_time = time.time() - total_start
-            
-            logger.info(f"Product conversion took: {conversion_time:.3f}s ({len(products)} products)")
-            logger.info(f"Total search time: {total_time:.3f}s")
-            
-            return {
-                "products": products,
-            }
-            
-        except Exception as e:
-            logger.error(f"Error searching products: {e}")
-            return {
-                "products": [],
-            }
-        
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:

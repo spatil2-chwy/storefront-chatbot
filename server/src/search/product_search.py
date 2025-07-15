@@ -6,7 +6,7 @@ import logging
 from typing import cast, Any
 
 # Initialize logging first
-from src.utils.logging_config import setup_logging
+from src.evaluation.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,9 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list, special_diet_tags: list = None):
+def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
     # build where clause for special diet and ingredients tags
-    start_time = time.time()
-    
-    if special_diet_tags is None:
-        special_diet_tags = []
-    
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) + len(special_diet_tags) == 0:
+    if len(category_level_1) + len(category_level_2) + len(required_ingredients) == 0:
         where_clause = {}
     elif len(category_level_1) + len(category_level_2) + len(required_ingredients) == 1:
         # if only one special diet or ingredient, use a single condition
@@ -58,38 +53,30 @@ def build_where_clause(required_ingredients: list, category_level_1: list, categ
             ]
         }
 
-    build_time = time.time() - start_time
-    logger.debug(f"🔍 Where clause built in {build_time:.4f}s - Filters: {len(required_ingredients)} ingredients, {len(category_level_1)} cat1, {len(category_level_2)} cat2, {len(special_diet_tags)} diet tags")
     return where_clause
 
 
 @lru_cache(maxsize=128)
-def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), special_diet_tags=()):
-    logger.debug(f"🔍 Query cache info: {query_products.cache_info()}")
-    start_time = time.time()
-    logger.info(f"🔍 PRODUCT SEARCH START - Query: '{query[:50]}{'...' if len(query) > 50 else ''}'")
-    
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2, special_diet_tags)
+def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
+    logger.debug(f"Query cache info: {query_products.cache_info()}")
+
+    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
     if where_clause == {}:
         where_clause = None
-    logger.debug(f"🔍 Where clause built in {time.time() - start_time:.4f} seconds") 
-    
-    query_start = time.time()
-    logger.debug(f"🔍 Query embedding retrieved in {time.time() - query_start:.4f} seconds")
-    
+      
     db_start = time.time()
-    logger.debug(f"🔍 Starting ChromaDB query with {where_clause}")
-    
     results = review_collection.query(
         # query_embeddings=query_embedding,
         query_texts=[query],
         n_results=300,
         where=where_clause,
     )
+    db_time = time.time() - db_start
+    logger.info(f"Database query completed in {db_time:.4f} seconds")
     
     # Handle case where no results are returned
     if not results or not results['metadatas'] or not results['metadatas'][0]:
-        logger.warning("🔍 No results found in database query")
+        logger.warning("No results found in database query")
         return {
             'metadatas': [[]],
             'documents': [[]],
@@ -97,11 +84,11 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
             'distances': [[]],
         }
     
-    logger.debug(f"🔍 Number of results: {len(results['metadatas'][0])}")
+    logger.debug(f"Number of results: {len(results['metadatas'][0])}")
     
+    filter_start = time.time()
     # Filter out excluded ingredients
     if excluded_ingredients:
-        filter_start = time.time()
         filtered_metadatas = []
         filtered_documents = []
         filtered_ids = []
@@ -130,10 +117,6 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
                 filtered_documents.append(documents[i] if i < len(documents) else '')
                 filtered_ids.append(ids[i] if i < len(ids) else '')
                 filtered_distances.append(distances[i] if i < len(distances) else 0.0)
-        
-        filter_time = time.time() - filter_start
-        logger.debug(f"🔍 Filtered {len(documents) - len(filtered_metadatas)} products in {filter_time:.3f}s")
-        
         results = {
             'metadatas': [filtered_metadatas],
             'documents': [filtered_documents],
@@ -149,9 +132,9 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
             'distances': [results['distances'][0] if results['distances'] else []],
         }
 
-    db_time = time.time() - db_start
-    total_time = time.time() - start_time
-    logger.info(f"🔍 PRODUCT SEARCH COMPLETE - Total: {total_time:.3f}s, DB: {db_time:.3f}s, Results: {len(results['metadatas'][0])}")
+    filter_time = time.time() - filter_start
+    logger.info(f"Filtering out excluded ingredients completed in {filter_time:.4f} seconds")
+
     return results
 
 
