@@ -1,4 +1,5 @@
 import chromadb
+import pandas as pd
 from functools import lru_cache
 import time
 import math
@@ -10,6 +11,8 @@ from src.evaluation.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
+product_df = pd.read_csv("./../scripts/product_df.csv")
+
 # client = chromadb.PersistentClient(path="./../scripts/chroma_db")
 client = chromadb.HttpClient(host='localhost', port=8001)
 # PRODUCT_COLLECTION_NAME = "products"
@@ -17,59 +20,67 @@ REVIEW_COLLECTION_NAME = "review_synthesis"
 # product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
-def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
-    # build where clause for special diet and ingredients tags
-    if len(category_level_1) + len(category_level_2) + len(required_ingredients) == 0:
-        where_clause = {}
-    elif len(category_level_1) + len(category_level_2) + len(required_ingredients) == 1:
-        # if only one special diet or ingredient, use a single condition
-        if len(category_level_1) == 1:
-            where_clause = {f"categorytag1:{category_level_1[0]}": {"$eq": True}}
-        
-        elif len(category_level_2) == 1:
-            where_clause = {f"categorytag2:{category_level_2[0]}": {"$eq": True}}
-        else:
-            where_clause = {f"ingredienttag:{required_ingredients[0].lower()}": {"$eq": True}}
-    else:
-        where_clause = {
-            "$and": [
-                {
-                    f"categorytag1:{category}": {
-                            "$eq": True
-                        }
-                    } for category in category_level_1
-                ] + [
-                    {
-                        f"categorytag2:{category}": {
-                            "$eq": True
-                        }
-                    } for category in category_level_2
-            ] + [
-                {
-                    f"ingredienttag:{ingredient.lower()}": {
-                        "$eq": True
-                    }
-                } for ingredient in required_ingredients
-            ]
-        }
-
-    return where_clause
+def filter_product_ids(required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list):
+    """Filter product DataFrame to get product IDs based on ingredients and categories"""
+    # Start with all products
+    mask = pd.Series([True] * len(product_df), index=product_df.index)
+    
+    # Filter by required ingredients
+    for ingredient in required_ingredients:
+        ingredient_mask = product_df['INGREDIENTS'].str.contains(ingredient, case=False, na=False)
+        mask = mask & ingredient_mask
+    
+    # Filter out excluded ingredients
+    for ingredient in excluded_ingredients:
+        excluded_mask = product_df['INGREDIENTS'].str.contains(ingredient, case=False, na=False)
+        mask = mask & ~excluded_mask
+    
+    # Filter by category level 1
+    for category in category_level_1:
+        if 'CATEGORY_LEVEL_1' in product_df.columns:
+            category_mask = product_df['CATEGORY_LEVEL_1'].str.contains(category, case=False, na=False)
+            mask = mask & category_mask
+    
+    # Filter by category level 2
+    for category in category_level_2:
+        if 'CATEGORY_LEVEL_2' in product_df.columns:
+            category_mask = product_df['CATEGORY_LEVEL_2'].str.contains(category, case=False, na=False)
+            mask = mask & category_mask
+    
+    # Get filtered product IDs
+    filtered_ids = product_df[mask]['PRODUCT_ID'].astype(str).tolist()
+    return filtered_ids
 
 
 @lru_cache(maxsize=128)
 def query_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
     logger.debug(f"Query cache info: {query_products.cache_info()}")
 
-    where_clause = build_where_clause(required_ingredients, category_level_1, category_level_2)
-    if where_clause == {}:
-        where_clause = None
-      
+    # Use pandas to filter product IDs based on ingredients and categories
+    filtered_ids = filter_product_ids(
+        list(required_ingredients), 
+        list(excluded_ingredients), 
+        list(category_level_1), 
+        list(category_level_2)
+    )
+    
     db_start = time.time()
+    
+    # If no products match the criteria, return empty results
+    if not filtered_ids:
+        logger.warning("No products found matching the filter criteria")
+        return {
+            'metadatas': [[]],
+            'documents': [[]],
+            'ids': [[]],
+            'distances': [[]],
+        }
+    
+    # Query ChromaDB with specific product IDs
     results = review_collection.query(
-        # query_embeddings=query_embedding,
         query_texts=[query],
-        n_results=300,
-        where=where_clause,
+        ids=filtered_ids,
+        n_results=min(300, len(filtered_ids))
     )
     db_time = time.time() - db_start
     logger.info(f"Database query completed in {db_time:.4f} seconds")
