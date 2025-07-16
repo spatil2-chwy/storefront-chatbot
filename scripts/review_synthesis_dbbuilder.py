@@ -127,6 +127,9 @@ documents = []
 metadatas = []
 ids = []
 
+# save to csv
+product_df.to_csv("product_df.csv", index=False)
+
 # Track review synthesis statistics
 products_with_reviews = 0
 total_products = len(product_rows)
