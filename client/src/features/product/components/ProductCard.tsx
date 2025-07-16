@@ -117,34 +117,25 @@ export default function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     // Add to cart functionality would go here
-    console.log('Add to cart:', product.title);
   };
 
   // Extract categories from search matches for the new section
   const getMatchedCategories = () => {
     if (!product.search_matches) {
-      console.log('No search matches found for product:', product.id);
       return [];
     }
     
-    console.log('Search matches for product:', product.id, product.search_matches);
-    
     const categories = new Set<string>();
     product.search_matches.forEach(match => {
-      console.log('Processing match:', match);
       if (match.field.includes(':')) {
         const [category, value] = match.field.split(':', 2);
-        console.log('Split field:', category, value);
         categories.add(value.trim());
       } else {
-        console.log('No colon in field, using matched_terms:', match.matched_terms);
         match.matched_terms.forEach(term => categories.add(term));
       }
     });
     
-    const result = Array.from(categories);
-    console.log('Final categories for product:', product.id, result);
-    return result;
+    return Array.from(categories);
   };
 
   const matchedCategories = getMatchedCategories();

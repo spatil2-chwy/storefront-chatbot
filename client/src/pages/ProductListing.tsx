@@ -37,7 +37,6 @@ export default function ProductListing() {
   useEffect(() => {
     // Make the test function available globally
     (window as any).testBirthdayPopup = (petName: string = 'Buddy', petImage: string = '/pug.png') => {
-      console.log(`🎉 Testing birthday popup for ${petName}`);
       setBirthdayPet({
         pet_name: petName,
         image: petImage
@@ -47,13 +46,10 @@ export default function ProductListing() {
       // Also clear the localStorage flag so it can show again
       const keys = Object.keys(localStorage).filter(key => key.startsWith('birthday-shown-'));
       keys.forEach(key => localStorage.removeItem(key));
-
-      console.log(`✅ Birthday popup should now be visible for ${petName}`);
     };
 
     // Also add a function to close the popup
     (window as any).closeBirthdayPopup = () => {
-      console.log('🔴 Closing birthday popup');
       setShowBirthdayPopup(false);
       setBirthdayPet(null);
     };
@@ -61,23 +57,18 @@ export default function ProductListing() {
     // Add a function to simulate a real user's pet birthday
     (window as any).testUserPetBirthday = async () => {
       if (!user?.customer_key) {
-        console.log('❌ No user logged in. Please log in first.');
         return;
       }
 
       try {
-        console.log('🔍 Fetching user pets...');
         const pets = await usersApi.getUserPets(user.customer_key);
-        console.log('Found pets:', pets);
 
         if (pets.length === 0) {
-          console.log('❌ No pets found for current user');
           return;
         }
 
         // Use the first pet for testing
         const firstPet = pets[0];
-        console.log(`🎉 Testing birthday popup for user's pet: ${firstPet.pet_name || 'Unnamed Pet'}`);
 
         setBirthdayPet({
           pet_name: firstPet.pet_name || 'Your Pet',
@@ -91,19 +82,9 @@ export default function ProductListing() {
 
       } catch (error) {
         console.error('❌ Failed to fetch user pets:', error);
-        console.log('🎉 Falling back to default test pet');
         (window as any).testBirthdayPopup('Buddy', '/pug.png');
       }
     };
-
-    // Log instructions to console
-    console.log(`
-🎂 Birthday Popup Test Functions Available:
-• testBirthdayPopup() - Test with default pet "Buddy"
-• testBirthdayPopup("MyPet", "/pug.png") - Test with custom pet name and image
-• testUserPetBirthday() - Test with current user's actual pet data
-• closeBirthdayPopup() - Close the popup manually
-    `);
 
     // Cleanup function
     return () => {
@@ -179,13 +160,9 @@ export default function ProductListing() {
 
         // Check if any pet has a birthday today
         const birthdayPet = pets.find(pet => {
-
-
-          console.log("DEMO Showing: Forcing Birthday popup for Lucy");
           if (pet.pet_name === 'Lucy') {
             return true; // Force show for demo purposes
           }
-
 
           if (!pet.birthday) return false;
           const birthday = new Date(pet.birthday);
@@ -212,13 +189,6 @@ export default function ProductListing() {
   }, [user?.customer_key, user]);
 
   useEffect(() => {
-    console.log('🔄 Filter effect triggered:', { 
-      searchResultsLength: searchResults.length, 
-      sortBy, 
-      selectedMatchFilters, 
-      selectedCategories 
-    });
-
     if (searchResults.length > 0) {
       applyFilters();
     } else {
@@ -371,7 +341,6 @@ export default function ProductListing() {
   const handleFilterChange = (filters: any) => {
     // Note: This function is currently disabled to avoid conflicts with the new filtering system
     // TODO: Integrate brand and price filters with the new match-based filtering system
-    console.log('Filter change requested:', filters);
   };
 
   const handleSortChange = (value: string) => {

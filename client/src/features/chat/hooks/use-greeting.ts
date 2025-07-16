@@ -21,10 +21,8 @@ export const useGreeting = () => {
   useEffect(() => {
     const fetchGreetingOnLoad = async () => {
       if (user && !preloadedGreeting) {
-        console.log('Fetching personalized greeting for user:', user.customer_key);
         try {
           const response = await chatApi.getPersonalizedGreeting(user.customer_key);
-          console.log('Received greeting response:', response);
           setPreloadedGreeting(response.greeting);
         } catch (error) {
           console.error('Failed to preload personalized greeting:', error);
@@ -39,18 +37,7 @@ export const useGreeting = () => {
   // Display preloaded greeting when chat opens for the first time
   useEffect(() => {
     const displayGreeting = () => {
-      console.log('Display greeting check:', {
-        isOpen,
-        hasUser: !!user,
-        greetingShown,
-        messagesLength: messages.length,
-        currentContextType: currentContext.type,
-        hasPreloadedGreeting: !!preloadedGreeting,
-        preloadedGreeting
-      });
-      
       if (isOpen && user && !greetingShown && messages.length === 0 && (!currentContext.type || currentContext.type === 'general') && preloadedGreeting) {
-        console.log('Adding greeting message to chat:', preloadedGreeting);
         const greetingMessage: ChatMessage = {
           id: `greeting-${Date.now()}`,
           content: preloadedGreeting,

@@ -134,7 +134,7 @@ export default function ProductComparison() {
   };
 
   const handleAddToCart = (product: any) => {
-    console.log('Add to cart:', product.title);
+    // Add to cart functionality would go here
   };
 
   // Helper functions to extract comparison data from available fields

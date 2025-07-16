@@ -9,7 +9,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 import chromadb
-client = chromadb.PersistentClient(path="./scripts/chromadb")
+client = chromadb.PersistentClient(path="./scripts/chroma_db")
 collection = client.get_collection(name="review_synthesis")
 search_analyzer = None  # Lazy loading for search matches
 
@@ -271,7 +271,16 @@ class ProductService:
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:
-            results = collection.get(where={"PRODUCT_ID": str(product_id)})
+            # Use the same collection as the search method
+            from src.search.product_search import review_collection
+            
+            # Try to get the product using the same approach as search
+            # First try with string product ID
+            results = review_collection.get(where={"PRODUCT_ID": str(product_id)})
+            
+            # If no results with string, try with integer
+            if not results["metadatas"] or len(results["metadatas"]) == 0:
+                results = review_collection.get(where={"PRODUCT_ID": product_id})
             
             if not results["metadatas"] or len(results["metadatas"]) == 0:
                 return None
