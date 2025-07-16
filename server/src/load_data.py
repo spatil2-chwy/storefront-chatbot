@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
-from database import engine, Base
+from src.database import engine, Base
 
 def main():
     # ensure all ORM tables are created

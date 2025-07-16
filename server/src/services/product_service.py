@@ -9,8 +9,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 import chromadb
-# client = chromadb.PersistentClient(path="../scripts/chroma_db")
-client = chromadb.HttpClient(host='localhost', port=8001)
+client = chromadb.PersistentClient(path="./scripts/chromadb")
 collection = client.get_collection(name="review_synthesis")
 search_analyzer = None  # Lazy loading for search matches
 

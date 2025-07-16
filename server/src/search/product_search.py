@@ -10,12 +10,8 @@ from src.evaluation.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# client = chromadb.PersistentClient(path="./../scripts/chroma_db")
-client = chromadb.HttpClient(host='localhost', port=8001)
-# PRODUCT_COLLECTION_NAME = "products"
-REVIEW_COLLECTION_NAME = "review_synthesis"
-# product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
-review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
+client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+review_collection = client.get_collection(name="review_synthesis")
 
 def build_where_clause(required_ingredients: list, category_level_1: list, category_level_2: list):
     # build where clause for special diet and ingredients tags
