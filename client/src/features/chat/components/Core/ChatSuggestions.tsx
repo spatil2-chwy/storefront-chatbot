@@ -1,6 +1,6 @@
 import React from 'react';
-import { Bot } from 'lucide-react';
 import { Button } from '../../../../ui/Buttons/Button';
+import { Bot } from 'lucide-react';
 
 interface ChatSuggestionsProps {
   onSuggestionClick: (suggestion: string) => void;
@@ -34,7 +34,7 @@ export const ChatSuggestions: React.FC<ChatSuggestionsProps> = ({ onSuggestionCl
             variant="outline"
             size="sm"
             onClick={() => onSuggestionClick(suggestion)}
-            className="text-sm border-gray-300 hover:border-chewy-blue hover:text-chewy-blue"
+            className="bg-gradient-to-r from-gray-50 to-blue-50 hover:from-gray-100 hover:to-blue-100 border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
           >
             {suggestion}
           </Button>
