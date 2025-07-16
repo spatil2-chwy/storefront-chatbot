@@ -1,7 +1,11 @@
 import json
 import re
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 class EvaluationDataParser:
     """
@@ -27,7 +31,7 @@ class EvaluationDataParser:
                 data = json.load(f)
             return data
         except Exception as e:
-            print(f"Error loading eval data from {file_path}: {e}")
+            logger.error(f"Error loading eval data from {file_path}: {e}")
             return {}
     
     def load_llm_eval_data(self, file_path: str) -> Dict[str, Any]:
@@ -45,7 +49,7 @@ class EvaluationDataParser:
                 data = json.load(f)
             return data
         except Exception as e:
-            print(f"Error loading LLM eval data from {file_path}: {e}")
+            logger.error(f"Error loading LLM eval data from {file_path}: {e}")
             return {}
     
     def load_quantitative_data(self, file_path: str) -> Dict[str, Any]:
@@ -63,8 +67,80 @@ class EvaluationDataParser:
                 data = json.load(f)
             return data
         except Exception as e:
-            print(f"Error loading quantitative data from {file_path}: {e}")
+            logger.error(f"Error loading quantitative data from {file_path}: {e}")
             return {}
+    
+    def read_log_file(self, log_file_path: str) -> Dict[str, Any]:
+        """
+        Read and parse a log file (alias for load_eval_data for compatibility).
+        
+        Args:
+            log_file_path: Path to the log file
+            
+        Returns:
+            Dictionary containing parsed log data
+        """
+        return self.load_eval_data(log_file_path)
+    
+    def structure_log_data(self, log_data: Dict[str, Any]) -> str:
+        """
+        Structure log data into a readable format for LLM evaluation.
+        
+        Args:
+            log_data: Dictionary containing log data
+            
+        Returns:
+            Formatted string for LLM evaluation
+        """
+        # Extract key information
+        user_query = log_data.get('raw_user_query', 'N/A')
+        user_context = log_data.get('user_context', 'N/A')
+        assistant_response = log_data.get('assistant_response', 'N/A')
+        
+        # Structure tool calls
+        tool_calls_info = ""
+        for tool_call in log_data.get('tool_calls', []):
+            tool_calls_info += f"- Tool: {tool_call.get('tool_name', 'N/A')}\n"
+            tool_calls_info += f"  Arguments: {json.dumps(tool_call.get('arguments', {}), indent=2)}\n"
+        
+        # Structure product results
+        products_info = ""
+        for product in log_data.get('product_results', [])[:10]:  # Top 10 products
+            products_info += f"- {product.get('rank', 'N/A')}. {product.get('title', 'N/A')} (${product.get('price', 'N/A')}, {product.get('brand', 'N/A')}, Rating: {product.get('rating', 'N/A')})\n"
+        
+        # Structure performance metrics
+        performance_info = f"""
+- Total Processing Time: {log_data.get('total_processing_time', 'N/A')}s
+- Function Call Time: {log_data.get('function_call_time', 'N/A')}s
+- Tool Execution Time: {log_data.get('tool_execution_time', 'N/A')}s
+- Product Search Time: {log_data.get('product_search_time', 'N/A')}s
+- Ranking Time: {log_data.get('ranking_time', 'N/A')}s
+- LLM Response Time: {log_data.get('llm_response_time', 'N/A')}s
+"""
+        
+        # Combine everything
+        structured_data = f"""
+EVALUATION DATA:
+
+USER QUERY: {user_query}
+
+USER CONTEXT: {user_context}
+
+TOOL CALLS:
+{tool_calls_info}
+
+PRODUCT RESULTS (Top 10):
+{products_info}
+
+ASSISTANT RESPONSE: {assistant_response}
+
+PERFORMANCE METRICS:
+{performance_info}
+
+ERRORS: {log_data.get('errors', [])}
+"""
+        
+        return structured_data
     
     def extract_pets_info(self, user_context: str) -> List[Dict[str, str]]:
         """

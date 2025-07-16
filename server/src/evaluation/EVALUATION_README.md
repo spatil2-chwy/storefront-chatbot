@@ -137,19 +137,20 @@ Extracts structured data for visualization:
 1. Run Quantitative Analysis
 
 ```bash
-cd server/src/evaluation
-python quantitative_evaluation.py
+cd server
+python /src/evaluation/quantitative_evaluation.py
 ```
 
 ### 3. Run LLM Evaluation
 
 ```bash
-python llm_evaluation.py
+python /src/evaluation/llm_evaluation.py
 ```
 
 ### 4. Start Dashboard
 
 ```bash
+cd src/evaluation
 python dashboard.py
 ```
 

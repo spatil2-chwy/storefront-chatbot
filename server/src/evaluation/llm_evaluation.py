@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import openai
 from dotenv import load_dotenv
+from data_parser import EvaluationDataParser
+
 load_dotenv()
 
 # Setup logging
@@ -21,65 +23,13 @@ def get_openai_client():
 
 def read_log_file(log_file_path: str) -> Dict[str, Any]:
     """Read and parse a log file"""
-    try:
-        with open(log_file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"Error reading log file {log_file_path}: {e}")
-        raise
+    parser = EvaluationDataParser()
+    return parser.read_log_file(log_file_path)
 
 def structure_log_data(log_data: Dict[str, Any]) -> str:
     """Structure log data into a readable format for LLM"""
-    
-    # Extract key information
-    user_query = log_data.get('raw_user_query', 'N/A')
-    user_context = log_data.get('user_context', 'N/A')
-    assistant_response = log_data.get('assistant_response', 'N/A')
-    
-    # Structure tool calls
-    tool_calls_info = ""
-    for tool_call in log_data.get('tool_calls', []):
-        tool_calls_info += f"- Tool: {tool_call.get('tool_name', 'N/A')}\n"
-        tool_calls_info += f"  Arguments: {json.dumps(tool_call.get('arguments', {}), indent=2)}\n"
-    
-    # Structure product results
-    products_info = ""
-    for product in log_data.get('product_results', [])[:10]:  # Top 10 products
-        products_info += f"- {product.get('rank', 'N/A')}. {product.get('title', 'N/A')} (${product.get('price', 'N/A')}, {product.get('brand', 'N/A')}, Rating: {product.get('rating', 'N/A')})\n"
-    
-    # Structure performance metrics
-    performance_info = f"""
-- Total Processing Time: {log_data.get('total_processing_time', 'N/A')}s
-- Function Call Time: {log_data.get('function_call_time', 'N/A')}s
-- Tool Execution Time: {log_data.get('tool_execution_time', 'N/A')}s
-- Product Search Time: {log_data.get('product_search_time', 'N/A')}s
-- Ranking Time: {log_data.get('ranking_time', 'N/A')}s
-- LLM Response Time: {log_data.get('llm_response_time', 'N/A')}s
-"""
-    
-    # Combine everything
-    structured_data = f"""
-EVALUATION DATA:
-
-USER QUERY: {user_query}
-
-USER CONTEXT: {user_context}
-
-TOOL CALLS:
-{tool_calls_info}
-
-PRODUCT RESULTS (Top 10):
-{products_info}
-
-ASSISTANT RESPONSE: {assistant_response}
-
-PERFORMANCE METRICS:
-{performance_info}
-
-ERRORS: {log_data.get('errors', [])}
-"""
-    
-    return structured_data
+    parser = EvaluationDataParser()
+    return parser.structure_log_data(log_data)
 
 def create_evaluation_prompt(log_data: str) -> str:
     """Create the evaluation prompt with log data"""
@@ -94,13 +44,13 @@ EVALUATION CRITERIA:
    - Did it extract relevant context from user profile?
 
 2. TOOL SELECTION ACCURACY (0-10):
-   - Was the correct tool chosen (product search vs article search)?
+   - Was the correct tool chosen (product search vs article search vs direct reply)?
    - Were the tool parameters appropriate?
 
 3. SEARCH QUALITY (0-10):
    - Was the search query well-constructed?
    - Did it capture the user's intent effectively?
-   - Were filters applied correctly?
+   - Were filters and user context applied correctly?
 
 4. PRODUCT RELEVANCE (0-10):
    - Do the returned products match the user's needs?
@@ -117,19 +67,9 @@ EVALUATION CRITERIA:
    - Are preferred brands prioritized appropriately?
 
 7. RESPONSE HELPFULNESS (0-10):
-   - Is the response informative and actionable?
-   - Does it provide useful insights about the products?
-   - Is it appropriately concise?
-
-8. FOLLOW-UP QUESTION QUALITY (0-10):
-   - Are the follow-up questions relevant and specific?
-   - Do they help narrow down choices effectively?
+   - Is the response informative and actionable? Are the follow-up questions relevant and specific?
+   - Does it provide useful insights about the products or help narrow down choices effectively?
    - Are they based on actual product differences?
-
-PERFORMANCE ANALYSIS:
-- Identify bottlenecks in the pipeline
-- Suggest optimizations
-- Note any critical issues
 
 LOG DATA:
 {log_data}
@@ -152,15 +92,9 @@ Return your evaluation as a JSON object with the following structure:
     "brand_preference_reasoning": "Reasoning for the score",
     "response_helpfulness": 0-10,
     "response_helpfulness_reasoning": "Reasoning for the score",
-    "follow_up_question_quality": 0-10,
-    "follow_up_question_reasoning": "Reasoning for the score",
     "performance_analysis": "Analysis of the pipeline performance",
-    "bottlenecks_identified": ["List of bottlenecks"],
-    "optimization_suggestions": ["List of optimization suggestions"],
     "overall_score": 0-10,
     "overall_assessment": "Overall assessment of the pipeline",
-    "critical_issues": ["List of critical issues"],
-    "strengths": ["List of strengths"]
 }}"""
 
 def evaluate_log_with_llm(log_file_path: str, model: str = "gpt-4o") -> Dict[str, Any]:
@@ -205,13 +139,6 @@ def evaluate_log_with_llm(log_file_path: str, model: str = "gpt-4o") -> Dict[str
             "log_file": log_file_path,
             "evaluation_timestamp": datetime.now().isoformat(),
             "model_used": model,
-            "original_log_data": {
-                "session_id": log_data.get("session_id"),
-                "raw_query": log_data.get("raw_user_query"),
-                "total_processing_time": log_data.get("total_processing_time"),
-                "products_returned": len(log_data.get("product_results", [])),
-                "has_errors": len(log_data.get("errors", [])) > 0
-            }
         }
         
         return evaluation_result
@@ -318,24 +245,9 @@ if __name__ == "__main__":
         if not args.no_save:
             print(f"Evaluation saved to: llm_eval_{Path(args.log_file).stem}.json")
         
-        # Print summary
-        if not result.get("error"):
-            print(f"\nOverall Score: {result.get('overall_score', 'N/A')}/10")
-            print(f"Query Understanding: {result.get('query_understanding_score', 'N/A')}/10")
-            print(f"Product Relevance: {result.get('product_relevance_score', 'N/A')}/10")
-            print(f"Response Helpfulness: {result.get('response_helpfulness', 'N/A')}/10")
-        else:
-            print(f"Error: {result.get('error')}")
-    
     else:
         # Evaluate all logs in directory
         results = evaluate_all_logs(args.log_dir, args.output_dir)
         
         print(f"\nEvaluated {len(results)} log files")
         print(f"Results saved to: {args.output_dir}")
-        
-        # Print summary
-        successful_results = [r for r in results if not r.get("error")]
-        if successful_results:
-            avg_score = sum(r.get('overall_score', 0) for r in successful_results) / len(successful_results)
-            print(f"Average overall score: {avg_score:.2f}/10")

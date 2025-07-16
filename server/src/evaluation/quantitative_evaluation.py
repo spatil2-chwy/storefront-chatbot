@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, asdict
 import statistics
 from collections import defaultdict, Counter
+from data_parser import EvaluationDataParser
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,6 @@ class QuantitativeMetrics:
     # Success Metrics
     success_rate: float  # Percentage of queries without errors
     error_rate: float
-    avg_products_returned: float
-    avg_product_rating: float
-    avg_product_price: float
     
     # Query Analysis
     avg_query_length: float
@@ -36,10 +34,6 @@ class QuantitativeMetrics:
     brand_diversity: float  # Number of unique brands / total products
     price_range: Dict[str, float]
     rating_distribution: Dict[str, int]
-    
-    # User Context Analysis
-    queries_with_context: float  # Percentage
-    avg_context_length: float
     
     # Performance Bottlenecks
     slow_queries_percentage: float  # Queries taking >10s
@@ -102,10 +96,10 @@ class QuantitativeEvaluator:
         tool_counter = Counter()
         
         # Process all evaluation logs
+        parser = EvaluationDataParser()
         for log_file in log_path.glob("eval_*.json"):
             try:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    log_data = json.load(f)
+                log_data = parser.load_eval_data(str(log_file))
                 
                 metrics = self.evaluate_single_log(log_data)
                 all_metrics.append(metrics)
@@ -136,26 +130,12 @@ class QuantitativeEvaluator:
         # Success metrics
         error_count = sum(1 for m in all_metrics if m.get('has_errors', False))
         success_rate = (len(all_metrics) - error_count) / len(all_metrics) * 100
-        
-        # Product metrics
-        products_returned = [m.get('products_returned', 0) for m in all_metrics]
-        avg_products_returned = statistics.mean(products_returned) if products_returned else 0
-        
-        product_ratings = [m.get('avg_product_rating', 0) for m in all_metrics if m.get('avg_product_rating', 0) > 0]
-        avg_product_rating = statistics.mean(product_ratings) if product_ratings else 0
-        
+
         product_prices = [m.get('avg_product_price', 0) for m in all_metrics if m.get('avg_product_price', 0) > 0]
-        avg_product_price = statistics.mean(product_prices) if product_prices else 0
-        
+ 
         # Query analysis
         query_lengths = [m.get('query_length', 0) for m in all_metrics]
         avg_query_length = statistics.mean(query_lengths) if query_lengths else 0
-        
-        context_count = sum(1 for m in all_metrics if m.get('has_user_context', False))
-        queries_with_context = context_count / len(all_metrics) * 100
-        
-        context_lengths = [m.get('context_length', 0) for m in all_metrics if m.get('has_user_context', False)]
-        avg_context_length = statistics.mean(context_lengths) if context_lengths else 0
         
         # Tool analysis
         total_queries = len(all_metrics)
@@ -176,9 +156,6 @@ class QuantitativeEvaluator:
             avg_ranking_time=statistics.mean(ranking_times) if ranking_times else 0,
             success_rate=success_rate,
             error_rate=100 - success_rate,
-            avg_products_returned=avg_products_returned,
-            avg_product_rating=avg_product_rating,
-            avg_product_price=avg_product_price,
             avg_query_length=avg_query_length,
             most_common_tools=most_common_tools,
             tool_usage_distribution=tool_usage_distribution,
@@ -188,8 +165,6 @@ class QuantitativeEvaluator:
                 'max': max(product_prices) if product_prices else 0
             },
             rating_distribution=self._calculate_rating_distribution(all_metrics),
-            queries_with_context=queries_with_context,
-            avg_context_length=avg_context_length,
             slow_queries_percentage=slow_queries_percentage,
             very_slow_queries_percentage=very_slow_queries_percentage
         )
@@ -226,96 +201,33 @@ class QuantitativeEvaluator:
             avg_ranking_time=0,
             success_rate=0,
             error_rate=0,
-            avg_products_returned=0,
-            avg_product_rating=0,
-            avg_product_price=0,
             avg_query_length=0,
             most_common_tools=[],
             tool_usage_distribution={},
             brand_diversity=0,
             price_range={'min': 0, 'max': 0},
             rating_distribution={},
-            queries_with_context=0,
-            avg_context_length=0,
             slow_queries_percentage=0,
             very_slow_queries_percentage=0
         )
-
-def analyze_performance_trends(log_dir: str = "logs/logs", days: int = 7) -> Dict[str, Any]:
-    """Analyze performance trends over time"""
     
-    log_path = Path(log_dir)
-    if not log_path.exists():
-        return {}
-    
-    # Get logs from the last N days
-    cutoff_date = datetime.now() - timedelta(days=days)
-    recent_logs = []
-    
-    for log_file in log_path.glob("eval_*.json"):
-        try:
-            # Extract timestamp from filename
-            timestamp_str = log_file.stem.split('_')[1] + '_' + log_file.stem.split('_')[2]
-            log_date = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
-            
-            if log_date >= cutoff_date:
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    log_data = json.load(f)
-                recent_logs.append((log_date, log_data))
-                
-        except Exception as e:
-            logger.error(f"Error processing {log_file.name}: {e}")
-    
-    if not recent_logs:
-        return {}
-    
-    # Sort by date
-    recent_logs.sort(key=lambda x: x[0])
-    
-    # Calculate daily averages
-    daily_metrics = defaultdict(list)
-    for date, log_data in recent_logs:
-        day_key = date.strftime('%Y-%m-%d')
-        daily_metrics[day_key].append({
-            'total_time': log_data.get('total_processing_time', 0),
-            'search_time': log_data.get('product_search_time', 0),
-            'llm_time': log_data.get('llm_response_time', 0),
-            'products_returned': len(log_data.get('product_results', [])),
-            'has_errors': len(log_data.get('errors', [])) > 0
-        })
-    
-    # Calculate trends
-    trends = {}
-    for day, metrics in daily_metrics.items():
-        trends[day] = {
-            'avg_total_time': statistics.mean([m['total_time'] for m in metrics]),
-            'avg_search_time': statistics.mean([m['search_time'] for m in metrics]),
-            'avg_llm_time': statistics.mean([m['llm_time'] for m in metrics]),
-            'avg_products': statistics.mean([m['products_returned'] for m in metrics]),
-            'error_rate': (sum(1 for m in metrics if m['has_errors']) / len(metrics)) * 100,
-            'query_count': len(metrics)
-        }
-    
-    return trends
 
 def generate_performance_report(log_dir: str = "logs/logs") -> Dict[str, Any]:
     """Generate a comprehensive performance report"""
     
     evaluator = QuantitativeEvaluator()
     metrics = evaluator.evaluate_all_logs(log_dir)
-    trends = analyze_performance_trends(log_dir)
     
     report = {
         "timestamp": datetime.now().isoformat(),
         "metrics": asdict(metrics),
-        "trends": trends,
-        "recommendations": generate_recommendations(metrics, trends)
+        "recommendations": generate_recommendations(metrics)
     }
     
     return report
 
-def generate_recommendations(metrics: QuantitativeMetrics, trends: Dict[str, Any]) -> List[str]:
-    """Generate recommendations based on metrics and trends"""
+def generate_recommendations(metrics: QuantitativeMetrics) -> List[str]:
+    """Generate recommendations based on metrics"""
     
     recommendations = []
     
@@ -333,9 +245,6 @@ def generate_recommendations(metrics: QuantitativeMetrics, trends: Dict[str, Any
         recommendations.append("🚨 Critical: Error rate exceeds 5%. Review error logs and fix underlying issues.")
     
     # Quality recommendations
-    if metrics.avg_products_returned < 5:
-        recommendations.append("💡 Consider: Low number of products returned. Review search relevance and ranking algorithms.")
-    
     if metrics.brand_diversity < 0.3:
         recommendations.append("💡 Consider: Low brand diversity in results. Review ranking algorithm to ensure variety.")
     
@@ -358,7 +267,6 @@ if __name__ == "__main__":
     print(f"Quantitative report generated: {output_file}")
     print(f"Success rate: {report['metrics']['success_rate']:.1f}%")
     print(f"Average response time: {report['metrics']['avg_total_processing_time']:.2f}s")
-    print(f"Average products returned: {report['metrics']['avg_products_returned']:.1f}")
     
     if report['recommendations']:
         print("\nRecommendations:")
