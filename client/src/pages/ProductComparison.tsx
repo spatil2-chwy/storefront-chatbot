@@ -2,11 +2,12 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Package, Sparkles, RotateCcw, Image as ImageIcon, ShoppingCart, X } from 'lucide-react';
 import Header from '@/layout/Header';
-import ChatWidget from '@/features/Chat/components/ChatWidget';
+import ChatWidget from '@/features/chat/components/ChatWidget';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
-import { useGlobalChat } from '@/features/Chat/context';
+import { useGlobalChat } from '@/features/chat/context';
+import { useCart } from '@/features/cart/context';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
@@ -24,6 +25,8 @@ export default function ProductComparison() {
     addTransitionMessage,
     isOpen: isChatSidebarOpen
   } = useGlobalChat();
+
+  const { addToCart } = useCart();
 
   // Auto-open chat when component mounts and set comparison context
   useEffect(() => {
@@ -134,7 +137,16 @@ export default function ProductComparison() {
   };
 
   const handleAddToCart = (product: any) => {
-    console.log('Add to cart:', product.title);
+    if (!product?.id) {
+      console.error('Cannot add product to cart: product ID is missing');
+      return;
+    }
+
+    // Determine purchase option based on autoship availability
+    const purchaseOption = (product.autoshipPrice && product.autoshipPrice > 0) ? 'autoship' : 'buyonce';
+    
+    // Add to cart with quantity 1
+    addToCart(product, 1, purchaseOption);
   };
 
   // Helper functions to extract comparison data from available fields
