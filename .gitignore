@@ -9,21 +9,42 @@ __pycache__
 .vite
 .env
 
-# product db sources
-data/chromadb/results.jsonl
-data/chromadb/all_chewy_products_with_qanda.csv
-data/chromadb/chroma_db
-scripts/chroma_db/
-server/src/seed.db
-data/chromadb/all_wp_posts.json
-data/chromadb/metadata_filters_cache.json
+# Data files and databases
+data/
+data/backend/
+data/backend/reviews/
+data/backend/articles/
+data/backend/customers/
+data/backend/pets/
+data/backend/products/
+data/databases/
+data/personas/
+data/README.md
+
+# Legacy data file references
 results.jsonl
 all_chewy_products_with_qanda.csv
 chroma_db
 all_wp_posts.json
 metadata_filters_cache.json
 
+# Server cache and log files
+server/metadata_filters_cache.json
 server/logs/
+server/logs/logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large data files (specific patterns)
+data/**/*.csv
+data/**/*.json
+data/**/*.jsonl
+scripts/*.csv
+scripts/*.json
+scripts/*.jsonl
 */__pycache__/
 
 scripts/

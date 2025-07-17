@@ -44,7 +44,11 @@ logger = logging.getLogger(__name__)
 # except LookupError:
 #     nltk.download('averaged_perceptron_tagger')
     
-client = chromadb.PersistentClient(path="./../scripts/chroma_db")
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+chromadb_path = os.path.join(project_root, "data", "databases", "chroma_db")
+client = chromadb.PersistentClient(path=chromadb_path)
 collection = client.get_collection(name="review_synthesis")
 
 class SearchAnalyzer:

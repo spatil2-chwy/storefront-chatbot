@@ -6,12 +6,16 @@ import chromadb
 import numpy as np
 
 # === Config ===
-CSV_PATH = "all_chewy_products_with_qanda.csv"
-REVIEW_SYNTH_PATH = "results.jsonl"
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
+CSV_PATH = os.path.join(project_root, "data", "backend", "reviews", "all_chewy_products_with_qanda.csv")
+REVIEW_SYNTH_PATH = os.path.join(project_root, "data", "backend", "reviews", "results.jsonl")
 
 COLLECTION_NAME = "review_synthesis"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-CHROMADB_PATH = "chroma_db"
+CHROMADB_PATH = os.path.join(project_root, "data", "databases", "chroma_db")
 BATCH_SIZE = 1000
 
 # === Step 1: Load Data ===
@@ -126,6 +130,10 @@ product_rows = product_df.to_dict(orient='records')
 documents = []
 metadatas = []
 ids = []
+
+# save to csv
+product_csv_path = os.path.join(project_root, "data", "backend", "products", "product_df.csv")
+product_df.to_csv(product_csv_path, index=False)
 
 # Track review synthesis statistics
 products_with_reviews = 0
