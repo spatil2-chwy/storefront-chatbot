@@ -80,4 +80,13 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
     body: data ? JSON.stringify(data) : undefined,
   });
   return response.json();
+}
+
+// Helper for PUT requests
+export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
+  const response = await apiRequest(endpoint, {
+    method: 'PUT',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  return response.json();
 } 

@@ -44,6 +44,28 @@ export interface Pet {
   image?: string;          // Optional pet image URL
 }
 
+// Pet option for selection
+export interface PetOption {
+  id: string | number;     // pet_profile_id or "browse"
+  name: string;
+  type: string;
+  breed: string;
+}
+
+// Pet profile information for display and editing
+export interface PetProfileInfo {
+  id: number;
+  name: string;
+  type: string;
+  breed: string;
+  gender: string;
+  weight: number;
+  life_stage: string;
+  birthday: string | null;
+  allergies: boolean;
+  is_new: boolean;
+}
+
 // Product variant size information
 export interface Size {
   name?: string; // Variant name
@@ -100,6 +122,14 @@ export interface ChatMessage {
   transitionType?: 'general' | 'product' | 'comparison'; // Type of transition for styling
   image?: string; // Base64 encoded image data for user messages with images
   imageUrl?: string; // URL for displaying the image
+  
+  // Pet-related message types
+  isPetSelection?: boolean; // For pet selection messages
+  petOptions?: PetOption[]; // Available pet options for selection
+  isPetProfile?: boolean; // For pet profile display messages
+  petProfileInfo?: PetProfileInfo; // Pet information for display
+  isPetEdit?: boolean; // For pet editing messages
+  petEditData?: PetProfileInfo; // Pet data for editing
 }
 
 // Chat context for different conversation modes
@@ -107,4 +137,5 @@ export interface ChatContext {
   type: 'general' | 'product' | 'comparison';
   product?: Product;
   products?: Product[];
+  selectedPet?: PetProfileInfo; // Currently selected pet for context
 } 

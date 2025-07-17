@@ -531,8 +531,8 @@ export default function ProductListing() {
               {filteredResults.length > 0 ? (
                 <div className={`grid gap-6 auto-rows-fr product-grid ${
                   isChatSidebarOpen 
-                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' // With sidebar: 1, 2, 3, 4 columns
-                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'  // Without sidebar: 1, 2, 4, 5 columns
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4' // With wider sidebar: 1, 2, 3, 4 columns
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'  // Without sidebar: 1, 2, 4, 5, 6 columns
                 }`}>
                   {filteredResults.map((product) => (
                     <ProductCard key={product.id} product={product} />

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { chatApi } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { useGlobalChat } from '../context';
-import { ChatMessage } from '../../../types';
+import { ChatMessage, PetOption, PetProfileInfo } from '../../../types';
 
 export const useGreeting = () => {
   const { user } = useAuth();
@@ -15,7 +15,11 @@ export const useGreeting = () => {
   
   const [greetingShown, setGreetingShown] = useState(false);
   const [searchGreetingShown, setSearchGreetingShown] = useState(false);
-  const [preloadedGreeting, setPreloadedGreeting] = useState<string | null>(null);
+  const [preloadedGreeting, setPreloadedGreeting] = useState<{
+    greeting: string;
+    has_pets: boolean;
+    pet_options: PetOption[];
+  } | null>(null);
 
   // Fetch personalized greeting when component mounts
   useEffect(() => {
@@ -23,10 +27,14 @@ export const useGreeting = () => {
       if (user && !preloadedGreeting) {
         try {
           const response = await chatApi.getPersonalizedGreeting(user.customer_key);
-          setPreloadedGreeting(response.greeting);
+          setPreloadedGreeting(response);
         } catch (error) {
           console.error('Failed to preload personalized greeting:', error);
-          setPreloadedGreeting("Hey there! What can I help you find for your furry friends today?");
+          setPreloadedGreeting({
+            greeting: "Hey there! What can I help you find for your furry friends today?",
+            has_pets: false,
+            pet_options: []
+          });
         }
       }
     };
@@ -38,12 +46,20 @@ export const useGreeting = () => {
   useEffect(() => {
     const displayGreeting = () => {
       if (isOpen && user && !greetingShown && messages.length === 0 && (!currentContext.type || currentContext.type === 'general') && preloadedGreeting) {
+        // Create greeting message with pet selection if user has pets
         const greetingMessage: ChatMessage = {
           id: `greeting-${Date.now()}`,
-          content: preloadedGreeting,
+          content: preloadedGreeting.greeting,
           sender: 'ai',
           timestamp: new Date(),
         };
+
+        // If user has pets, include pet selection in the same message
+        if (preloadedGreeting.has_pets && preloadedGreeting.pet_options.length > 0) {
+          greetingMessage.isPetSelection = true;
+          greetingMessage.petOptions = preloadedGreeting.pet_options;
+        }
+
         addMessage(greetingMessage);
         setGreetingShown(true);
       }
@@ -69,7 +85,7 @@ export const useGreeting = () => {
       if (preloadedGreeting) {
         const greetingMessage: ChatMessage = {
           id: `search-greeting-${Date.now()}`,
-          content: preloadedGreeting,
+          content: preloadedGreeting.greeting,
           sender: 'ai',
           timestamp: new Date(),
         };

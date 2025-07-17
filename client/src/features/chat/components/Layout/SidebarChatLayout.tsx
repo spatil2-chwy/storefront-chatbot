@@ -5,7 +5,7 @@ import { ChatHeader } from '../Core/ChatHeader';
 import { ChatMessages } from '../Core/ChatMessages';
 import { ChatInput } from '../Core/ChatInput';
 import { LiveAgentFallback } from '../Fallbacks/LiveAgentFallback';
-import { ChatMessage, ChatContext } from '../../../../types';
+import { ChatMessage, ChatContext, PetProfileInfo } from '../../../../types';
 
 interface SidebarChatLayoutProps {
   isOpen: boolean;
@@ -35,6 +35,10 @@ interface SidebarChatLayoutProps {
   onImageUpload?: (file: File) => void;
   selectedImage?: File | null;
   onImageRemove?: () => void;
+  onPetSelect?: (petId: string) => void;
+  onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: PetProfileInfo) => void;
+  onPetEditSave?: (updatedPet: PetProfileInfo) => void;
+  onPetEditCancel?: () => void;
 }
 
 export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
@@ -65,6 +69,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   onImageUpload,
   selectedImage,
   onImageRemove,
+  onPetSelect,
+  onPetProfileAction,
+  onPetEditSave,
+  onPetEditCancel,
 }) => {
   // Handle body scroll and layout adjustment when sidebar is open
   useEffect(() => {
@@ -127,6 +135,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 onScroll={onScroll}
                 scrollContainerRef={scrollContainerRef}
                 onTagClick={onTagClick}
+                onPetSelect={onPetSelect}
+                onPetProfileAction={onPetProfileAction}
+                onPetEditSave={onPetEditSave}
+                onPetEditCancel={onPetEditCancel}
               />
               <ChatInput
                 value={inputValue}
@@ -170,8 +182,8 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
         className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l border-gray-200 z-50 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } ${
-          // Responsive width: full width on mobile, fixed width on desktop
-          'w-full md:w-96 lg:w-[400px]'
+          // Responsive width: full width on mobile, moderately wider fixed width on desktop
+          'w-full md:w-[420px] lg:w-[450px] xl:w-[480px]'
         }`}
         role="complementary"
         aria-label="Chat sidebar"
@@ -205,6 +217,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   onScroll={onScroll}
                   scrollContainerRef={scrollContainerRef}
                   onTagClick={onTagClick}
+                  onPetSelect={onPetSelect}
+                  onPetProfileAction={onPetProfileAction}
+                  onPetEditSave={onPetEditSave}
+                  onPetEditCancel={onPetEditCancel}
                 />
                 <ChatInput
                   value={inputValue}

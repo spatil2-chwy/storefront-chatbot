@@ -5,6 +5,9 @@ import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
 import { getTransitionStyling, isTransitionMessage, formatMessageContent, extractQuickResponseTags } from "../../../../lib/utils";
 import { QuickResponseButtons } from './QuickResponseButtons';
+import { PetSelection } from './PetSelection';
+import { PetProfile } from './PetProfile';
+import { PetEdit } from './PetEdit';
 
 // Safe HTML renderer component
 const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {
@@ -38,6 +41,10 @@ interface ChatMessageItemProps {
   isStreaming?: boolean;
   showExitButton?: boolean;
   onTagClick?: (tag: string) => void;
+  onPetSelect?: (petId: string) => void;
+  onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: any) => void;
+  onPetEditSave?: (updatedPet: any) => void;
+  onPetEditCancel?: () => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -49,6 +56,10 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   isStreaming = false,
   showExitButton = false,
   onTagClick,
+  onPetSelect,
+  onPetProfileAction,
+  onPetEditSave,
+  onPetEditCancel,
 }) => {
   const isUser = message.sender === 'user';
   const isTransition = isTransitionMessage(message);
@@ -95,6 +106,62 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       </div>
     );
   };
+
+  // Handle pet selection messages
+  if (message.isPetSelection && message.petOptions) {
+    return (
+      <div className="flex justify-start items-start space-x-2">
+        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-white" />
+        </div>
+        <div className="max-w-full bg-gray-100 rounded-lg p-4">
+          <div className="text-sm text-gray-900 mb-3">
+            {message.content}
+          </div>
+          <PetSelection
+            petOptions={message.petOptions}
+            onPetSelect={onPetSelect || (() => {})}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Handle pet profile messages
+  if (message.isPetProfile && message.petProfileInfo) {
+    return (
+      <div className="flex justify-start items-start space-x-2">
+        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-white" />
+        </div>
+        <div className="max-w-full bg-gray-100 rounded-lg p-4">
+          <PetProfile
+            petInfo={message.petProfileInfo}
+            onLooksGood={() => onPetProfileAction?.('looks_good', message.petProfileInfo)}
+            onEditInfo={() => onPetProfileAction?.('edit_info', message.petProfileInfo)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Handle pet edit messages
+  if (message.isPetEdit && message.petEditData) {
+    return (
+      <div className="flex justify-start items-start space-x-2">
+        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-white" />
+        </div>
+        <div className="max-w-full bg-gray-100 rounded-lg p-4">
+          <PetEdit
+            petInfo={message.petEditData}
+            onSave={onPetEditSave || (() => {})}
+            onCancel={onPetEditCancel || (() => {})}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Handle transition messages
   if (isTransition) {

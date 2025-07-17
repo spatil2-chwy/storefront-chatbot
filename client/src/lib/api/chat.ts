@@ -1,7 +1,7 @@
 // Chat API - handles chatbot conversations and streaming
 
-import { Product } from '../../types';
-import { apiPost, apiRequest } from './client';
+import { Product, PetOption, PetProfileInfo } from '../../types';
+import { apiPost, apiRequest, apiGet, apiPut } from './client';
 
 export const chatApi = {
   // Send message to chatbot
@@ -34,13 +34,15 @@ export const chatApi = {
     onProducts?: (products: any[]) => void,
     onComplete?: (fullMessage: string, products?: any[]) => void,
     onError?: (error: string) => void,
-    image?: string // Base64 encoded image
+    image?: string, // Base64 encoded image
+    selectedPet?: PetProfileInfo // Selected pet context
   ): Promise<void> {
     const payload = {
       message,
       history,
       customer_key,
       image, // Include image in payload
+      selected_pet: selectedPet, // Include selected pet context
     };
 
     // Use centralized API client for consistency
@@ -106,15 +108,76 @@ export const chatApi = {
     }
   },
 
-  // Get personalized greeting
-  async getPersonalizedGreeting(customer_key?: number): Promise<{greeting: string}> {
+  // Get personalized greeting with pet options
+  async getPersonalizedGreeting(customer_key?: number): Promise<{
+    greeting: string;
+    has_pets: boolean;
+    pet_options: PetOption[];
+  }> {
     const payload = {
       customer_key,
     };
     
-    const response = await apiPost<{response: {greeting: string}}>(
+    const response = await apiPost<{response: {
+      greeting: string;
+      has_pets: boolean;
+      pet_options: PetOption[];
+    }}>(
       `/chats/personalized_greeting`, 
       payload
+    );
+    return response.response;
+  },
+
+  // Select a pet for shopping
+  async selectPet(customer_key: number, pet_id: string): Promise<{
+    type: 'browse' | 'pet_profile';
+    message?: string;
+    pet_context?: string;
+    pet_info?: PetProfileInfo;
+  }> {
+    const payload = {
+      customer_key,
+      pet_id,
+    };
+    
+    const response = await apiPost<{response: {
+      type: 'browse' | 'pet_profile';
+      message?: string;
+      pet_context?: string;
+      pet_info?: PetProfileInfo;
+    }}>(
+      `/chats/select_pet`, 
+      payload
+    );
+    return response.response;
+  },
+
+  // Get pet profile for editing
+  async getPetProfile(pet_profile_id: number): Promise<{
+    pet_info: PetProfileInfo;
+  }> {
+    const response = await apiGet<{response: {
+      pet_info: PetProfileInfo;
+    }}>(
+      `/chats/pet_profile/${pet_profile_id}`
+    );
+    return response.response;
+  },
+
+  // Update pet profile
+  async updatePetProfile(pet_profile_id: number, pet_data: Partial<PetProfileInfo>): Promise<{
+    type: 'pet_updated';
+    pet_info: PetProfileInfo;
+    pet_context: string;
+  }> {
+    const response = await apiPut<{response: {
+      type: 'pet_updated';
+      pet_info: PetProfileInfo;
+      pet_context: string;
+    }}>(
+      `/chats/pet_profile/${pet_profile_id}`,
+      pet_data
     );
     return response.response;
   }
