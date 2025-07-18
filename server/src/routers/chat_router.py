@@ -206,9 +206,15 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
             existing_pet.weight = pet_data["weight"]
         if "life_stage" in pet_data:
             existing_pet.life_stage = pet_data["life_stage"]
-        if "birthday" in pet_data and pet_data["birthday"]:
-            from datetime import datetime
-            existing_pet.birthday = datetime.fromisoformat(pet_data["birthday"]).date()
+        if "birthday" in pet_data:
+            if pet_data["birthday"]:
+                from datetime import datetime
+                existing_pet.birthday = datetime.fromisoformat(pet_data["birthday"]).date()
+            else:
+                existing_pet.birthday = None
+        if "allergies" in pet_data:
+            # Convert boolean allergies to allergy_count
+            existing_pet.allergy_count = 1 if pet_data["allergies"] else 0
         
         # Save changes
         updated_pet = pet_svc.update_pet(db, pet_profile_id, existing_pet)
