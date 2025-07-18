@@ -1,10 +1,26 @@
 ## Quick Start
 
 1. Run Test Queries
+
+- Start the FastAPI server:
 ```bash
 cd server
-python -m src.evaluation.test_suite_runner  
+uvicorn src.main:app --reload --host localhost --port 8000
 ```
+
+- Single Query Test
+```bash
+cd server
+python src/evaluation/test_suite_runner.py
+```
+
+- Full Test Suite - uncomment in test_suite_runner.py
+await runner.run_test_suite(customer_key=customer_key)
+
+```bash
+python src/evaluation/test_suite_runner.py
+```
+
 
 2. Run Quantitative Analysis
 

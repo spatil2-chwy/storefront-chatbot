@@ -31,10 +31,130 @@ def structure_log_data(log_data: Dict[str, Any]) -> str:
     parser = EvaluationDataParser()
     return parser.structure_log_data(log_data)
 
-def create_evaluation_prompt(log_data: str) -> str:
-    """Create the evaluation prompt with log data"""
+def determine_response_type(log_data: Dict[str, Any]) -> str:
+    """Determine the type of response based on tool calls and content"""
+    tool_calls = log_data.get('tool_calls', [])
     
-    return f"""You are an expert evaluator of AI-powered shopping assistant systems. Your job is to comprehensively evaluate the performance of a pet product search and recommendation pipeline.
+    if not tool_calls:
+        return "direct_response"
+    
+    # Check what tools were used
+    tools_used = [tool.get('tool_name') for tool in tool_calls]
+    
+    if 'search_articles' in tools_used:
+        return "article_search"
+    elif 'search_products' in tools_used:
+        return "product_search"
+    else:
+        return "direct_response"
+
+def create_evaluation_prompt(log_data: str, response_type: str) -> str:
+    """Create the evaluation prompt with log data based on response type"""
+    
+    if response_type == "direct_response":
+        return f"""You are an expert evaluator of AI-powered shopping assistant systems.
+
+EVALUATION CRITERIA:
+
+1. QUERY UNDERSTANDING (0-10):
+   - Did the system correctly interpret the user's intent?
+   - Did it identify the appropriate response type (greeting, casual conversation, etc.)?
+
+2. RESPONSE APPROPRIATENESS (0-10):
+   - Is the response appropriate for the type of query?
+   - Does it match the expected tone and style for a shopping assistant?
+
+3. ENGAGEMENT QUALITY (0-10):
+   - Is the response engaging and welcoming?
+   - Does it encourage further interaction or provide clear next steps?
+
+4. HELPFULNESS (0-10):
+   - Is the response helpful and informative?
+   - Does it provide value to the user?
+
+5. TONE AND PERSONALITY (0-10):
+   - Is the tone warm, friendly, and appropriate?
+   - Does it reflect the brand personality?
+
+LOG DATA:
+{log_data}
+
+Return your evaluation as a JSON object with the following structure:
+{{
+    "query_understanding_score": 0-10,
+    "query_understanding_reasoning": "Reasoning for the score",
+    "response_appropriateness": 0-10,
+    "response_appropriateness_reasoning": "Reasoning for the score",
+    "engagement_quality": 0-10,
+    "engagement_quality_reasoning": "Reasoning for the score",
+    "helpfulness": 0-10,
+    "helpfulness_reasoning": "Reasoning for the score",
+    "tone_and_personality": 0-10,
+    "tone_and_personality_reasoning": "Reasoning for the score",
+    "performance_analysis": "Analysis of the direct response",
+    "overall_score": 0-10,
+    "overall_assessment": "Overall assessment of the response",
+}}"""
+
+    elif response_type == "article_search":
+        return f"""You are an expert evaluator of AI-powered shopping assistant systems. Your job is to evaluate the performance of an article search response from a pet shopping assistant.
+
+EVALUATION CRITERIA:
+
+1. QUERY UNDERSTANDING (0-10):
+   - Did the system correctly interpret the user's intent?
+   - Did it identify that the user needed informational content rather than products?
+
+2. TOOL SELECTION ACCURACY (0-10):
+   - Was article search the appropriate tool choice?
+   - Were the search parameters well-constructed?
+
+3. ARTICLE RELEVANCE (0-10):
+   - Are the returned articles relevant to the user's question?
+   - Do they address the specific concerns or topics mentioned?
+
+4. CONTENT QUALITY (0-10):
+   - Is the article content high-quality and informative?
+   - Are the summaries accurate and helpful?
+
+5. REFERENCE LINK QUALITY (0-10):
+   - Are the provided links logical and relevant?
+   - Do they lead to appropriate educational content?
+
+6. RESPONSE STRUCTURE (0-10):
+   - Is the response well-structured and easy to follow?
+   - Does it effectively summarize the article content?
+
+7. ACTIONABILITY (0-10):
+   - Does the response provide actionable advice?
+   - Does it suggest relevant product categories when appropriate?
+
+LOG DATA:
+{log_data}
+
+Return your evaluation as a JSON object with the following structure:
+{{
+    "query_understanding_score": 0-10,
+    "query_understanding_reasoning": "Reasoning for the score",
+    "tool_selection_accuracy": 0-10,
+    "tool_selection_reasoning": "Reasoning for the score",
+    "article_relevance": 0-10,
+    "article_relevance_reasoning": "Reasoning for the score",
+    "content_quality": 0-10,
+    "content_quality_reasoning": "Reasoning for the score",
+    "reference_link_quality": 0-10,
+    "reference_link_quality_reasoning": "Reasoning for the score",
+    "response_structure": 0-10,
+    "response_structure_reasoning": "Reasoning for the score",
+    "actionability": 0-10,
+    "actionability_reasoning": "Reasoning for the score",
+    "performance_analysis": "Analysis of the article search response",
+    "overall_score": 0-10,
+    "overall_assessment": "Overall assessment of the response",
+}}"""
+
+    else:  # product_search
+        return f"""You are an expert evaluator of AI-powered shopping assistant systems. Your job is to comprehensively evaluate the performance of a product search and recommendation pipeline.
 
 EVALUATION CRITERIA:
 
@@ -44,7 +164,7 @@ EVALUATION CRITERIA:
    - Did it extract relevant context from user profile?
 
 2. TOOL SELECTION ACCURACY (0-10):
-   - Was the correct tool chosen (product search vs article search vs direct reply)?
+   - Was product search the appropriate tool choice?
    - Were the tool parameters appropriate?
 
 3. SEARCH QUALITY (0-10):
@@ -67,9 +187,9 @@ EVALUATION CRITERIA:
    - Are preferred brands prioritized appropriately?
 
 7. RESPONSE HELPFULNESS (0-10):
-   - Is the response informative and actionable? Are the follow-up questions relevant and specific?
+   - Is the response informative and actionable?
+   - Are the follow-up questions relevant and specific?
    - Does it provide useful insights about the products or help narrow down choices effectively?
-   - Are they based on actual product differences?
 
 LOG DATA:
 {log_data}
@@ -82,8 +202,6 @@ Return your evaluation as a JSON object with the following structure:
     "tool_selection_reasoning": "Reasoning for the score",
     "search_relevance_score": 0-10,
     "search_relevance_reasoning": "Reasoning for the score",
-    "query_enhancement_quality": 0-10,
-    "query_enhancement_reasoning": "Reasoning for the score",
     "product_relevance_score": 0-10,
     "product_relevance_reasoning": "Reasoning for the score",
     "product_diversity_score": 0-10,
@@ -92,7 +210,7 @@ Return your evaluation as a JSON object with the following structure:
     "brand_preference_reasoning": "Reasoning for the score",
     "response_helpfulness": 0-10,
     "response_helpfulness_reasoning": "Reasoning for the score",
-    "performance_analysis": "Analysis of the pipeline performance",
+    "performance_analysis": "Analysis of the product search pipeline",
     "overall_score": 0-10,
     "overall_assessment": "Overall assessment of the pipeline",
 }}"""
@@ -105,15 +223,19 @@ def evaluate_log_with_llm(log_file_path: str, model: str = "gpt-4o") -> Dict[str
         logger.info(f"Reading log file: {log_file_path}")
         log_data = read_log_file(log_file_path)
         
-        # 2. Structure the log data
+        # 2. Determine response type
+        response_type = determine_response_type(log_data)
+        logger.info(f"Detected response type: {response_type}")
+        
+        # 3. Structure the log data
         logger.info("Structuring log data")
         structured_data = structure_log_data(log_data)
         
-        # 3. Create evaluation prompt
-        logger.info("Creating evaluation prompt")
-        prompt = create_evaluation_prompt(structured_data)
+        # 4. Create evaluation prompt based on response type
+        logger.info(f"Creating evaluation prompt for {response_type}")
+        prompt = create_evaluation_prompt(structured_data, response_type)
         
-        # 4. Send to LLM
+        # 5. Send to LLM
         logger.info("Sending to LLM for evaluation")
         client = get_openai_client()
         
@@ -127,18 +249,19 @@ def evaluate_log_with_llm(log_file_path: str, model: str = "gpt-4o") -> Dict[str
             response_format={"type": "json_object"}
         )
         
-        # 5. Parse JSON response
+        # 6. Parse JSON response
         logger.info("Parsing LLM response")
         content = response.choices[0].message.content
         if content is None:
             content = "{}"
         evaluation_result = json.loads(content)
         
-        # 6. Add metadata
+        # 7. Add metadata including response type
         evaluation_result["metadata"] = {
             "log_file": log_file_path,
             "evaluation_timestamp": datetime.now().isoformat(),
             "model_used": model,
+            "response_type": response_type,
         }
         
         return evaluation_result

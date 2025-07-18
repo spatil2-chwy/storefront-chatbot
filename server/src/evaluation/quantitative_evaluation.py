@@ -1,11 +1,11 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List
 from dataclasses import dataclass, asdict
 import statistics
-from collections import defaultdict, Counter
+from collections import Counter
 from src.evaluation.data_parser import EvaluationDataParser
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,7 @@ class QuantitativeMetrics:
     # Performance Metrics
     avg_total_processing_time: float
     avg_product_search_time: float
+    avg_article_search_time: float
     avg_llm_response_time: float
     avg_function_call_time: float
     avg_ranking_time: float
@@ -27,13 +28,18 @@ class QuantitativeMetrics:
     
     # Query Analysis
     avg_query_length: float
+    response_type_distribution: Dict[str, float]  # direct_response, article_search, product_search
     most_common_tools: List[str]
     tool_usage_distribution: Dict[str, float]
     
-    # Product Analysis
+    # Product Analysis (only for product_search responses)
     brand_diversity: float  # Number of unique brands / total products
     price_range: Dict[str, float]
     rating_distribution: Dict[str, int]
+    avg_products_returned: float
+    
+    # Article Analysis (only for article_search responses)
+    avg_articles_returned: float
     
     # Performance Bottlenecks
     slow_queries_percentage: float  # Queries taking >10s
@@ -45,14 +51,35 @@ class QuantitativeEvaluator:
     def __init__(self):
         self.metrics = {}
     
+    def determine_response_type(self, log_data: Dict[str, Any]) -> str:
+        """Determine the type of response based on tool calls"""
+        tool_calls = log_data.get('tool_calls', [])
+        
+        if not tool_calls:
+            return "direct_response"
+        
+        tools_used = [tool.get('tool_name') for tool in tool_calls]
+        
+        if 'search_articles' in tools_used:
+            return "article_search"
+        elif 'search_products' in tools_used:
+            return "product_search"
+        else:
+            return "direct_response"
+    
     def evaluate_single_log(self, log_data: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate a single log file for quantitative metrics"""
         
         metrics = {}
         
+        # Determine response type
+        response_type = self.determine_response_type(log_data)
+        metrics['response_type'] = response_type
+        
         # Performance metrics
         metrics['total_processing_time'] = log_data.get('total_processing_time', 0)
         metrics['product_search_time'] = log_data.get('product_search_time', 0)
+        metrics['article_search_time'] = log_data.get('article_search_time', 0)
         metrics['llm_response_time'] = log_data.get('llm_response_time', 0)
         metrics['function_call_time'] = log_data.get('function_call_time', 0)
         metrics['ranking_time'] = log_data.get('ranking_time', 0)
@@ -60,9 +87,6 @@ class QuantitativeEvaluator:
         # Success metrics
         errors = log_data.get('errors')
         metrics['has_errors'] = len(errors) > 0 if errors is not None else False
-        
-        product_results = log_data.get('product_results')
-        metrics['products_returned'] = len(product_results) if product_results is not None else 0
         
         # Query analysis
         raw_user_query = log_data.get('raw_user_query')
@@ -76,18 +100,40 @@ class QuantitativeEvaluator:
         tool_calls = log_data.get('tool_calls')
         metrics['tools_used'] = [tool.get('tool_name') for tool in (tool_calls or [])]
         
-        # Product analysis
-        products = log_data.get('product_results')
-        if products is not None and len(products) > 0:
-            metrics['avg_product_rating'] = statistics.mean([p.get('rating', 0) for p in products if p.get('rating')])
-            metrics['avg_product_price'] = statistics.mean([p.get('price', 0) for p in products if p.get('price')])
-            metrics['unique_brands'] = len(set(p.get('brand') for p in products if p.get('brand')))
-            metrics['brand_diversity'] = metrics['unique_brands'] / len(products)
+        # Response type specific analysis
+        if response_type == "product_search":
+            # Product analysis
+            products = log_data.get('product_results')
+            if products is not None and len(products) > 0:
+                metrics['products_returned'] = len(products)
+                metrics['avg_product_rating'] = statistics.mean([p.get('rating', 0) for p in products if p.get('rating')])
+                metrics['avg_product_price'] = statistics.mean([p.get('price', 0) for p in products if p.get('price')])
+                metrics['unique_brands'] = len(set(p.get('brand') for p in products if p.get('brand')))
+                metrics['brand_diversity'] = metrics['unique_brands'] / len(products)
+            else:
+                metrics['products_returned'] = 0
+                metrics['avg_product_rating'] = 0
+                metrics['avg_product_price'] = 0
+                metrics['unique_brands'] = 0
+                metrics['brand_diversity'] = 0
         else:
+            # Not product search - set product metrics to 0
+            metrics['products_returned'] = 0
             metrics['avg_product_rating'] = 0
             metrics['avg_product_price'] = 0
             metrics['unique_brands'] = 0
             metrics['brand_diversity'] = 0
+        
+        if response_type == "article_search":
+            # Article analysis - count articles in chat history
+            chat_history = log_data.get('chat_history', [])
+            article_count = 0
+            for item in chat_history:
+                if item.get('type') == 'function_call_output' and 'article' in str(item.get('output', '')).lower():
+                    article_count += 1
+            metrics['articles_returned'] = article_count
+        else:
+            metrics['articles_returned'] = 0
         
         return metrics
     
@@ -101,6 +147,7 @@ class QuantitativeEvaluator:
         
         all_metrics = []
         tool_counter = Counter()
+        response_type_counter = Counter()
         
         # Process all evaluation logs
         parser = EvaluationDataParser()
@@ -115,6 +162,10 @@ class QuantitativeEvaluator:
                 for tool in metrics.get('tools_used', []):
                     tool_counter[tool] += 1
                 
+                # Count response types
+                response_type = metrics.get('response_type', 'unknown')
+                response_type_counter[response_type] += 1
+                
             except Exception as e:
                 logger.error(f"Error evaluating {log_file.name}: {e}")
         
@@ -122,14 +173,15 @@ class QuantitativeEvaluator:
             return self._create_empty_metrics()
         
         # Calculate aggregate metrics
-        return self._calculate_aggregate_metrics(all_metrics, tool_counter)
+        return self._calculate_aggregate_metrics(all_metrics, tool_counter, response_type_counter)
     
-    def _calculate_aggregate_metrics(self, all_metrics: List[Dict[str, Any]], tool_counter: Counter) -> QuantitativeMetrics:
+    def _calculate_aggregate_metrics(self, all_metrics: List[Dict[str, Any]], tool_counter: Counter, response_type_counter: Counter) -> QuantitativeMetrics:
         """Calculate aggregate metrics from individual log metrics"""
         
         # Performance metrics - filter out None values
         total_times = [m.get('total_processing_time', 0) for m in all_metrics if m.get('total_processing_time') is not None]
         search_times = [m.get('product_search_time', 0) for m in all_metrics if m.get('product_search_time') is not None]
+        article_search_times = [m.get('article_search_time', 0) for m in all_metrics if m.get('article_search_time') is not None]
         llm_times = [m.get('llm_response_time', 0) for m in all_metrics if m.get('llm_response_time') is not None]
         function_times = [m.get('function_call_time', 0) for m in all_metrics if m.get('function_call_time') is not None]
         ranking_times = [m.get('ranking_time', 0) for m in all_metrics if m.get('ranking_time') is not None]
@@ -138,8 +190,6 @@ class QuantitativeEvaluator:
         error_count = sum(1 for m in all_metrics if m.get('has_errors', False))
         success_rate = (len(all_metrics) - error_count) / len(all_metrics) * 100
 
-        product_prices = [m.get('avg_product_price', 0) for m in all_metrics if m.get('avg_product_price', 0) > 0]
- 
         # Query analysis
         query_lengths = [m.get('query_length', 0) for m in all_metrics if m.get('query_length') is not None]
         avg_query_length = statistics.mean(query_lengths) if query_lengths else 0
@@ -149,34 +199,59 @@ class QuantitativeEvaluator:
         tool_usage_distribution = {tool: (count / total_queries) * 100 for tool, count in tool_counter.items()}
         most_common_tools = [tool for tool, _ in tool_counter.most_common(5)]
         
+        # Response type distribution
+        response_type_distribution = {rtype: (count / total_queries) * 100 for rtype, count in response_type_counter.items()}
+        
         # Performance bottlenecks
         slow_queries = sum(1 for t in total_times if t > 10)
         very_slow_queries = sum(1 for t in total_times if t > 20)
         slow_queries_percentage = (slow_queries / len(total_times)) * 100 if total_times else 0
         very_slow_queries_percentage = (very_slow_queries / len(total_times)) * 100 if total_times else 0
         
+        # Product analysis (only for product_search responses)
+        product_search_metrics = [m for m in all_metrics if m.get('response_type') == 'product_search']
+        if product_search_metrics:
+            product_prices = [m.get('avg_product_price', 0) for m in product_search_metrics if m.get('avg_product_price', 0) > 0]
+            avg_products_returned = statistics.mean([m.get('products_returned', 0) for m in product_search_metrics])
+            brand_diversity = statistics.mean([m.get('brand_diversity', 0) for m in product_search_metrics])
+        else:
+            product_prices = []
+            avg_products_returned = 0
+            brand_diversity = 0
+        
+        # Article analysis (only for article_search responses)
+        article_search_metrics = [m for m in all_metrics if m.get('response_type') == 'article_search']
+        if article_search_metrics:
+            avg_articles_returned = statistics.mean([m.get('articles_returned', 0) for m in article_search_metrics])
+        else:
+            avg_articles_returned = 0
+        
         return QuantitativeMetrics(
             avg_total_processing_time=statistics.mean(total_times) if total_times else 0,
             avg_product_search_time=statistics.mean(search_times) if search_times else 0,
+            avg_article_search_time=statistics.mean(article_search_times) if article_search_times else 0,
             avg_llm_response_time=statistics.mean(llm_times) if llm_times else 0,
             avg_function_call_time=statistics.mean(function_times) if function_times else 0,
             avg_ranking_time=statistics.mean(ranking_times) if ranking_times else 0,
             success_rate=success_rate,
             error_rate=100 - success_rate,
             avg_query_length=avg_query_length,
+            response_type_distribution=response_type_distribution,
             most_common_tools=most_common_tools,
             tool_usage_distribution=tool_usage_distribution,
-            brand_diversity=statistics.mean([m.get('brand_diversity', 0) for m in all_metrics]),
+            brand_diversity=brand_diversity,
             price_range={
                 'min': min(product_prices) if product_prices else 0,
                 'max': max(product_prices) if product_prices else 0
             },
-            rating_distribution=self._calculate_rating_distribution(all_metrics),
+            rating_distribution=self._calculate_rating_distribution(product_search_metrics),
+            avg_products_returned=avg_products_returned,
+            avg_articles_returned=avg_articles_returned,
             slow_queries_percentage=slow_queries_percentage,
             very_slow_queries_percentage=very_slow_queries_percentage
         )
     
-    def _calculate_rating_distribution(self, all_metrics: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _calculate_rating_distribution(self, product_search_metrics: List[Dict[str, Any]]) -> Dict[str, int]:
         """Calculate distribution of product ratings"""
         rating_ranges = {
             '1-2': 0,
@@ -185,7 +260,7 @@ class QuantitativeEvaluator:
             '4-5': 0
         }
         
-        for metrics in all_metrics:
+        for metrics in product_search_metrics:
             rating = metrics.get('avg_product_rating', 0)
             if 1 <= rating < 2:
                 rating_ranges['1-2'] += 1
@@ -203,17 +278,21 @@ class QuantitativeEvaluator:
         return QuantitativeMetrics(
             avg_total_processing_time=0,
             avg_product_search_time=0,
+            avg_article_search_time=0,
             avg_llm_response_time=0,
             avg_function_call_time=0,
             avg_ranking_time=0,
             success_rate=0,
             error_rate=0,
             avg_query_length=0,
+            response_type_distribution={},
             most_common_tools=[],
             tool_usage_distribution={},
             brand_diversity=0,
             price_range={'min': 0, 'max': 0},
             rating_distribution={},
+            avg_products_returned=0,
+            avg_articles_returned=0,
             slow_queries_percentage=0,
             very_slow_queries_percentage=0
         )
