@@ -1,17 +1,7 @@
 // Message formatting utilities for chat components
+// Message formatting utilities for chat components
 export const formatMessageContent = (content: string): string => {
   let formattedContent = content;
-  
-  // Handle code blocks (```code```) to prevent markdown processing
-  const codeBlocks: string[] = [];
-  formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, (match, code) => {
-    const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-    codeBlocks.push(`<pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto"><code>${escapeHtml(code)}</code></pre>`);
-    return placeholder;
-  });
-
-  // Handle inline code (`code`)
-  formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>');
   
   // Convert [text](url) links to <a> tags
   formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline break-all">$1</a>');
@@ -25,7 +15,13 @@ export const formatMessageContent = (content: string): string => {
   // Convert ~~strikethrough~~ to <del>
   formattedContent = formattedContent.replace(/~~(.*?)~~/g, '<del class="line-through">$1</del>');
   
-  // Handle headers (# Header)
+  // Handle custom headers with emojis (💡 Quick Answer, ✨ Key Benefits, 🔍 Product Details, �� Refine Your Search)
+  formattedContent = formattedContent.replace(/^💡 Quick Answer$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-blue-600">💡 Quick Answer</h3>');
+  formattedContent = formattedContent.replace(/^✨ Key Benefits$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-green-600">✨ Key Benefits</h3>');
+  formattedContent = formattedContent.replace(/^🔍 Product Details$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-purple-600">�� Product Details</h3>');
+  formattedContent = formattedContent.replace(/^�� Refine Your Search$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-orange-600">�� Refine Your Search</h3>');
+  
+  // Handle standard headers (# Header)
   formattedContent = formattedContent.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
   formattedContent = formattedContent.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>');
   formattedContent = formattedContent.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
@@ -125,7 +121,12 @@ export const formatMessageContent = (content: string): string => {
     }
     
     if (trimmedLine) {
-      processedLines.push(`<p class="my-2">${trimmedLine}</p>`);
+      // Don't wrap headers in <p> tags
+      if (trimmedLine.match(/^<h[1-6]/)) {
+        processedLines.push(trimmedLine);
+      } else {
+        processedLines.push(`<p class="my-2">${trimmedLine}</p>`);
+      }
     }
   });
   
@@ -138,11 +139,6 @@ export const formatMessageContent = (content: string): string => {
   }
   
   formattedContent = processedLines.join('');
-  
-  // Restore code blocks
-  codeBlocks.forEach((block, index) => {
-    formattedContent = formattedContent.replace(`__CODE_BLOCK_${index}__`, block);
-  });
   
   return formattedContent;
 };
@@ -173,10 +169,3 @@ export const extractQuickResponseTags = (content: string): { cleanContent: strin
   
   return { cleanContent, tags };
 };
-
-// Escape HTML in code blocks
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}

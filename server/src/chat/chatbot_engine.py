@@ -19,16 +19,19 @@ client = get_openai_client()
 
 MODEL = "gpt-4.1"
 
-def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=()):
+def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), pet_profile=None, user_context=None):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
         required_ingredients (list): List of ingredients that must be present in the product
         excluded_ingredients (list): List of ingredients that must not be present in the product
+        pet_profile (dict): Pet profile information for personalized search
+        user_context (dict): User context information for personalized search
     Returns:
         list: A list of products
     """
     logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}")
+    logger.info(f"Pet profile: {pet_profile}, User context: {user_context}")
     start = time.time()
     
     # Use ProductService to convert raw results to properly formatted Product objects
@@ -53,7 +56,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
         try:
-            product = product_service._ranked_result_to_product(ranked_result, query)
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, user_context)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
@@ -167,7 +170,7 @@ def format_products_for_llm(products, limit=10):
 
 
 
-def chat_stream_with_products(user_input: str, history: list, user_context: str = "", image_base64: Optional[str] = None):
+def chat_stream_with_products(user_input: str, history: list, user_context: str = "", image_base64: Optional[str] = None, pet_profile: dict = None, user_context_data: dict = None):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
     Only streams the final response, not during function calls.
@@ -175,6 +178,8 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     """
     start_time = time.time()
     logger.info(f"User context: {user_context}")
+    logger.info(f"Pet profile: {pet_profile}")
+    logger.info(f"User context data: {user_context_data}")
     logger.info(f"Streaming chat started - User message: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
     
     # Start evaluation logging
@@ -362,6 +367,11 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     return capture_streaming_response(article_generator(), on_article_complete), products
                     
                 else:
+                    # Add pet profile and user context to search_products arguments
+                    if tool_call.name == "search_products":
+                        args["pet_profile"] = pet_profile
+                        args["user_context"] = user_context_data
+                    
                     products = call_function(tool_call.name, args)
                     tool_exec_time = time.time() - tool_exec_start
                     logger.info(f"Streaming product search completed in {tool_exec_time:.3f}s - found {len(products)} products")

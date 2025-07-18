@@ -4,9 +4,13 @@ import ast
 from pathlib import Path
 
 # === Config ===
-CUSTOMERS_TSV_PATH = "data/core/customers.tsv"
-PERSONAS_JSON_PATH = "data/core/user_personas_openai.json"
-OUTPUT_TSV_PATH = "data/core/customers_with_personas.tsv"
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
+CUSTOMERS_TSV_PATH = os.path.join(project_root, "data", "backend", "customers", "customers.tsv")
+PERSONAS_JSON_PATH = os.path.join(project_root, "data", "personas", "user_personas_openai.json")
+OUTPUT_TSV_PATH = os.path.join(project_root, "data", "backend", "customers", "customers_with_personas.tsv")
 
 def load_personas():
     """Load and parse the persona data from JSON"""

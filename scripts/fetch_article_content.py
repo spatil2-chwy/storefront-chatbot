@@ -31,15 +31,21 @@ def fetch_all_posts():
 
     return all_posts
 
-def save_to_file(data, filename="data/chromadb/all_wp_posts.json"):
+def save_to_file(data, filename=None):
     """Save the aggregated post data to a JSON file."""
+    if filename is None:
+        import os
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        filename = os.path.join(project_root, "data", "backend", "articles", "all_wp_posts.json")
+    
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def main():
     posts = fetch_all_posts()
     save_to_file(posts)
-    print(f"Saved {len(posts)} posts to data/chromadb/all_wp_posts.json")
+    print(f"Saved {len(posts)} posts to data/backend/articles/all_wp_posts.json")
 
 if __name__ == "__main__":
     main()

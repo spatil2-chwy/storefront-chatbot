@@ -36,7 +36,7 @@ export default function ComparisonFooter() {
   // Adjust positioning when sidebar is open
   const footerClasses = `fixed bottom-0 left-0 bg-white border-t-2 border-gray-200 shadow-lg z-40 p-4 transition-all duration-300 ${
     isChatOpen 
-      ? 'right-0 md:right-96 lg:right-[400px]' // Account for sidebar width on different screen sizes
+      ? 'right-0 md:right-[420px] lg:right-[450px] xl:right-[480px]' // Account for moderately wider sidebar width on different screen sizes
       : 'right-0'
   }`;
 

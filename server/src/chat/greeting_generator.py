@@ -1,22 +1,15 @@
 from datetime import date, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from src.services.user_service import UserService
 import random
 
 user_svc = UserService()
 
-def generate_personalized_greeting(db: Session, customer_key: Optional[int] = None) -> str:
+def generate_personalized_greeting(db: Session, customer_key: Optional[int] = None) -> Dict[str, Any]:
     """
     Generate a personalized greeting for a customer based on their profile and pets.
-
-    Instructions based on prompt:
-    - Write a warm, friendly greeting (up to 3 sentences).
-    - Mention all pets by name, optionally including breed or life stage if relevant.
-    - If a pet's birthday is near (±7 days), give a gentle heads-up like "getting ready to celebrate?"
-    - If they have multiple pets, mention all by name.
-    - Keep tone friendly, playful, and warm.
-    - If possible_next_buys data is available, incorporate it naturally into the greeting.
+    Returns a dictionary with greeting text and pet selection options if applicable.
     """
     
     fallback_greetings = [
@@ -31,16 +24,32 @@ def generate_personalized_greeting(db: Session, customer_key: Optional[int] = No
     ]
     
     if not customer_key:
-        return random.choice(fallback_greetings)
+        return {
+            "greeting": random.choice(fallback_greetings),
+            "has_pets": False,
+            "pet_options": []
+        }
     
     try:
         user_context = user_svc.get_user_context_for_chat(db, customer_key)
         if not user_context:
-            return random.choice(fallback_greetings)
+            return {
+                "greeting": random.choice(fallback_greetings),
+                "has_pets": False,
+                "pet_options": []
+            }
         
         pets = user_context.get("pets", [])
         customer_name = user_context.get("name", "").split()[0] if user_context.get("name") else ""
         possible_next_buys = user_context.get("possible_next_buys", "")
+        
+        # If user has no pets, return simple greeting
+        if not pets:
+            return {
+                "greeting": random.choice(fallback_greetings),
+                "has_pets": False,
+                "pet_options": []
+            }
         
         today = date.today()
         upcoming_birthday_pets = []
@@ -59,100 +68,91 @@ def generate_personalized_greeting(db: Session, customer_key: Optional[int] = No
         
         new_pets = [pet for pet in pets if pet.get("is_new", False)]
         pet_names = [pet["name"] for pet in pets if pet.get("name")]
-        pet_names_str = ", ".join(pet_names[:-1]) + f", and {pet_names[-1]}" if len(pet_names) > 2 else " and ".join(pet_names)
         
-        # Priority 1: Upcoming birthday
-        if upcoming_birthday_pets:
-            pet, days_until = upcoming_birthday_pets[0]
-            pet_name = pet.get("name", "your pet")
-            birthday_greetings = []
-            if days_until == 0:
-                birthday_greetings = [
-                    f"Hello{' ' + customer_name if customer_name else ''}! It's {pet_name}'s birthday today! Wishing {pet_name} a fantastic day filled with treats and cuddles. Let me know if you need help picking out something special to celebrate!",
-                    f"Happy birthday to {pet_name}! {'Hope you and ' + customer_name + ' are celebrating big today.' if customer_name else 'Hope you are celebrating big today.'} If you need a last-minute gift or treat, I'm here to help!",
-                    f"Hi{' ' + customer_name if customer_name else ''}! {pet_name} turns another year older today—how exciting! Let me know if you want to find something extra special for the celebration."
-                ]
-            elif days_until > 0:
-                birthday_greetings = [
-                    f"Hi{' ' + customer_name if customer_name else ''}! {pet_name}'s birthday is just around the corner. Are you getting ready to celebrate? If you need any ideas for a special treat or gift, I'm here to help!",
-                    f"Hey{' ' + customer_name if customer_name else ''}! {pet_name}'s birthday is coming up soon—how fun! Let me know if you want suggestions for a birthday surprise.",
-                    f"Hello{' ' + customer_name if customer_name else ''}! Looks like {pet_name}'s special day is almost here. Need help picking out a birthday treat?"
-                ]
-            else:
-                birthday_greetings = [
-                    f"Hey{' ' + customer_name if customer_name else ''}! I hope {pet_name} had a wonderful birthday recently. If you're looking to spoil them a little extra, just let me know—I'd love to help!",
-                    f"Hi{' ' + customer_name if customer_name else ''}! Hope you and {pet_name} had a great birthday celebration. If you want to keep the party going with some treats or toys, I'm here!",
-                    f"Hello{' ' + customer_name if customer_name else ''}! {pet_name}'s birthday just passed—hope it was a blast! Let me know if you need anything special for your furry friend."
-                ]
-            return random.choice(birthday_greetings)
+        # Create pet options for selection
+        pet_options = []
+        for pet in pets:
+            if pet.get("name"):
+                pet_options.append({
+                    "id": pet.get("pet_profile_id"),
+                    "name": pet["name"],
+                    "type": pet.get("type", ""),
+                    "breed": pet.get("breed", "")
+                })
         
-        # Priority 2: New pet
-        if new_pets and len(pets) > 1:
-            new_pet_name = new_pets[0].get("name", "your new pet")
-            other_pets = [pet["name"] for pet in pets if pet.get("name") and not pet.get("is_new", False)]
-            other_pets_str = ", ".join(other_pets[:-1]) + f", and {other_pets[-1]}" if len(other_pets) > 2 else " and ".join(other_pets)
-            new_pet_greetings = [
-                f"Hi{' ' + customer_name if customer_name else ''}! It looks like {new_pet_name} just joined your family—how exciting! Are you shopping for {new_pet_name} along with {other_pets_str} today? Let me know if you need any recommendations for your newest family member!",
-                f"Welcome{' ' + customer_name if customer_name else ''}! {new_pet_name} is the newest member of your furry crew. Shopping for both {new_pet_name} and {other_pets_str}? I'm happy to help with suggestions for everyone!",
-                f"Hey{' ' + customer_name if customer_name else ''}! {new_pet_name} has joined {other_pets_str}—what a fun group! If you need ideas for your new arrival or the rest of the gang, just ask."
-            ]
-            return random.choice(new_pet_greetings)
-        elif new_pets:
-            new_pet_name = new_pets[0].get("name", "your new pet")
-            new_pet_greetings = [
-                f"Hi{' ' + customer_name if customer_name else ''}! Welcome {new_pet_name} to the family! If you need help finding the perfect essentials or treats, I'm here for you. Let me know what {new_pet_name} needs today!",
-                f"Hello{' ' + customer_name if customer_name else ''}! {new_pet_name} is lucky to have you. If you want recommendations for your new companion, just let me know!",
-                f"Hey{' ' + customer_name if customer_name else ''}! Excited to help you shop for {new_pet_name}. Let me know if you need any tips for your newest furry friend."
-            ]
-            return random.choice(new_pet_greetings)
+        # Add browse option
+        pet_options.append({
+            "id": "browse",
+            "name": "Just browse",
+            "type": "browse",
+            "breed": ""
+        })
         
-        # Priority 3: Multiple pets - mention all by name
-        if len(pet_names) > 1:
-            multi_pet_greetings = [
-                f"Hello{' ' + customer_name if customer_name else ''}! It's always a joy to see you shopping for {pet_names_str}. Your furry crew is lucky to have someone who cares so much! Let me know if you're looking for something special for any of them today.",
-                f"Hi{' ' + customer_name if customer_name else ''}! Shopping for {pet_names_str} today? I'm here to help you find the best for your whole pack!",
-                f"Hey{' ' + customer_name if customer_name else ''}! {pet_names_str} must keep you busy! Let me know if you need ideas for treats or toys for any of your pets."
-            ]
-            return random.choice(multi_pet_greetings)
+        # Generate greeting text based on number of pets
+        greeting_text = ""
         
-        # Priority 4: Single pet with breed/life stage
+        # Single pet - ask if shopping for the pet or just browsing
         if len(pets) == 1:
             pet = pets[0]
             pet_name = pet.get("name", "your pet")
             breed = pet.get("breed", "")
-            life_stage = pet.get("life_stage", "")
             details = ""
             if breed and breed.lower() != "unknown":
                 details = f" the {breed}"
-            elif life_stage and life_stage.lower() not in ["unknown", "adult"]:
-                details = f" the {life_stage.lower()}"
+            
             single_pet_greetings = [
-                f"Hi{' ' + customer_name if customer_name else ''}! How are you and {pet_name}{details} doing today? I'm here to help you find the perfect goodies for {pet_name}. Let me know if you need any suggestions or just want to browse!",
-                f"Hello{' ' + customer_name if customer_name else ''}! {pet_name}{details} is lucky to have you shopping for them. If you need ideas for treats or toys, just ask!",
-                f"Hey{' ' + customer_name if customer_name else ''}! Always happy to help you and {pet_name}{details}. Let me know what you're looking for today!"
+                f"Hi{' ' + customer_name if customer_name else ''}! Are you shopping for {pet_name}{details} today, or just browsing?",
+                f"Hello{' ' + customer_name if customer_name else ''}! Looking for something special for {pet_name}{details}, or want to explore?",
+                f"Hey{' ' + customer_name if customer_name else ''}! Shopping for {pet_name}{details} or just browsing today?"
             ]
-            return random.choice(single_pet_greetings)
+            greeting_text = random.choice(single_pet_greetings)
         
-        # Priority 5: Incorporate possible_next_buys if available
-        if possible_next_buys and possible_next_buys.strip():
-            next_buys_greetings = [
-                f"Hi{' ' + customer_name if customer_name else ''}! I noticed you might be interested in {possible_next_buys.lower()}. I'd love to help you find the perfect options for your pets today!",
-                f"Hello{' ' + customer_name if customer_name else ''}! Ready to explore some {possible_next_buys.lower()}? I'm here to help you find exactly what you're looking for.",
-                f"Hey{' ' + customer_name if customer_name else ''}! I see {possible_next_buys.lower()} might be on your shopping list. Let me help you discover some great options!"
-            ]
-            return random.choice(next_buys_greetings)
+        # Multiple pets - ask which pet they're shopping for
+        else:
+            pet_names_str = ", ".join(pet_names[:-1]) + f", and {pet_names[-1]}" if len(pet_names) > 2 else " and ".join(pet_names)
+            
+            # Priority 1: Upcoming birthday
+            if upcoming_birthday_pets:
+                pet, days_until = upcoming_birthday_pets[0]
+                pet_name = pet.get("name", "your pet")
+                birthday_greetings = [
+                    f"Hello{' ' + customer_name if customer_name else ''}! It's {pet_name}'s birthday today! Wishing {pet_name} a fantastic day filled with treats and cuddles. Which pack member are you shopping for today?",
+                    f"Happy birthday to {pet_name}! {'Hope you and ' + customer_name + ' are celebrating big today.' if customer_name else 'Hope you are celebrating big today.'} Which pack member are you shopping for today?",
+                    f"Hi{' ' + customer_name if customer_name else ''}! {pet_name} turns another year older today—how exciting! Which pack member are you shopping for today?"
+                ]
+                greeting_text = random.choice(birthday_greetings)
+            
+            # Priority 2: New pet
+            elif new_pets and len(pets) > 1:
+                new_pet_name = new_pets[0].get("name", "your new pet")
+                other_pets = [pet["name"] for pet in pets if pet.get("name") and not pet.get("is_new", False)]
+                other_pets_str = ", ".join(other_pets[:-1]) + f", and {other_pets[-1]}" if len(other_pets) > 2 else " and ".join(other_pets)
+                new_pet_greetings = [
+                    f"Hi{' ' + customer_name if customer_name else ''}! It looks like {new_pet_name} just joined your family—how exciting! Which pack member are you shopping for today?",
+                    f"Welcome{' ' + customer_name if customer_name else ''}! {new_pet_name} is the newest member of your furry crew. Which pack member are you shopping for today?",
+                    f"Hey{' ' + customer_name if customer_name else ''}! {new_pet_name} has joined {other_pets_str}—what a fun group! Which pack member are you shopping for today?"
+                ]
+                greeting_text = random.choice(new_pet_greetings)
+            
+            # Priority 3: Multiple pets - mention all by name
+            else:
+                multi_pet_greetings = [
+                    f"Hello{' ' + customer_name if customer_name else ''}! It's always a joy to see you shopping for {pet_names_str}. Which pack member are you shopping for today?",
+                    f"Hi{' ' + customer_name if customer_name else ''}! Shopping for {pet_names_str} today? Which pack member are you shopping for today?",
+                    f"Hey{' ' + customer_name if customer_name else ''}! {pet_names_str} must keep you busy! Which pack member are you shopping for today?"
+                ]
+                greeting_text = random.choice(multi_pet_greetings)
         
-        # Fallback with customer name if available
-        if customer_name:
-            fallback_named_greetings = [
-                f"Hey {customer_name}! What can I help you find for your pets today? I'm here to make sure your furry friends get the best. Let me know how I can help!",
-                f"Hi {customer_name}! Ready to shop for your pets? Let me know if you need any recommendations.",
-                f"Hello {customer_name}! Excited to help you find something special for your pets today."
-            ]
-            return random.choice(fallback_named_greetings)
-        
-        return random.choice(fallback_greetings)
+        return {
+            "greeting": greeting_text,
+            "has_pets": True,
+            "pet_options": pet_options
+        }
         
     except Exception as e:
         print(f"Error generating personalized greeting for customer {customer_key}: {e}")
-        return random.choice(fallback_greetings)
+        return {
+            "greeting": random.choice(fallback_greetings),
+            "has_pets": False,
+            "pet_options": []
+        }

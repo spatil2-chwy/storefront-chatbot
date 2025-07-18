@@ -7,11 +7,11 @@ def main():
     # ensure all ORM tables are created
     Base.metadata.create_all(bind=engine)
 
-    # Updated paths
+    # Updated paths to new structure
     BASE = Path(__file__).resolve().parent.parent.parent  # storefront-chatbot
-    DATA = BASE / "data" / "core"
-    USERS_TSV = DATA / "customers_with_personas.tsv"  # Use enhanced customer data
-    PETS_TSV  = DATA / "pet_profiles.tsv"
+    DATA = BASE / "data" / "backend"
+    USERS_TSV = DATA / "customers" / "customers_with_personas.tsv"  # Use enhanced customer data
+    PETS_TSV  = DATA / "pets" / "pet_profiles.tsv"
 
     try:
         # 1) load users with persona data
