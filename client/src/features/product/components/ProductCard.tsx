@@ -7,7 +7,9 @@ import { Badge } from '@/ui/Display/Badge';
 import { Button } from '@/ui/Buttons/Button';
 import { Checkbox } from '@/ui/Checkboxes/Checkbox';
 import SearchMatches from './SearchMatches';
-import { useGlobalChat } from '../../Chat/context';
+import { useGlobalChat } from '../../chat/context';
+import { useCart } from '../../cart/context';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductCardProps {
   product: Product;
@@ -25,8 +27,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     addTransitionMessage
   } = useGlobalChat();
 
+  const { addToCart, isInCart, getCartItemCount } = useCart();
+  const { toast } = useToast();
+
   const isSelected = comparingProducts.some(p => p.id === product.id);
   const isComparisonFull = comparingProducts.length >= 4 && !isSelected;
+  const inCart = isInCart(product.id!);
+  const cartCount = getCartItemCount(product.id!);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -116,8 +123,23 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Add to cart functionality would go here
-    console.log('Add to cart:', product.title);
+    
+    if (!product.id) {
+      console.error('Cannot add product to cart: product ID is missing');
+      return;
+    }
+
+    // Determine purchase option based on autoship availability
+    const purchaseOption = (product.autoshipPrice && product.autoshipPrice > 0) ? 'autoship' : 'buyonce';
+    
+    // Add to cart with quantity 1
+    addToCart(product, 1, purchaseOption);
+    
+    // Show success toast
+    toast({
+      title: "Added to Cart!",
+      description: `${product.brand} ${product.title} has been added to your cart.`,
+    });
   };
 
   // Extract categories from search matches for the new section
@@ -276,10 +298,19 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="px-4 pb-3">
           <Button
             onClick={handleAddToCart}
-            className="w-full bg-chewy-blue hover:bg-blue-700 text-white rounded-lg h-10 flex items-center justify-center space-x-2"
+            className={`w-full rounded-lg h-10 flex items-center justify-center space-x-2 ${
+              inCart 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-chewy-blue hover:bg-blue-700 text-white'
+            }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Add to Cart</span>
+            <span>
+              {inCart 
+                ? `In Cart${cartCount > 1 ? ` (${cartCount})` : ''}` 
+                : 'Add to Cart'
+              }
+            </span>
           </Button>
         </div>
 

@@ -85,6 +85,27 @@ export interface Product {
   answered_faqs?: string; // Answered FAQs
 }
 
+// Cart item structure
+export interface CartItem {
+  id: string;
+  product: Product;
+  quantity: number;
+  purchaseOption: 'buyonce' | 'autoship';
+  addedAt: Date;
+  price: number; // Price at time of adding to cart
+}
+
+// Cart structure
+export interface Cart {
+  id: string;
+  userId?: number;
+  items: CartItem[];
+  totalItems: number;
+  totalPrice: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Chat message structure
 export interface ChatMessage {
   id: string;

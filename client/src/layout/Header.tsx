@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Search, ChevronDown, Flag, Headphones, User, ShoppingCart } from 'lucide-react';
+import { Search, ChevronDown, Flag, Headphones, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/ui/Buttons/Button';
 import { Input } from '@/ui/Input/Input';
+import CartIcon from '@/features/cart/components/CartIcon';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -88,10 +89,7 @@ export default function Header({ onSearch, onOpenChatWithQuery, hasSearched }: H
               </div>
             </Link>
             
-            <div className="flex items-center space-x-1 hover:text-chewy-yellow cursor-pointer">
-              <ShoppingCart className="w-4 h-4" />
-              <span className="text-sm hidden sm:inline lg:inline">Cart</span>
-            </div>
+            <CartIcon />
           </div>
         </div>
 
