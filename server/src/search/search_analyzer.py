@@ -126,7 +126,7 @@ class SearchAnalyzer:
         
     def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None) -> List[SearchMatch]:
         """
-        Semantic matching - only use pet profile and user query information for search analysis
+        Semantic matching using comprehensive product metadata including pet profile and user query information
         """
         
         start_time = time.time()
@@ -139,22 +139,104 @@ class SearchAnalyzer:
         
         matches = []
         
-        # Only use pet-relevant product fields for matching
+        # Use comprehensive product metadata fields for matching
         product_fields = {
+            # Core product information
+            'Product Name': metadata.get('NAME', ''),
+            'Clean Name': metadata.get('CLEAN_NAME', ''),
+            'Description': metadata.get('DESCRIPTION_LONG', ''),
+            
+            # Categorization
+            'Category Level 1': metadata.get('CATEGORY_LEVEL1', ''),
+            'Category Level 2': metadata.get('CATEGORY_LEVEL2', ''),
+            'Category Level 3': metadata.get('CATEGORY_LEVEL3', ''),
+            'Product Type': metadata.get('PRODUCT_TYPE', ''),
+            
+            # Pet-specific attributes
             'Pet Types': metadata.get('ATTR_PET_TYPE', ''),
-            'Life Stages': metadata.get('LIFE_STAGE', ''),
-            'Size/Weight': metadata.get('BREED_SIZE', ''),
-            'Product Forms': metadata.get('PRODUCT_TYPE', ''),
-            'Food Forms': metadata.get('ATTR_FOOD_FORM', ''),
+            'Pet Types (Alt)': metadata.get('PET_TYPES', ''),
+            'Life Stage': metadata.get('LIFE_STAGE', ''),
+            'Life Stage (Alt)': metadata.get('LIFESTAGE', ''),
+            'Breed Size': metadata.get('BREED_SIZE', ''),
+            
+            # Food and diet attributes
+            'Food Form': metadata.get('ATTR_FOOD_FORM', ''),
+            'Special Diet': metadata.get('ATTR_SPECIAL_DIET', ''),
+            'Ingredients': metadata.get('INGREDIENTS', ''),
+            
+            # Merchandising classifications
+            'Merch Classification 1': metadata.get('MERCH_CLASSIFICATION1', ''),
+            'Merch Classification 2': metadata.get('MERCH_CLASSIFICATION2', ''),
+            'Merch Classification 3': metadata.get('MERCH_CLASSIFICATION3', ''),
+            'Merch Classification 4': metadata.get('MERCH_CLASSIFICATION4', ''),
+            
+            # Brand information
+            'Brand': metadata.get('PURCHASE_BRAND', ''),
         }
         
-        # Add diet tags from metadata keys (relevant for pet allergies)
+        # Add diet tags from metadata keys (relevant for pet allergies and health)
         diet_tags = []
         for key in metadata:
             if key.startswith('specialdiettag:'):
                 diet_tag = key.split(':', 1)[1]
                 diet_tags.append(diet_tag)
-        product_fields['diet_tags'] = ', '.join(diet_tags)
+        product_fields['Diet Tags'] = ', '.join(diet_tags)
+        
+        # Add ingredient tags from metadata keys
+        ingredient_tags = []
+        for key in metadata:
+            if key.startswith('ingredienttag:'):
+                ingredient_tag = key.split(':', 1)[1]
+                ingredient_tags.append(ingredient_tag)
+        product_fields['Ingredient Tags'] = ', '.join(ingredient_tags)
+        
+        # Add category tags from metadata keys
+        category_tags = []
+        for key in metadata:
+            if key.startswith('categorytag'):
+                category_tag = key.split(':', 1)[1]
+                category_tags.append(category_tag)
+        product_fields['Category Tags'] = ', '.join(category_tags)
+        
+        # Add review synthesis content for better matching
+        review_synthesis = metadata.get("review_synthesis", "{}")
+        if review_synthesis and isinstance(review_synthesis, str):
+            try:
+                import json
+                review_data = json.loads(review_synthesis)
+                if isinstance(review_data, dict):
+                    # What customers love
+                    customers_love_list = review_data.get("what_customers_love", [])
+                    if customers_love_list:
+                        if isinstance(customers_love_list, list):
+                            product_fields['What Customers Love'] = ' '.join(customers_love_list)
+                        else:
+                            product_fields['What Customers Love'] = str(customers_love_list)
+                    
+                    # What to watch out for
+                    watch_out_list = review_data.get("what_to_watch_out_for", [])
+                    if watch_out_list:
+                        if isinstance(watch_out_list, list):
+                            product_fields['What to Watch Out For'] = ' '.join(watch_out_list)
+                        else:
+                            product_fields['What to Watch Out For'] = str(watch_out_list)
+                    
+                    # Should you buy it
+                    should_you_buy_it = review_data.get("should_you_buy_it", "")
+                    if should_you_buy_it:
+                        product_fields['Should You Buy It'] = str(should_you_buy_it)
+            except (json.JSONDecodeError, TypeError):
+                # If review synthesis is not valid JSON, skip it
+                pass
+        
+        # Add FAQ content for better matching
+        answered_faqs = metadata.get("answered_faqs", "")
+        if answered_faqs and str(answered_faqs).strip():
+            product_fields['Answered FAQs'] = str(answered_faqs)
+        
+        unanswered_faqs = metadata.get("unanswered_faqs", "")
+        if unanswered_faqs and str(unanswered_faqs).strip():
+            product_fields['Unanswered FAQs'] = str(unanswered_faqs)
         
         # If pet profile is provided, enhance the query with pet-specific terms
         enhanced_query_terms = query_terms.copy()
@@ -191,7 +273,7 @@ class SearchAnalyzer:
                 seen.add(term)
                 unique_query_terms.append(term)
         
-        # Match query terms against pet-relevant product fields only
+        # Match query terms against comprehensive product metadata fields
         for field_name, field_value in product_fields.items():
             if not field_value or not field_value.strip():
                 continue
@@ -236,6 +318,6 @@ class SearchAnalyzer:
                 matches.append(match)
         
         analysis_time = time.time() - start_time
-        logger.debug(f"🔍 SearchAnalyzer analyzed {len(matches)} pet-relevant matches in {analysis_time:.3f}s")
+        logger.debug(f"🔍 SearchAnalyzer analyzed {len(matches)} comprehensive matches in {analysis_time:.3f}s")
         
         return matches
