@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShoppingCart, X, Plus, Minus, Trash2, RotateCcw } from 'lucide-react';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/Cards/Card';
@@ -29,16 +30,31 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   if (!isOpen) return null;
 
-  return (
+  const drawerContent = (
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        style={{ 
+          zIndex: 999998,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh'
+        }}
         onClick={onClose}
       />
       
       {/* Cart Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-xl transform transition-transform">
+      <div 
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform"
+        style={{ 
+          zIndex: 999999,
+          height: '100vh'
+        }}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <CardHeader className="border-b border-gray-200 flex-shrink-0">
@@ -200,7 +216,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
               <div className="space-y-3">
                 {/* Total */}
-                <div className="flex items-center justify-between text-lg font-semibold">
+                <div className="flex items-center justify-between text-lg font-semibold text-gray-900">
                   <span>Total:</span>
                   <span className="text-chewy-blue">
                     {formatPrice(getTotalPrice())}
@@ -226,7 +242,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {/* Continue Shopping */}
                 <Button 
                   variant="outline" 
-                  className="w-full"
+                  className="w-full text-gray-700 border-gray-300 hover:bg-gray-100"
                   onClick={onClose}
                 >
                   Continue Shopping
@@ -238,4 +254,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       </div>
     </>
   );
+
+  // Render the cart drawer using a portal to ensure it's at the top level
+  return createPortal(drawerContent, document.body);
 }

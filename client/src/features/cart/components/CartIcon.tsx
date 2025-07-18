@@ -16,7 +16,7 @@ export default function CartIcon() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative text-gray-600 hover:text-gray-900"
+        className="relative text-white hover:text-chewy-yellow"
         onClick={() => setIsDrawerOpen(true)}
       >
         <ShoppingCart className="w-6 h-6" />
