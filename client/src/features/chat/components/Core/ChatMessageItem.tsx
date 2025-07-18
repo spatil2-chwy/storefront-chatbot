@@ -167,8 +167,79 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   }
 
   // Handle transition messages
-  // Handle transition messages
   if (isTransition) {
+    // For product discussion transition messages, show enhanced display with product image
+    if (message.content.includes('Now discussing:') && message.productData) {
+      return (
+        <div className="flex justify-start items-start space-x-2">
+          {/* Tylee Avatar */}
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+          
+          {/* Enhanced product discussion message */}
+          <div className="max-w-lg bg-green-50 border border-green-200 rounded-lg p-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Package className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">
+                  Now discussing
+                </span>
+              </div>
+            </div>
+            
+            {/* Display product */}
+            <div className="bg-white rounded-lg p-3 border border-green-100">
+              <div className="flex items-center space-x-3">
+                {renderProductImage(message.productData)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
+                      {message.productData.brand}
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                    {message.productData.title}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-semibold text-gray-900">
+                      ${message.productData.price?.toFixed(2)}
+                    </span>
+                    {message.productData.rating && (
+                      <div className="flex items-center space-x-1">
+                        <div className="flex">
+                          {renderStars(message.productData.rating)}
+                        </div>
+                        <span className="text-xs text-gray-600">
+                          {message.productData.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Exit Discussion button at bottom */}
+            {showExitButton && (
+              <div className="flex justify-end pt-2 border-t border-green-200 mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onExitProductChat}
+                  className="text-green-700 hover:text-green-800 hover:bg-green-100"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Exit Discussion
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
     // For comparison transition messages with product data, show enhanced display
     if (message.content.includes('Now comparing:') && message.comparisonProducts && message.comparisonProducts.length > 0) {
       return (
@@ -261,6 +332,24 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           : 'bg-gray-100 text-gray-900'
       } rounded-lg overflow-hidden`}>
         
+        {/* Show exit button for product chat */}
+        {!isUser && showExitButton && (
+          <div className="flex items-center justify-between p-2 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center space-x-2">
+              <Package className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Product Discussion</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onExitProductChat}
+              className="text-gray-600 hover:text-gray-700 hover:bg-gray-100 p-1"
+            >
+              <LogOut className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        
         {/* Show comparison mode indicator for messages without product data */}
         {!isUser && message.content.includes('Now comparing:') && (!message.comparisonProducts || message.comparisonProducts.length === 0) && (
           <div className="flex items-center justify-between p-2 bg-purple-50 border-b border-purple-200">
@@ -302,7 +391,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             {/* Product grid */}
             <div className="grid grid-cols-1 gap-2">
               {message.comparisonProducts.slice(0, 3).map((product, index) => (
-                <div key={index} className="bg-white rounded-lg p-2 border border-green-100">
+                <div key={index} className="bg-white rounded-lg p-2 border border-purple-100">
                   <div className="flex items-center space-x-2">
                     {renderProductImage(product)}
                     <div className="flex-1 min-w-0">
