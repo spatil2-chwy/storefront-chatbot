@@ -92,6 +92,7 @@ class EvaluationDashboard:
         self.eval_data = None
         self.llm_eval_data = None
         self.quantitative_data = None
+        self.all_logs_data = []  # Store all individual log files for query analysis
     
     def load_data(self, eval_file, llm_eval_file, quantitative_file):
         """Load evaluation data from uploaded files"""
@@ -104,6 +105,55 @@ class EvaluationDashboard:
             st.error(f"Error loading data: {str(e)}")
             return False
     
+    def load_all_logs(self, log_files):
+        """Load all individual log files for query analysis"""
+        self.all_logs_data = []
+        if not log_files:
+            return
+        
+        for log_file in log_files:
+            try:
+                log_data = json.loads(log_file.read())
+                self.all_logs_data.append(log_data)
+            except Exception as e:
+                st.error(f"Error loading log file {log_file.name}: {str(e)}")
+    
+    def analyze_query_types(self):
+        """Analyze query types from all loaded logs"""
+        if not self.all_logs_data:
+            return {}
+        
+        query_types = {
+            'product_queries': [],
+            'article_queries': [],
+            'general_queries': [],
+            'query_categories': {}
+        }
+        
+        for log in self.all_logs_data:
+            raw_query = log.get('raw_user_query', '')
+            tool_calls = log.get('tool_calls', [])
+            
+            # Categorize based on tool calls
+            has_product_search = any(tool.get('tool_name') == 'search_products' for tool in tool_calls)
+            has_article_search = any(tool.get('tool_name') == 'search_articles' for tool in tool_calls)
+            
+            if has_product_search:
+                query_types['product_queries'].append(raw_query)
+            elif has_article_search:
+                query_types['article_queries'].append(raw_query)
+            else:
+                query_types['general_queries'].append(raw_query)
+            
+            # Extract categories from tool calls
+            for tool in tool_calls:
+                arguments = tool.get('arguments', {})
+                categories = arguments.get('category_level_1', []) + arguments.get('category_level_2', [])
+                for category in categories:
+                    if category:
+                        query_types['query_categories'][category] = query_types['query_categories'].get(category, 0) + 1
+        
+        return query_types
 
     def extract_user_info(self, user_context):
         """Extract user information from user context"""
@@ -227,20 +277,263 @@ class EvaluationDashboard:
 **Include Ingredients:** `{', '.join(arguments.get('required_ingredients', []) or ['None'])}`
 """)    
         # Performance metrics
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_time = self.eval_data.get('total_processing_time', 0)
-            st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
-        with col2:
-            search_time = self.eval_data.get('product_search_time', 0)
-            st.metric("🔍 Product Search Time", f"{search_time:.2f}s")
-        with col3:
-            llm_time = self.eval_data.get('llm_response_time', 0)
-            st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+        tool_calls = self.eval_data.get('tool_calls', [])
+        
+        if tool_calls:
+            # Determine which search time to display based on tool calls
+            has_article_search = any(tool.get('tool_name') == 'search_articles' for tool in tool_calls)
+            has_product_search = any(tool.get('tool_name') == 'search_products' for tool in tool_calls)
+            
+            if has_article_search and has_product_search:
+                # Both tools used - show both
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    article_search_time = self.eval_data.get('article_search_time')
+                    article_search_time = article_search_time if article_search_time is not None else 0
+                    st.metric("📰 Article Search Time", f"{article_search_time:.2f}s")
+                with col3:
+                    product_search_time = self.eval_data.get('product_search_time')
+                    product_search_time = product_search_time if product_search_time is not None else 0
+                    st.metric("🛍️ Product Search Time", f"{product_search_time:.2f}s")
+                with col4:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            elif has_article_search:
+                # Only article search
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    article_search_time = self.eval_data.get('article_search_time')
+                    article_search_time = article_search_time if article_search_time is not None else 0
+                    st.metric("📰 Article Search Time", f"{article_search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            elif has_product_search:
+                # Only product search
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    product_search_time = self.eval_data.get('product_search_time')
+                    product_search_time = product_search_time if product_search_time is not None else 0
+                    st.metric("🛍️ Product Search Time", f"{product_search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            else:
+                # Other tools - show generic search time
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    search_time = self.eval_data.get('product_search_time')
+                    search_time = search_time if search_time is not None else 0
+                    st.metric("🔍 Search Time", f"{search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+        else:
+            # No tool calls - only show total and LLM time
+            col1, col2 = st.columns(2)
+            with col1:
+                total_time = self.eval_data.get('total_processing_time')
+                total_time = total_time if total_time is not None else 0
+                st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+            with col2:
+                llm_time = self.eval_data.get('llm_response_time')
+                llm_time = llm_time if llm_time is not None else 0
+                st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+    
+    def render_evaluation_scores(self):
+        """Render LLM evaluation scores based on response type"""
+        if not self.llm_eval_data:
+            return
+        
+        response_type = self.llm_eval_data.get('metadata', {}).get('response_type', 'unknown')
+        
+        st.markdown(f'<div class="section-header">📊 Evaluation Scores - {response_type.replace("_", " ").title()}</div>', unsafe_allow_html=True)
+        
+        if response_type == "direct_response":
+            self._render_direct_response_scores()
+        elif response_type == "article_search":
+            self._render_article_search_scores()
+        else:  # product_search
+            self._render_product_search_scores()
+    
+    def _render_direct_response_scores(self):
+        """Render scores for direct response evaluations"""
+        if not self.llm_eval_data:
+            return
+            
+        scores = {
+            'Query Understanding': self.llm_eval_data.get('query_understanding_score', 0),
+            'Response Appropriateness': self.llm_eval_data.get('response_appropriateness', 0),
+            'Engagement Quality': self.llm_eval_data.get('engagement_quality', 0),
+            'Helpfulness': self.llm_eval_data.get('helpfulness', 0),
+            'Tone and Personality': self.llm_eval_data.get('tone_and_personality', 0)
+        }
+        
+        # Overall score
+        overall_score = self.llm_eval_data.get('overall_score', 0)
+        st.info(f"Overall Score: {overall_score}/10")
+        
+        # Radar chart
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=list(scores.values()),
+            theta=list(scores.keys()),
+            fill='toself',
+            name='Scores',
+            line_color='#667eea',
+            fillcolor='rgba(102, 126, 234, 0.3)'
+        ))
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 10], tickfont=dict(size=10)),
+                angularaxis=dict(tickfont=dict(size=12))
+            ),
+            showlegend=False,
+            title="Direct Response Performance Radar Chart",
+            height=500
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+        
+        # Detailed scores with reasoning
+        with st.expander("📝 Detailed Analysis", expanded=True):
+            for metric, score in scores.items():
+                reasoning_key = f"{metric.lower().replace(' ', '_')}_reasoning"
+                reasoning = self.llm_eval_data.get(reasoning_key, "No reasoning available")
+                
+                score_class = self.get_score_color_class(score)
+                st.info(f"{metric}: {score}/10")
+                st.markdown(f"**Reasoning:** {reasoning}")
+    
+    def _render_article_search_scores(self):
+        """Render scores for article search evaluations"""
+        if not self.llm_eval_data:
+            return
+            
+        scores = {
+            'Query Understanding': self.llm_eval_data.get('query_understanding_score', 0),
+            'Tool Selection': self.llm_eval_data.get('tool_selection_accuracy', 0),
+            'Article Relevance': self.llm_eval_data.get('article_relevance', 0),
+            'Content Quality': self.llm_eval_data.get('content_quality', 0),
+            'Reference Link Quality': self.llm_eval_data.get('reference_link_quality', 0),
+            'Response Structure': self.llm_eval_data.get('response_structure', 0),
+            'Actionability': self.llm_eval_data.get('actionability', 0)
+        }
+        
+        # Overall score
+        overall_score = self.llm_eval_data.get('overall_score', 0)
+        st.info(f"Overall Score: {overall_score}/10")
+        
+        # Radar chart
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=list(scores.values()),
+            theta=list(scores.keys()),
+            fill='toself',
+            name='Scores',
+            line_color='#f093fb',
+            fillcolor='rgba(240, 147, 251, 0.3)'
+        ))
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 10], tickfont=dict(size=10)),
+                angularaxis=dict(tickfont=dict(size=12))
+            ),
+            showlegend=False,
+            title="Article Search Performance Radar Chart",
+            height=500
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+        
+        # Detailed scores with reasoning
+        with st.expander("📝 Detailed Analysis", expanded=True):
+            for metric, score in scores.items():
+                reasoning_key = f"{metric.lower().replace(' ', '_')}_reasoning"
+                reasoning = self.llm_eval_data.get(reasoning_key, "No reasoning available")
+                
+                score_class = self.get_score_color_class(score)
+                st.info(f"{metric}: {score}/10")
+                st.markdown(f"**Reasoning:** {reasoning}")
+    
+    def _render_product_search_scores(self):
+        """Render scores for product search evaluations"""
+        if not self.llm_eval_data:
+            return
+            
+        scores = {
+            'Query Understanding': self.llm_eval_data.get('query_understanding_score', 0),
+            'Tool Selection': self.llm_eval_data.get('tool_selection_accuracy', 0),
+            'Search Relevance': self.llm_eval_data.get('search_relevance_score', 0),
+            'Product Relevance': self.llm_eval_data.get('product_relevance_score', 0),
+            'Product Diversity': self.llm_eval_data.get('product_diversity_score', 0),
+            'Brand Preference': self.llm_eval_data.get('brand_preference_alignment', 0),
+            'Response Helpfulness': self.llm_eval_data.get('response_helpfulness', 0)
+        }
+        
+        # Overall score
+        overall_score = self.llm_eval_data.get('overall_score', 0)
+        st.info(f"Overall Score: {overall_score}/10")
+        
+        # Radar chart
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=list(scores.values()),
+            theta=list(scores.keys()),
+            fill='toself',
+            name='Scores',
+            line_color='#667eea',
+            fillcolor='rgba(102, 126, 234, 0.3)'
+        ))
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 10], tickfont=dict(size=10)),
+                angularaxis=dict(tickfont=dict(size=12))
+            ),
+            showlegend=False,
+            title="Product Search Performance Radar Chart",
+            height=500
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+        
+        # Detailed scores with reasoning
+        with st.expander("📝 Detailed Analysis", expanded=True):
+            for metric, score in scores.items():
+                reasoning_key = f"{metric.lower().replace(' ', '_')}_reasoning"
+                reasoning = self.llm_eval_data.get(reasoning_key, "No reasoning available")
+                
+                score_class = self.get_score_color_class(score)
+                st.info(f"{metric}: {score}/10")
+                st.markdown(f"**Reasoning:** {reasoning}")
     
     def render_product_analysis(self):
-        """Render product retrieval analysis"""
+        """Render product retrieval analysis - only for product search responses"""
         if not self.eval_data:
+            return
+        
+        # Check if this is a product search response
+        tool_calls = self.eval_data.get('tool_calls', [])
+        is_product_search = any(tool.get('tool_name') == 'search_products' for tool in tool_calls)
+        
+        if not is_product_search:
             return
         
         products = self.eval_data.get('product_results', [])
@@ -283,128 +576,281 @@ class EvaluationDashboard:
                 hide_index=True
             )
     
-    def render_evaluation_scores(self):
-        """Render LLM evaluation scores"""
-        if not self.llm_eval_data:
+    def render_article_analysis(self):
+        """Render article analysis - only for article search responses"""
+        if not self.eval_data:
             return
         
-        st.markdown('<div class="section-header">📊 Evaluation Scores</div>', unsafe_allow_html=True)
+        # Check if this is an article search response
+        tool_calls = self.eval_data.get('tool_calls', [])
+        is_article_search = any(tool.get('tool_name') == 'search_articles' for tool in tool_calls)
         
-        # Extract scores
-        scores = {
-            'Query Understanding': self.llm_eval_data.get('query_understanding_score', 0),
-            'Tool Selection': self.llm_eval_data.get('tool_selection_accuracy', 0),
-            'Search Relevance': self.llm_eval_data.get('search_relevance_score', 0),
-            'Query Enhancement': self.llm_eval_data.get('query_enhancement_quality', 0),
-            'Product Relevance': self.llm_eval_data.get('product_relevance_score', 0),
-            'Product Diversity': self.llm_eval_data.get('product_diversity_score', 0),
-            'Brand Preference': self.llm_eval_data.get('brand_preference_alignment', 0),
-            'Response Helpfulness': self.llm_eval_data.get('response_helpfulness', 0)
-        }
+        if not is_article_search:
+            return
         
-        # Overall score
-        overall_score = self.llm_eval_data.get('overall_score', 0)
-        st.info(f"Overall Score: {overall_score}/10")
+        st.markdown('<div class="section-header">📰 Article Analysis</div>', unsafe_allow_html=True)
         
-        # Radar chart
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=list(scores.values()),
-            theta=list(scores.keys()),
-            fill='toself',
-            name='Scores',
-            line_color='#667eea',
-            fillcolor='rgba(102, 126, 234, 0.3)'
-        ))
-        fig_radar.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 10], tickfont=dict(size=10)),
-                angularaxis=dict(tickfont=dict(size=12))
-            ),
-            showlegend=False,
-            title="Performance Radar Chart",
-            height=500
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        # Extract article information from chat history
+        chat_history = self.eval_data.get('chat_history', [])
+        articles = []
         
-        # Detailed scores with reasoning
-        with st.expander("📝 Detailed Analysis", expanded=True):
-            for metric, score in scores.items():
-                reasoning_key = f"{metric.lower().replace(' ', '_')}_reasoning"
-                reasoning = self.llm_eval_data.get(reasoning_key, "No reasoning available")
+        for item in chat_history:
+            if item.get('type') == 'function_call_output' and 'article' in str(item.get('output', '')).lower():
+                output = item.get('output', '')
+                # Try to extract article titles and links
+                lines = output.split('\n')
+                current_article = {}
+                for line in lines:
+                    if line.startswith('Article'):
+                        if current_article:
+                            articles.append(current_article)
+                        current_article = {'title': line}
+                    elif line.startswith('Link:'):
+                        current_article['link'] = line.replace('Link:', '').strip()
+                    elif line.startswith('Summary:'):
+                        current_article['summary'] = line.replace('Summary:', '').strip()
                 
-                score_class = self.get_score_color_class(score)
-                st.info(f"{metric}: {score}/10")
-                st.markdown(f"**Reasoning:** {reasoning}")
+                if current_article:
+                    articles.append(current_article)
+        
+        if articles:
+            st.info(f"Found {len(articles)} articles")
+            
+            for i, article in enumerate(articles, 1):
+                with st.expander(f"Article {i}: {article.get('title', 'Unknown')}", expanded=True):
+                    if 'summary' in article:
+                        st.markdown("**Summary:**")
+                        st.write(article['summary'])
+                    
+                    if 'link' in article:
+                        st.markdown("**Link:**")
+                        st.write(article['link'])
+        else:
+            st.info("No articles found in the response")
     
-    def render_system_health(self):
-        """Render system health metrics"""
-        if not self.quantitative_data:
+
+    
+    def render_quantitative_analysis_tab(self):
+        """Render the quantitative analysis tab with system health and query analysis"""
+        if not self.quantitative_data and not self.all_logs_data:
+            st.info("Upload quantitative data or individual log files to see analysis")
             return
         
-        st.markdown('<div class="section-header">⚡ System Health</div>', unsafe_allow_html=True)
+        # Query Type Analysis
+        if self.all_logs_data:
+            st.markdown('<div class="section-header">🔍 Query Type Analysis</div>', unsafe_allow_html=True)
+            
+            query_analysis = self.analyze_query_types()
+            
+            # Query distribution
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                product_count = len(query_analysis.get('product_queries', []))
+                total_queries = len(self.all_logs_data)
+                product_pct = (product_count / total_queries * 100) if total_queries > 0 else 0
+                st.metric("🛍️ Product Queries", f"{product_count} ({product_pct:.1f}%)")
+            
+            with col2:
+                article_count = len(query_analysis.get('article_queries', []))
+                article_pct = (article_count / total_queries * 100) if total_queries > 0 else 0
+                st.metric("📰 Article Queries", f"{article_count} ({article_pct:.1f}%)")
+            
+            with col3:
+                general_count = len(query_analysis.get('general_queries', []))
+                general_pct = (general_count / total_queries * 100) if total_queries > 0 else 0
+                st.metric("💬 General Queries", f"{general_count} ({general_pct:.1f}%)")
+            
+            # Query categories chart
+            categories = query_analysis.get('query_categories', {})
+            if categories:
+                st.markdown("#### Query Categories Distribution")
+                fig_categories = px.bar(
+                    x=list(categories.keys()),
+                    y=list(categories.values()),
+                    title="Query Categories",
+                    color_discrete_sequence=['#667eea']
+                )
+                fig_categories.update_layout(
+                    xaxis_title="Category",
+                    yaxis_title="Count",
+                    height=400,
+                    showlegend=False
+                )
+                st.plotly_chart(fig_categories, use_container_width=True)
+            
+            # Sample queries by type
+            with st.expander("📝 Sample Queries by Type", expanded=True):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("**🛍️ Product Queries:**")
+                    product_queries = query_analysis.get('product_queries', [])
+                    for i, query in enumerate(product_queries[:5], 1):
+                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
+                    if len(product_queries) > 5:
+                        st.markdown(f"... and {len(product_queries) - 5} more")
+                
+                with col2:
+                    st.markdown("**📰 Article Queries:**")
+                    article_queries = query_analysis.get('article_queries', [])
+                    for i, query in enumerate(article_queries[:5], 1):
+                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
+                    if len(article_queries) > 5:
+                        st.markdown(f"... and {len(article_queries) - 5} more")
+                
+                with col3:
+                    st.markdown("**💬 General Queries:**")
+                    general_queries = query_analysis.get('general_queries', [])
+                    for i, query in enumerate(general_queries[:5], 1):
+                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
+                    if len(general_queries) > 5:
+                        st.markdown(f"... and {len(general_queries) - 5} more")
         
-        metrics = self.quantitative_data.get('metrics', {})
-        recommendations = self.quantitative_data.get('recommendations', [])
-        
-        # KPI metrics
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            avg_time = metrics.get('avg_total_processing_time', 0)
-            color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
-            st.metric(f"{color} Avg Response Time", f"{avg_time:.1f}s")
+        # System Health Metrics (existing functionality)
+        if self.quantitative_data:
+            st.markdown('<div class="section-header">⚡ System Health Metrics</div>', unsafe_allow_html=True)
+            
+            metrics = self.quantitative_data.get('metrics', {})
+            recommendations = self.quantitative_data.get('recommendations', [])
+            
+            # Response type distribution
+            response_type_dist = metrics.get('response_type_distribution', {})
+            if response_type_dist:
+                st.markdown("#### Response Type Distribution")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    direct_pct = response_type_dist.get('direct_response', 0)
+                    st.metric("💬 Direct Responses", f"{direct_pct:.1f}%")
+                
+                with col2:
+                    article_pct = response_type_dist.get('article_search', 0)
+                    st.metric("📰 Article Searches", f"{article_pct:.1f}%")
+                
+                with col3:
+                    product_pct = response_type_dist.get('product_search', 0)
+                    st.metric("🛍️ Product Searches", f"{product_pct:.1f}%")
+            
+            # KPI metrics
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            with col1:
+                avg_time = metrics.get('avg_total_processing_time')
+                avg_time = avg_time if avg_time is not None else 0
+                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
+                st.metric(f"{color} Avg Response Time", f"{avg_time:.1f}s")
 
-        with col2:
-            avg_time = metrics.get('avg_product_search_time', 0)
-            color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
-            st.metric(f"{color} Avg Product Search Time", f"{avg_time:.1f}s")
-        
-        with col3:
-            success_rate = metrics.get('success_rate', 0)
-            color = "🟢" if success_rate > 95 else "🟡" if success_rate > 90 else "🔴"
-            st.metric(f"{color} Success Rate", f"{success_rate:.1f}%")
-        
-        with col4:
-            slow_queries = metrics.get('slow_queries_percentage', 0)
-            color = "🔴" if slow_queries > 20 else "🟡" if slow_queries > 10 else "🟢"
-            st.metric(f"{color} Slow Queries", f"{slow_queries:.1f}%")
-        
-        with col5:
-            brand_diversity = metrics.get('brand_diversity', 0)
-            color = "🟢" if brand_diversity > 0.8 else "🟡" if brand_diversity > 0.6 else "🔴"
-            st.metric(f"{color} Brand Diversity", f"{brand_diversity:.2f}")
-        
-        # Recommendations
-        if recommendations:
-            st.markdown("#### Recommendations")
-            for rec in recommendations:
-                if "Critical" in rec:
-                    st.error(rec)
-                elif "Warning" in rec:
-                    st.warning(rec)
-                else:
-                    st.info(rec)
+            with col2:
+                avg_time = metrics.get('avg_product_search_time')
+                avg_time = avg_time if avg_time is not None else 0
+                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
+                st.metric(f"{color} Avg Product Search", f"{avg_time:.1f}s")
+            
+            with col3:
+                avg_time = metrics.get('avg_article_search_time')
+                avg_time = avg_time if avg_time is not None else 0
+                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
+                st.metric(f"{color} Avg Article Search", f"{avg_time:.1f}s")
+            
+            with col4:
+                success_rate = metrics.get('success_rate')
+                success_rate = success_rate if success_rate is not None else 0
+                color = "🟢" if success_rate > 95 else "🟡" if success_rate > 90 else "🔴"
+                st.metric(f"{color} Success Rate", f"{success_rate:.1f}%")
+            
+            with col5:
+                slow_queries = metrics.get('slow_queries_percentage')
+                slow_queries = slow_queries if slow_queries is not None else 0
+                color = "🔴" if slow_queries > 20 else "🟡" if slow_queries > 10 else "🟢"
+                st.metric(f"{color} Slow Queries", f"{slow_queries:.1f}%")
+            
+            # Product-specific metrics (only show if there are product searches)
+            if metrics.get('avg_products_returned', 0) > 0:
+                st.markdown("#### Product Search Metrics")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    avg_products = metrics.get('avg_products_returned', 0)
+                    st.metric("📦 Avg Products Returned", f"{avg_products:.1f}")
+                
+                with col2:
+                    brand_diversity = metrics.get('brand_diversity', 0)
+                    color = "🟢" if brand_diversity > 0.8 else "🟡" if brand_diversity > 0.6 else "🔴"
+                    st.metric(f"{color} Brand Diversity", f"{brand_diversity:.2f}")
+                
+                with col3:
+                    price_range = metrics.get('price_range', {})
+                    min_price = price_range.get('min', 0)
+                    max_price = price_range.get('max', 0)
+                    st.metric("💰 Price Range", f"${min_price:.0f}-${max_price:.0f}")
+            
+            # Article-specific metrics (only show if there are article searches)
+            if metrics.get('avg_articles_returned', 0) > 0:
+                st.markdown("#### Article Search Metrics")
+                avg_articles = metrics.get('avg_articles_returned', 0)
+                st.metric("📰 Avg Articles Returned", f"{avg_articles:.1f}")
+            
+            # Recommendations
+            if recommendations:
+                st.markdown("#### Recommendations")
+                for rec in recommendations:
+                    if "Critical" in rec:
+                        st.error(rec)
+                    elif "Warning" in rec:
+                        st.warning(rec)
+                    else:
+                        st.info(rec)
     
     def run(self):
         """Run the dashboard"""
         # Sidebar for file upload
         st.sidebar.title("📁 Upload Evaluation Data")
         
+        # Individual session analysis files
+        st.sidebar.markdown("### Individual Session Analysis")
         eval_file = st.sidebar.file_uploader("Pipeline Log (JSON)", type=['json'], key="eval", help='Contains session details, query processing steps, tool calls, and performance metrics')
         llm_eval_file = st.sidebar.file_uploader("LLM Evaluation (JSON)", type=['json'], key="llm_eval", help='Contains qualitative scores (1-10) for different evaluation dimensions')
-        quantitative_file = st.sidebar.file_uploader("Quantitative Report (JSON)", type=['json'], key="quant", help='Contains aggregated metrics and system recommendations')
         
-        if eval_file or llm_eval_file or quantitative_file:
+        # Quantitative analysis files
+        st.sidebar.markdown("### Quantitative Analysis")
+        quantitative_file = st.sidebar.file_uploader("Quantitative Report (JSON)", type=['json'], key="quant", help='Contains aggregated metrics and system recommendations')
+        log_files = st.sidebar.file_uploader("Individual Log Files (JSON)", type=['json'], key="logs", accept_multiple_files=True, help='Upload multiple individual log files for query type analysis')
+        
+        # Load data
+        data_loaded = False
+        if eval_file or llm_eval_file or quantitative_file or log_files:
             if self.load_data(eval_file, llm_eval_file, quantitative_file):
+                data_loaded = True
+            
+            if log_files:
+                self.load_all_logs(log_files)
+                data_loaded = True
+            
+            if data_loaded:
                 st.sidebar.success("✅ Data loaded successfully!")
-                
-                # Render dashboard sections
+        
+        if not data_loaded:
+            st.info("Please upload evaluation data files to begin analysis")
+            return
+        
+        # Create tabs
+        tab1, tab2 = st.tabs(["📊 Individual Session Analysis", "📈 Quantitative Analysis"])
+        
+        with tab1:
+            # Individual session analysis
+            if eval_file or llm_eval_file:
                 self.render_user_info()
                 self.render_pipeline_flow()
                 self.render_product_analysis()
+                self.render_article_analysis()
                 self.render_evaluation_scores()
-                self.render_system_health()
+            else:
+                st.info("Upload individual session files (Pipeline Log and/or LLM Evaluation) to see detailed analysis")
+        
+        with tab2:
+            # Quantitative analysis
+            self.render_quantitative_analysis_tab()
 
 # Run the dashboard
 if __name__ == "__main__":

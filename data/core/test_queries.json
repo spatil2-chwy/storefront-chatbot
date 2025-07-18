@@ -1,0 +1,120 @@
+{
+    "test_suite": {
+      "name": "Chewy Storefront Chatbot Test Suite",
+      "description": "Test queries for conversational and informational scenarios",
+      "categories": {
+        "new_pet_owner": {
+          "name": "New Pet Owner Queries",
+          "description": "Informal queries from new pet owners",
+          "queries": [
+            "I just adopted a stray dog what to do",
+            "What's the difference between wet and dry food?",
+            "Got a kitten for the first time, overwhelmed with choices",
+            "Just rescued a dog, need everything from scratch"
+          ]
+        },
+        "allergies_and_dietary": {
+          "name": "Allergies and Dietary Concerns",
+          "description": "Queries about food allergies, dietary restrictions, and special diets",
+          "queries": [
+            "lucy developed a chicken allergy but needs protein",
+            "My dog is allergic to grains, what food options do I have?",
+            "Puppy has sensitive stomach, what should I feed him?"
+          ]
+        },
+        "greetings_and_casual": {
+          "name": "Greetings and Casual Interactions",
+          "description": "Simple greetings and casual conversation starters",
+          "queries": [
+            "hello",
+            "good morning",
+            "are you a real person?",
+            "thank you"
+          ]
+        },
+        "negative_sentiment": {
+          "name": "Negative Sentiment and Complaints",
+          "description": "Queries expressing dissatisfaction or negative feelings",
+          "queries": [
+            "i hate chewy",
+            "your service is terrible",
+            "I'm never shopping here again",
+            "worst customer service ever"
+          ]
+        },
+        "product_specific": {
+          "name": "Product-Specific Queries",
+          "description": "Queries about specific products, brands, or categories",
+          "queries": [
+            "What's the best cat litter?",
+            "I need a dog crate for a 50-pound dog",
+            "Best flea and tick prevention for dogs",
+            "Best toys for teething puppies"
+          ]
+        },
+        "health_and_wellness": {
+          "name": "Health and Wellness Concerns",
+          "description": "Queries about pet health, medications, and wellness",
+          "queries": [
+            "Cat is overweight, need weight management food",
+            "Puppy has worms, what dewormer should I use?",
+            "Senior cat with kidney disease, special diet needed",
+            "Dog has anxiety, any calming products?"
+          ]
+        },
+        "behavioral_issues": {
+          "name": "Behavioral Issues and Training",
+          "description": "Queries about pet behavior, training, and behavioral problems",
+          "queries": [
+            "My dog barks too much, any solutions?",
+            "Cat is scratching furniture, need alternatives",
+            "Puppy won't stop chewing everything",
+            "Dog pulls on leash, need training tools"
+          ]
+        },
+        "price_and_value": {
+          "name": "Price and Value Queries",
+          "description": "Queries about pricing, deals, and value for money",
+          "queries": [
+            "Best value cat litter",
+            "Most affordable pet supplies",
+            "Budget-friendly cat toys"
+          ]
+        },
+        "technical_issues": {
+          "name": "Technical and Platform Issues",
+          "description": "Queries about website, app, or technical problems",
+          "queries": [
+            "Order not showing up",
+            "Payment declined",
+            "You are being super unhelpful"
+          ]
+        },
+        "very_long_queries": {
+          "name": "Very Long Queries",
+          "description": "Very long queries that are difficult to process",
+          "queries": [
+            "I have a very specific situation with my dog who has multiple health issues including arthritis, diabetes, and kidney problems, and I need to find food that addresses all these concerns while also being affordable, and I also need recommendations for supplements and medications that won't interact with each other, and my dog is also allergic to chicken, beef, and grains and I'm also looking for treats that are safe for diabetic dogs, and I need advice on feeding schedules and portion sizes, and I want to know about any potential side effects or things to watch out for."
+          ]
+        },
+        "non_english_queries": {
+          "name": "Non-English Queries",
+          "description": "Queries in non-English languages",
+          "queries": [
+            "Hola, necesito comida para mi perro",
+            "Bonjour, j'ai besoin d'aide pour mon chat",
+            "こんにちは、私の犬の餌について相談したいです",
+            "안녕하세요, 고양이 음식에 대해 문의드립니다"
+          ]
+        },
+        "empty_and_invalid_inputs": {
+          "name": "Empty and Invalid Inputs",
+          "description": "Empty, invalid, or nonsensical inputs",
+          "queries": [
+            "!@#$%^&*()",
+            "1234567890"
+          ]
+        }
+      }
+    }
+  }
