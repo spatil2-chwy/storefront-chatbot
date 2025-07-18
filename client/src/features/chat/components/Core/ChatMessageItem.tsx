@@ -5,9 +5,6 @@ import { Badge } from '../../../../ui/Display/Badge';
 import { ChatContext, ChatMessage } from '../../../../types';
 import { getTransitionStyling, isTransitionMessage, formatMessageContent, extractQuickResponseTags } from "../../../../lib/utils";
 import { QuickResponseButtons } from './QuickResponseButtons';
-import { PetSelection } from './PetSelection';
-import { PetProfile } from './PetProfile';
-import { PetEdit } from './PetEdit';
 
 // Safe HTML renderer component
 const SafeHtmlRenderer: React.FC<{ html: string; className?: string }> = ({ html, className }) => {
@@ -41,10 +38,6 @@ interface ChatMessageItemProps {
   isStreaming?: boolean;
   showExitButton?: boolean;
   onTagClick?: (tag: string) => void;
-  onPetSelect?: (petId: string) => void;
-  onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: any) => void;
-  onPetEditSave?: (updatedPet: any) => void;
-  onPetEditCancel?: () => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -56,10 +49,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   isStreaming = false,
   showExitButton = false,
   onTagClick,
-  onPetSelect,
-  onPetProfileAction,
-  onPetEditSave,
-  onPetEditCancel,
 }) => {
   const isUser = message.sender === 'user';
   const isTransition = isTransitionMessage(message);
@@ -107,65 +96,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     );
   };
 
-  // Handle pet selection messages
-  if (message.isPetSelection && message.petOptions) {
-    return (
-      <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-white" />
-        </div>
-        <div className="max-w-full bg-gray-100 rounded-lg p-4">
-          <div className="text-sm text-gray-900 mb-3">
-            {message.content}
-          </div>
-          <PetSelection
-            petOptions={message.petOptions}
-            onPetSelect={onPetSelect || (() => {})}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Handle pet profile messages (including inline editing)
-  if (message.isPetProfile && message.petProfileInfo) {
-    return (
-      <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-white" />
-        </div>
-        <div className="max-w-full bg-gray-100 rounded-lg p-4">
-          <PetProfile
-            petInfo={message.petProfileInfo}
-            onLooksGood={() => onPetProfileAction?.('looks_good', message.petProfileInfo)}
-            onEditInfo={() => onPetProfileAction?.('edit_info', message.petProfileInfo)}
-            onSave={onPetEditSave}
-            onCancel={onPetEditCancel}
-            isEditing={message.isEditing || false}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Handle pet edit messages (legacy - should be removed once inline editing is fully implemented)
-  if (message.isPetEdit && message.petEditData) {
-    return (
-      <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-white" />
-        </div>
-        <div className="max-w-full bg-gray-100 rounded-lg p-4">
-          <PetEdit
-            petInfo={message.petEditData}
-            onSave={onPetEditSave || (() => {})}
-            onCancel={onPetEditCancel || (() => {})}
-          />
-        </div>
-      </div>
-    );
-  }
-
   // Handle transition messages
   if (isTransition) {
     // For comparison transition messages with product data, show enhanced display
@@ -197,25 +127,25 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             </div>
             
             {/* Display products in a grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {message.comparisonProducts.map((product, index) => (
-                <div key={index} className="bg-white rounded-lg p-3 border border-green-100">
+                <div key={product.id || index} className="bg-white rounded-lg p-3 border border-purple-100">
                   <div className="flex items-center space-x-3">
                     {renderProductImage(product)}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
                         <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
-                          {product?.brand}
+                          {product.brand}
                         </Badge>
                       </div>
                       <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
-                        {product?.title}
+                        {product.title}
                       </div>
                       <div className="flex items-center space-x-3">
                         <span className="text-sm font-semibold text-gray-900">
-                          ${product?.price?.toFixed(2)}
+                          ${product.price?.toFixed(2)}
                         </span>
-                        {product?.rating && (
+                        {product.rating && (
                           <div className="flex items-center space-x-1">
                             <div className="flex">
                               {renderStars(product.rating)}
@@ -230,6 +160,64 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // For individual product transition messages, show enhanced display
+    if (message.content.includes('Now discussing:') && message.transitionType === 'product' && (message.productData || chatContext?.product)) {
+      const product = message.productData || chatContext?.product;
+      
+      return (
+        <div className="flex justify-start items-start space-x-2">
+          {/* Tylee Avatar */}
+          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+          
+          {/* Enhanced product discussion message */}
+          <div className="max-w-lg bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Package className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">
+                  Now discussing
+                </span>
+              </div>
+            </div>
+            
+            {/* Display product information */}
+            <div className="bg-white rounded-lg p-3 border border-green-100">
+              <div className="flex items-center space-x-3">
+                {renderProductImage(product)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
+                      {product?.brand}
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                    {product?.title}
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-semibold text-gray-900">
+                      ${product?.price?.toFixed(2)}
+                    </span>
+                    {product?.rating && (
+                      <div className="flex items-center space-x-1">
+                        <div className="flex">
+                          {renderStars(product.rating)}
+                        </div>
+                        <span className="text-xs text-gray-600">
+                          {product.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Exit discussion button */}
@@ -294,56 +282,37 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         )}
         
         {/* Display comparison products if available (for non-comparison messages) */}
-        {!isUser && message.comparisonProducts && message.comparisonProducts.length > 0 && (
-          <div className="p-3 bg-purple-50 border-b border-purple-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <ShoppingCart className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-700">
-                  Comparing {message.comparisonProducts.length} products
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearComparison}
-                className="text-purple-600 hover:text-purple-700 hover:bg-purple-100 p-1"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-            
-            {/* Product grid */}
-            <div className="grid grid-cols-1 gap-2">
+        {!isUser && !message.content.includes('Now comparing:') && message.comparisonProducts && message.comparisonProducts.length > 0 && (
+          <div className="p-3 border-b border-gray-200">
+            <div className="text-xs font-medium text-gray-600 mb-2">Comparing Products:</div>
+            <div className="space-y-2">
               {message.comparisonProducts.slice(0, 3).map((product, index) => (
-                <div key={index} className="bg-white rounded-lg p-2 border border-green-100">
-                  <div className="flex items-center space-x-2">
-                    {renderProductImage(product)}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 line-clamp-1">
-                        {product?.title}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-semibold text-gray-900">
-                          ${product?.price?.toFixed(2)}
-                        </span>
-                        {product?.rating && (
-                          <div className="flex items-center space-x-1">
-                            <div className="flex">
-                              {renderStars(product.rating)}
-                            </div>
-                            <span className="text-xs text-gray-600">
-                              {product.rating.toFixed(1)}
-                            </span>
+                <div key={product.id || index} className="flex items-center space-x-2">
+                  {renderProductImage(product)}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-gray-900 truncate">
+                      {product.brand} {product.title}
+                    </div>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <span className="text-xs font-semibold text-gray-900">
+                        ${product.price?.toFixed(2)}
+                      </span>
+                      {product.rating && (
+                        <div className="flex items-center space-x-1">
+                          <div className="flex">
+                            {renderStars(product.rating)}
                           </div>
-                        )}
-                      </div>
+                          <span className="text-xs text-gray-600">
+                            {product.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
               {message.comparisonProducts.length > 3 && (
-                <div className="text-xs text-purple-600 text-center py-1">
+                <div className="text-xs text-gray-500 text-center">
                   +{message.comparisonProducts.length - 3} more products
                 </div>
               )}
@@ -351,59 +320,70 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </div>
         )}
         
-        {/* Message content */}
-        <div className="p-3">
-          {/* Show typing indicator for empty streaming messages */}
-          {isStreaming && !message.content.trim() ? (
-            <div className="flex items-center space-x-1">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              </div>
-              <span className="text-sm text-gray-600">Tylee is typing...</span>
-            </div>
-          ) : message.content ? (
-            <div>
-              {message.sender === 'ai' ? (
-                (() => {
-                  const { cleanContent, tags } = extractQuickResponseTags(message.content);
-                  
-                  return (
-                    <>
-                      <div className="text-sm">
-                        <SafeHtmlRenderer 
-                          html={formatMessageContent(cleanContent)} 
-                          className="prose prose-sm max-w-none"
-                        />
-                      </div>
-                      {tags.length > 0 && onTagClick && (
-                        <QuickResponseButtons 
-                          tags={tags} 
-                          onTagClick={onTagClick} 
-                        />
-                      )}
-                    </>
-                  );
-                })()
+        {/* Message text - hide for comparison messages since we show products above */}
+        <div className={`p-3 ${isUser ? 'text-white' : 'text-gray-900'}`}>
+          {!message.content.includes('Now comparing:') && (
+            <>
+              {/* Show typing indicator for empty streaming messages */}
+              {isStreaming && !message.content.trim() ? (
+                <div className="flex items-center space-x-1 text-gray-500">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                  <span className="text-sm">Tylee is typing...</span>
+                </div>
               ) : (
-                <div className="text-sm">
-                  {/* Display image if present */}
-                  {message.imageUrl && (
-                    <div className="mb-2">
-                      <img 
-                        src={message.imageUrl} 
-                        alt="User uploaded" 
-                        className="max-w-full h-auto rounded-lg border"
-                        style={{ maxHeight: '200px' }}
-                      />
+                <div>
+                  {message.sender === 'ai' ? (
+                    (() => {
+                      // Debug: Log the original content
+                      console.log('Original message content:', message.content);
+                      
+                      const { cleanContent, tags } = extractQuickResponseTags(message.content);
+                      
+                      // Debug: Log extraction results
+                      console.log('Extracted tags:', tags);
+                      console.log('Clean content:', cleanContent);
+                      
+                      return (
+                        <>
+                          <div className="text-sm">
+                            <SafeHtmlRenderer 
+                              html={formatMessageContent(cleanContent)} 
+                              className="prose prose-sm max-w-none"
+                            />
+                          </div>
+                          {tags.length > 0 && onTagClick && (
+                            <QuickResponseButtons 
+                              tags={tags} 
+                              onTagClick={onTagClick} 
+                            />
+                          )}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <div className="text-sm">
+                      {/* Display image if present */}
+                      {message.imageUrl && (
+                        <div className="mb-2">
+                          <img 
+                            src={message.imageUrl} 
+                            alt="User uploaded" 
+                            className="max-w-full h-auto rounded-lg border"
+                            style={{ maxHeight: '200px' }}
+                          />
+                        </div>
+                      )}
+                      {message.content}
                     </div>
                   )}
-                  {message.content}
                 </div>
               )}
-            </div>
-          ) : null}
+            </>
+          )}
         </div>
       </div>
       

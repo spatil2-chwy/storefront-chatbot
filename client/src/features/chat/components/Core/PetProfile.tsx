@@ -88,7 +88,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.gender}
             onValueChange={(value) => handleInputChange('gender', value)}
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -103,7 +103,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.type}
             onValueChange={(value) => handleInputChange('type', value)}
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -123,7 +123,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.life_stage}
             onValueChange={(value) => handleInputChange('life_stage', value)}
           >
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -139,7 +139,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             type="number"
             value={formData.weight}
             onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
-            className="w-24"
+            className="w-20"
             placeholder="lbs"
           />
         );
@@ -148,7 +148,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           <Input
             value={formData.breed}
             onChange={(e) => handleInputChange('breed', e.target.value)}
-            className="w-32"
+            className="w-28"
             placeholder="Enter breed"
           />
         );
@@ -175,13 +175,13 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xl font-medium">
             🐾
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h3 className="font-bold text-gray-900 text-xl">
               {isEditing ? (
                 <Input
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-48"
+                  className="w-full"
                   placeholder="Enter pet name"
                 />
               ) : (
@@ -194,7 +194,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                   <Input
                     value={formData.breed}
                     onChange={(e) => handleInputChange('breed', e.target.value)}
-                    className="w-32"
+                    className="w-full"
                     placeholder="Breed"
                   />
                 </div>
