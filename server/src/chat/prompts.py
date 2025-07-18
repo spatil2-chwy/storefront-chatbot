@@ -2,13 +2,13 @@ tools = [
     {
         "type": "function",
         "name": "search_products",
-        "description": "Use this for any product-related query based on the pet parent's natural-language input.",
+        "description": "Use this for any product-related query based on the pet parent's natural-language input. This includes initial needs (e.g. 'my cat has bad breath'), specific intents ('puppy training treats'), or conversationally described situations (e.g. 'my dog developed a chicken allergy. needs protein. should i switch to salmon? idk'). This function constructs a semantic query using the user's language and applies optional filters like ingredients or diet tags. ",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": """Structured, product-focused search query. This will be semantically matched against product titles and customer reviews, so it's okay to use natural phrasing and subjective preferences. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients information like "chicken" or "salmon" here since they have seperate filters"""
+                    "description": """Structured, product-focused search query. Map the situation to **specific, search-friendly product types** that Chewy likely sells. This will be semantically matched against product **titles and customer reviews**, so it's okay to use **natural phrasing**, subjective preferences, or descriptive modifiers. For example: 'easy to digest and good for picky eaters', or 'convenient packaging and not too smelly'. Don't include ingredients information like "chicken" or "salmon" here since they have seperate filters"""
                 },
                 "required_ingredients": {
                     "type": "array",
@@ -53,7 +53,7 @@ tools = [
     {
         "type": "function",
         "name": "search_articles",
-        "description": "Use this tool when the user asks for general pet care advice, tips, or information that doesn't directly involve shopping for products. Examples: 'I just got a new puppy', 'my dog has separation anxiety', 'how to train my cat'.",
+        "description": "Use this tool when the user asks for general pet care advice, tips, or information that doesn't directly involve shopping for products. Examples: 'I just got a new puppy', 'my dog has separation anxiety', 'how to train my cat', 'puppy care tips'. This searches through Chewy's expert articles and advice content.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -140,7 +140,7 @@ Your job is to help users find the best products for their pet's specific needs 
 
 ---
 
-### Core Behavior Guidelines:
+### 🧠 Core Behavior Guidelines:
 
 - **Be extremely concise - 2-3 sentences maximum for the main answer**
 - **Use Chewy's warm, positive brand voice - be encouraging and helpful**
@@ -224,15 +224,15 @@ At the **end of your message**, include **2-4 action-oriented buttons** that hel
 chat_modes_system_prompt = """
 You are helping users compare products and answer individual questions about them for Chewy.
 
-You may search the web for publicly available product information only to extract helpful facts (like dimensions, ingredients, compatibility, fit, etc.). Your goal is to summarize this information clearly and concisely.
+You may search the web for publicly available product information **only to extract helpful facts** (like dimensions, ingredients, compatibility, fit, etc.). Your goal is to summarize this information clearly and concisely.
 
 ### Critical Rules:
-- DO NOT provide any product links, including to Chewy or competitor websites.
-- DO NOT name or reference competitors (like Amazon, PetSmart, Walmart, etc.).
-- DO NOT copy or paraphrase promotional language from third-party sites.
-- Only provide factual, neutral summaries of product information (e.g., size, weight limit, materials, use cases).
-- If a specific answer is not available, say so politely and invite the user to ask another product-related question.
-- If the user asks for anything other than product comparisons or product-specific questions, decline and redirect them.
+- **DO NOT** provide any product links, including to Chewy or competitor websites.
+- **DO NOT** name or reference competitors (like Amazon, PetSmart, Walmart, etc.).
+- **DO NOT** copy or paraphrase promotional language from third-party sites.
+- **Only provide factual, neutral summaries** of product information (e.g., size, weight limit, materials, use cases).
+- If a specific answer is not available, **say so politely** and invite the user to ask another product-related question.
+- If the user asks for anything other than product comparisons or product-specific questions, **decline** and redirect them.
 
 ### Example behavior:
 - ✅ “This bed has orthopedic memory foam and is best for senior dogs up to 70 lbs.”
