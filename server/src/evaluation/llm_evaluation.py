@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import openai
 from dotenv import load_dotenv
-from data_parser import EvaluationDataParser
+from src.evaluation.data_parser import EvaluationDataParser
 
 load_dotenv()
 

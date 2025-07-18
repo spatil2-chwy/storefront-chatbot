@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, asdict
 import statistics
 from collections import defaultdict, Counter
-from data_parser import EvaluationDataParser
+from src.evaluation.data_parser import EvaluationDataParser
 
 logger = logging.getLogger(__name__)
 
@@ -58,20 +58,27 @@ class QuantitativeEvaluator:
         metrics['ranking_time'] = log_data.get('ranking_time', 0)
         
         # Success metrics
-        metrics['has_errors'] = len(log_data.get('errors', [])) > 0
-        metrics['products_returned'] = len(log_data.get('product_results', []))
+        errors = log_data.get('errors')
+        metrics['has_errors'] = len(errors) > 0 if errors is not None else False
+        
+        product_results = log_data.get('product_results')
+        metrics['products_returned'] = len(product_results) if product_results is not None else 0
         
         # Query analysis
-        metrics['query_length'] = len(log_data.get('raw_user_query', ''))
-        metrics['has_user_context'] = bool(log_data.get('user_context'))
-        metrics['context_length'] = len(log_data.get('user_context', ''))
+        raw_user_query = log_data.get('raw_user_query')
+        metrics['query_length'] = len(raw_user_query) if raw_user_query is not None else 0
+        
+        user_context = log_data.get('user_context')
+        metrics['has_user_context'] = bool(user_context)
+        metrics['context_length'] = len(user_context) if user_context is not None else 0
         
         # Tool analysis
-        metrics['tools_used'] = [tool.get('tool_name') for tool in log_data.get('tool_calls', [])]
+        tool_calls = log_data.get('tool_calls')
+        metrics['tools_used'] = [tool.get('tool_name') for tool in (tool_calls or [])]
         
         # Product analysis
-        products = log_data.get('product_results', [])
-        if products:
+        products = log_data.get('product_results')
+        if products is not None and len(products) > 0:
             metrics['avg_product_rating'] = statistics.mean([p.get('rating', 0) for p in products if p.get('rating')])
             metrics['avg_product_price'] = statistics.mean([p.get('price', 0) for p in products if p.get('price')])
             metrics['unique_brands'] = len(set(p.get('brand') for p in products if p.get('brand')))
@@ -120,12 +127,12 @@ class QuantitativeEvaluator:
     def _calculate_aggregate_metrics(self, all_metrics: List[Dict[str, Any]], tool_counter: Counter) -> QuantitativeMetrics:
         """Calculate aggregate metrics from individual log metrics"""
         
-        # Performance metrics
-        total_times = [m.get('total_processing_time', 0) for m in all_metrics]
-        search_times = [m.get('product_search_time', 0) for m in all_metrics]
-        llm_times = [m.get('llm_response_time', 0) for m in all_metrics]
-        function_times = [m.get('function_call_time', 0) for m in all_metrics]
-        ranking_times = [m.get('ranking_time', 0) for m in all_metrics]
+        # Performance metrics - filter out None values
+        total_times = [m.get('total_processing_time', 0) for m in all_metrics if m.get('total_processing_time') is not None]
+        search_times = [m.get('product_search_time', 0) for m in all_metrics if m.get('product_search_time') is not None]
+        llm_times = [m.get('llm_response_time', 0) for m in all_metrics if m.get('llm_response_time') is not None]
+        function_times = [m.get('function_call_time', 0) for m in all_metrics if m.get('function_call_time') is not None]
+        ranking_times = [m.get('ranking_time', 0) for m in all_metrics if m.get('ranking_time') is not None]
         
         # Success metrics
         error_count = sum(1 for m in all_metrics if m.get('has_errors', False))
@@ -134,7 +141,7 @@ class QuantitativeEvaluator:
         product_prices = [m.get('avg_product_price', 0) for m in all_metrics if m.get('avg_product_price', 0) > 0]
  
         # Query analysis
-        query_lengths = [m.get('query_length', 0) for m in all_metrics]
+        query_lengths = [m.get('query_length', 0) for m in all_metrics if m.get('query_length') is not None]
         avg_query_length = statistics.mean(query_lengths) if query_lengths else 0
         
         # Tool analysis

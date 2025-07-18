@@ -227,16 +227,88 @@ class EvaluationDashboard:
 **Include Ingredients:** `{', '.join(arguments.get('required_ingredients', []) or ['None'])}`
 """)    
         # Performance metrics
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_time = self.eval_data.get('total_processing_time', 0)
-            st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
-        with col2:
-            search_time = self.eval_data.get('product_search_time', 0)
-            st.metric("🔍 Product Search Time", f"{search_time:.2f}s")
-        with col3:
-            llm_time = self.eval_data.get('llm_response_time', 0)
-            st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+        tool_calls = self.eval_data.get('tool_calls', [])
+        
+        if tool_calls:
+            # Determine which search time to display based on tool calls
+            has_article_search = any(tool.get('tool_name') == 'search_articles' for tool in tool_calls)
+            has_product_search = any(tool.get('tool_name') == 'search_products' for tool in tool_calls)
+            
+            if has_article_search and has_product_search:
+                # Both tools used - show both
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    article_search_time = self.eval_data.get('article_search_time')
+                    article_search_time = article_search_time if article_search_time is not None else 0
+                    st.metric("📰 Article Search Time", f"{article_search_time:.2f}s")
+                with col3:
+                    product_search_time = self.eval_data.get('product_search_time')
+                    product_search_time = product_search_time if product_search_time is not None else 0
+                    st.metric("🛍️ Product Search Time", f"{product_search_time:.2f}s")
+                with col4:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            elif has_article_search:
+                # Only article search
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    article_search_time = self.eval_data.get('article_search_time')
+                    article_search_time = article_search_time if article_search_time is not None else 0
+                    st.metric("📰 Article Search Time", f"{article_search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            elif has_product_search:
+                # Only product search
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    product_search_time = self.eval_data.get('product_search_time')
+                    product_search_time = product_search_time if product_search_time is not None else 0
+                    st.metric("🛍️ Product Search Time", f"{product_search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+            else:
+                # Other tools - show generic search time
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    total_time = self.eval_data.get('total_processing_time')
+                    total_time = total_time if total_time is not None else 0
+                    st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+                with col2:
+                    search_time = self.eval_data.get('product_search_time')
+                    search_time = search_time if search_time is not None else 0
+                    st.metric("🔍 Search Time", f"{search_time:.2f}s")
+                with col3:
+                    llm_time = self.eval_data.get('llm_response_time')
+                    llm_time = llm_time if llm_time is not None else 0
+                    st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
+        else:
+            # No tool calls - only show total and LLM time
+            col1, col2 = st.columns(2)
+            with col1:
+                total_time = self.eval_data.get('total_processing_time')
+                total_time = total_time if total_time is not None else 0
+                st.metric("⏱️ Total Processing Time", f"{total_time:.2f}s")
+            with col2:
+                llm_time = self.eval_data.get('llm_response_time')
+                llm_time = llm_time if llm_time is not None else 0
+                st.metric("🤖 LLM Response Time", f"{llm_time:.2f}s")
     
     def render_product_analysis(self):
         """Render product retrieval analysis"""
@@ -351,27 +423,32 @@ class EvaluationDashboard:
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
-            avg_time = metrics.get('avg_total_processing_time', 0)
+            avg_time = metrics.get('avg_total_processing_time')
+            avg_time = avg_time if avg_time is not None else 0
             color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
             st.metric(f"{color} Avg Response Time", f"{avg_time:.1f}s")
 
         with col2:
-            avg_time = metrics.get('avg_product_search_time', 0)
+            avg_time = metrics.get('avg_product_search_time')
+            avg_time = avg_time if avg_time is not None else 0
             color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
             st.metric(f"{color} Avg Product Search Time", f"{avg_time:.1f}s")
         
         with col3:
-            success_rate = metrics.get('success_rate', 0)
+            success_rate = metrics.get('success_rate')
+            success_rate = success_rate if success_rate is not None else 0
             color = "🟢" if success_rate > 95 else "🟡" if success_rate > 90 else "🔴"
             st.metric(f"{color} Success Rate", f"{success_rate:.1f}%")
         
         with col4:
-            slow_queries = metrics.get('slow_queries_percentage', 0)
+            slow_queries = metrics.get('slow_queries_percentage')
+            slow_queries = slow_queries if slow_queries is not None else 0
             color = "🔴" if slow_queries > 20 else "🟡" if slow_queries > 10 else "🟢"
             st.metric(f"{color} Slow Queries", f"{slow_queries:.1f}%")
         
         with col5:
-            brand_diversity = metrics.get('brand_diversity', 0)
+            brand_diversity = metrics.get('brand_diversity')
+            brand_diversity = brand_diversity if brand_diversity is not None else 0
             color = "🟢" if brand_diversity > 0.8 else "🟡" if brand_diversity > 0.6 else "🔴"
             st.metric(f"{color} Brand Diversity", f"{brand_diversity:.2f}")
         
