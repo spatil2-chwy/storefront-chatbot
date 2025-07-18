@@ -2,10 +2,13 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+from pathlib import Path
 
-# Base directory and DB URL (using SQLite for local/dev)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'seed.db')}"
+# Updated database path to data/databases/seed.db
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DATABASE_PATH = BASE_DIR / "data" / "databases" / "seed.db"
+DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # Engine & Session factory
 engine = create_engine(

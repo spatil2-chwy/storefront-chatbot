@@ -90,6 +90,7 @@ class UserService:
         pets = self.get_pets_by_user(db, customer_key)
         for pet in pets:
             pet_info = {
+                "pet_profile_id": pet.pet_profile_id,
                 "name": pet.pet_name,
                 "type": pet.pet_type,
                 "breed": pet.pet_breed,

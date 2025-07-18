@@ -33,7 +33,8 @@ async def get_search_stats(
     limit: int = Query(10, description="Maximum number of results to return")
 ):
     # Get search statistics and matched criteria
-    products = await product_svc.search_products(query, limit)
+    search_result = await product_svc.search_products(query, limit)
+    products = search_result.get("products", [])
     
     # Collect all unique matched criteria and terms
     all_matched_criteria = set()

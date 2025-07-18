@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalChat } from '../context';
-import { ChatContext, ChatMessage, Product } from '../../../types';
+import { ChatContext, ChatMessage, Product, PetProfileInfo } from '../../../types';
 import { useGreeting } from '../hooks/use-greeting';
 import { useComparisonTracker } from '../hooks/use-comparison-tracker';
 import { SidebarChatLayout } from './Layout/SidebarChatLayout';
 import { chatApi, productsApi } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
+
 interface ChatWidgetProps {
   initialQuery?: string;
   shouldOpen?: boolean;
@@ -13,6 +14,7 @@ interface ChatWidgetProps {
   onClearChat?: () => void;
   chatContext?: ChatContext;
 }
+
 export default function ChatWidget({ 
   initialQuery, 
   shouldOpen, 
@@ -20,24 +22,30 @@ export default function ChatWidget({
   onClearChat, 
   chatContext
 }: ChatWidgetProps) {
+  // Use global state for search results and query
   const { 
-    messages, 
+    messages,
     addMessage,
-    updateMessage,
-    clearMessages,
-    isOpen, 
-    setIsOpen,
-    comparingProducts,
-    isInComparisonMode,
-    clearComparison,
-    shouldAutoOpen,
-    hasSearched,
+    searchResults, 
+    setSearchResults, 
+    currentSearchQuery, 
+    setCurrentSearchQuery, 
+    hasSearched, 
     setHasSearched,
     setShouldAutoOpen,
+    comparingProducts,
+    isInComparisonMode,
+    currentContext,
+    setCurrentContext,
+    addTransitionMessage,
+    updateMessage,
+    isOpen: isChatSidebarOpen,
+    setIsOpen,
+    shouldAutoOpen,
+    clearMessages,
+    clearComparison,
     isMainChatHidden,
-    setSearchResults,
-    setCurrentSearchQuery,
-    currentContext
+    isOpen
   } = useGlobalChat();
   
   const { user } = useAuth();
@@ -51,10 +59,12 @@ export default function ChatWidget({
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [userHasScrolled, setUserHasScrolled] = useState(false); // Track if user has manually scrolled
   const [selectedImage, setSelectedImage] = useState<File | null>(null); // Track selected image for upload
+  const [selectedPet, setSelectedPet] = useState<PetProfileInfo | undefined>(undefined); // Track selected pet
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null); // Ref for the messages container
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
   const comparisonStartIndexRef = useRef<number>(-1); // Track where comparison started
+
   // Initialize hooks
   const { 
     showSearchGreeting, 
@@ -66,17 +76,182 @@ export default function ChatWidget({
     handleExitToGeneralChat,
     resetComparisonTracker
   } = useComparisonTracker();
+
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   };
+
+  // Handle pet selection
+  const handlePetSelect = async (petId: string) => {
+    if (!user?.customer_key) return;
+
+    try {
+      const response = await chatApi.selectPet(user.customer_key, petId);
+      
+      if (response.type === 'browse') {
+        // User chose to browse - show browse message
+        const browseMessage: ChatMessage = {
+          id: `browse-${Date.now()}`,
+          content: response.message || "Sounds good! What are you looking for today?",
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        addMessage(browseMessage);
+        setSelectedPet(undefined);
+        setCurrentContext({ type: 'general' });
+      } else if (response.type === 'pet_profile' && response.pet_info) {
+        // User selected a pet - show pet profile
+        const petProfileMessage: ChatMessage = {
+          id: `pet-profile-${Date.now()}`,
+          content: "Here's what I know about your pet:",
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetProfile: true,
+          petProfileInfo: response.pet_info,
+        };
+        addMessage(petProfileMessage);
+        setSelectedPet(response.pet_info);
+        setCurrentContext({ 
+          type: 'general', 
+          selectedPet: response.pet_info 
+        });
+      }
+    } catch (error) {
+      console.error('Error selecting pet:', error);
+      const errorMessage: ChatMessage = {
+        id: `pet-error-${Date.now()}`,
+        content: "Sorry, I'm having trouble loading the pet information. Let's continue with general browsing.",
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(errorMessage);
+    }
+  };
+
+  // Handle pet profile actions
+  const handlePetProfileAction = async (action: 'looks_good' | 'edit_info', petInfo?: PetProfileInfo) => {
+    if (action === 'looks_good' && petInfo) {
+      // User is happy with pet info - show shopping message
+      const shoppingMessage: ChatMessage = {
+        id: `shopping-${Date.now()}`,
+        content: `Great! What are you looking for today?`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(shoppingMessage);
+      setSelectedPet(petInfo);
+      setCurrentContext({ 
+        type: 'general', 
+        selectedPet: petInfo 
+      });
+    } else if (action === 'edit_info' && petInfo) {
+      // User wants to edit pet info - enable inline editing on the current message
+      // Find the pet profile message and update it to editing mode
+      const petProfileMessage = messages.find(msg => 
+        msg.isPetProfile && msg.petProfileInfo?.id === petInfo.id
+      );
+      
+      if (petProfileMessage) {
+        updateMessage(petProfileMessage.id, (msg) => ({
+          ...msg,
+          isEditing: true
+        }));
+      } else {
+        // Fallback: create a new message if the original wasn't found
+        const editMessage: ChatMessage = {
+          id: `pet-edit-${Date.now()}`,
+          content: "Let's update your pet's information:",
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetProfile: true,
+          petProfileInfo: petInfo,
+          isEditing: true,
+        };
+        addMessage(editMessage);
+      }
+    }
+  };
+
+  // Handle pet edit save
+  const handlePetEditSave = async (updatedPet: PetProfileInfo) => {
+    try {
+      const response = await chatApi.updatePetProfile(updatedPet.id, updatedPet);
+      
+      // Find and update the pet profile message
+      const petProfileMessage = messages.find(msg => 
+        msg.isPetProfile && msg.petProfileInfo?.id === updatedPet.id
+      );
+      
+      if (petProfileMessage) {
+        updateMessage(petProfileMessage.id, (msg) => ({
+          ...msg,
+          petProfileInfo: response.pet_info,
+          isEditing: false
+        }));
+      } else {
+        // Fallback: create a new message with the updated profile
+        const updatedProfileMessage: ChatMessage = {
+          id: `pet-profile-updated-${Date.now()}`,
+          content: `Great! What are you looking for today?`,
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetProfile: true,
+          petProfileInfo: response.pet_info,
+          isEditing: false,
+        };
+        addMessage(updatedProfileMessage);
+      }
+      
+      setSelectedPet(response.pet_info);
+      setCurrentContext({ 
+        type: 'general', 
+        selectedPet: response.pet_info 
+      });
+    } catch (error) {
+      console.error('Error updating pet profile:', error);
+      const errorMessage: ChatMessage = {
+        id: `pet-update-error-${Date.now()}`,
+        content: "Sorry, I'm having trouble updating the pet information. Let's continue with what we have.",
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(errorMessage);
+    }
+  };
+
+  // Handle pet edit cancel
+  const handlePetEditCancel = () => {
+    // Find and update the pet profile message to disable editing
+    const petProfileMessage = messages.find(msg => 
+      msg.isPetProfile && msg.isEditing
+    );
+    
+    if (petProfileMessage) {
+      updateMessage(petProfileMessage.id, (msg) => ({
+        ...msg,
+        isEditing: false
+      }));
+    } else {
+      // Fallback: add a cancel message
+      const cancelMessage: ChatMessage = {
+        id: `pet-edit-cancel-${Date.now()}`,
+        content: "No problem! Let's continue with the current information.",
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      addMessage(cancelMessage);
+    }
+  };
+
   useEffect(() => {
     if (shouldOpen || shouldAutoOpen) {
       setIsOpen(true);
       setShouldAutoOpen(false); // Reset auto-open trigger
     }
   }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
+
   useEffect(() => {
     if (initialQuery && processedQueryRef.current !== initialQuery) {
       processedQueryRef.current = initialQuery;
@@ -157,6 +332,7 @@ export default function ChatWidget({
       generateResponse();
     }
   }, [initialQuery, shouldClearChat, isLiveAgent, addMessage, clearMessages, messages, user, updateMessage, setSearchResults, setCurrentSearchQuery, setHasSearched, showInitialSearchGreeting]);
+
   // Check if user is near the bottom of the messages container
   const isNearBottom = () => {
     if (!messagesContainerRef.current) return true;
@@ -164,12 +340,14 @@ export default function ChatWidget({
     const threshold = 100; // pixels from bottom
     return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
   };
+
   // Handle scroll events to detect user scrolling
   const handleScroll = () => {
     if (isStreaming) {
       setUserHasScrolled(!isNearBottom());
     }
   };
+
   // Only auto-scroll on new messages (not streaming chunk updates)
   const prevMessagesLength = useRef(messages.length);
   useEffect(() => {
@@ -192,22 +370,26 @@ export default function ChatWidget({
       // Otherwise, do not auto-scroll during streaming chunk updates
     }
   }, [messages, isInComparisonMode, isStreaming, userHasScrolled]);
+
   // Reset user scroll state when streaming starts or ends
   useEffect(() => {
     if (isStreaming) {
       setUserHasScrolled(false);
     }
   }, [isStreaming]);
+
   // Handle chat context changes from props
   useEffect(() => {
     handleChatContextChange(chatContext);
   }, [chatContext?.type, chatContext?.product?.id, handleChatContextChange]);
+
   // Handle switching between AI and Live Agent modes
   const handleModeSwitch = (liveAgent: boolean) => {
     setIsLiveAgent(liveAgent);
     // Clear input when switching modes
     setInputValue('');
   };
+
   const sendMessage = async (messageText?: string) => {
     const messageToSend = messageText || inputValue;
     if ((!messageToSend.trim() && !selectedImage) || isLiveAgent) return;
@@ -351,7 +533,8 @@ export default function ChatWidget({
             setIsStreaming(false);
             setStreamingMessageId(null);
           },
-          imageBase64 // Pass image if present
+          imageBase64, // Pass image if present
+          selectedPet // Pass selected pet context
         );
       }
     } catch (error) {
@@ -368,28 +551,34 @@ export default function ChatWidget({
       setStreamingMessageId(null);
     }
   };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       sendMessage();
     }
   };
+
   const handleCloseChat = () => {
     setIsOpen(false);
     // Store that user closed the chat so we can auto-open on page transitions
     localStorage.setItem('chatClosed', 'true');
   };
+
   const resetProcessedQuery = () => {
     processedQueryRef.current = '';
   };
+
   const handleClearChat = () => {
     clearMessages();
     setInputValue('');
     setSelectedImage(null);
+    setSelectedPet(undefined);
     resetProcessedQuery();
     resetComparisonTracker();
     resetGreeting();
     onClearChat?.();
   };
+
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
   };
@@ -438,6 +627,7 @@ export default function ChatWidget({
   if (isMainChatHidden) {
     return null;
   }
+
   // Use the unified sidebar layout for all chat scenarios - always sidebar, never embedded
   return (
     <SidebarChatLayout
@@ -468,6 +658,10 @@ export default function ChatWidget({
       onImageUpload={handleImageUpload}
       selectedImage={selectedImage}
       onImageRemove={handleImageRemove}
+      onPetSelect={handlePetSelect}
+      onPetProfileAction={handlePetProfileAction}
+      onPetEditSave={handlePetEditSave}
+      onPetEditCancel={handlePetEditCancel}
     />
   );
 }

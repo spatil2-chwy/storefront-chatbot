@@ -11,13 +11,18 @@ from src.evaluation.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-product_df = pd.read_csv("./../scripts/product_df.csv")
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+product_df_path = os.path.join(project_root, "data", "backend", "products", "product_df.csv")
+product_df = pd.read_csv(product_df_path)
 
-# client = chromadb.PersistentClient(path="./../scripts/chroma_db")
-client = chromadb.HttpClient(host='localhost', port=8001)
-# PRODUCT_COLLECTION_NAME = "products"
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+chromadb_path = os.path.join(project_root, "data", "databases", "chroma_db")
+client = chromadb.PersistentClient(path=chromadb_path)
 REVIEW_COLLECTION_NAME = "review_synthesis"
-# product_collection = client.get_collection(name=PRODUCT_COLLECTION_NAME)
 review_collection = client.get_collection(name=REVIEW_COLLECTION_NAME)
 
 def filter_product_ids(required_ingredients: list, excluded_ingredients: list, category_level_1: list, category_level_2: list):

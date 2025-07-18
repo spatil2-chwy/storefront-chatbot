@@ -9,8 +9,11 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 import chromadb
-# client = chromadb.PersistentClient(path="../scripts/chroma_db")
-client = chromadb.HttpClient(host='localhost', port=8001)
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+chromadb_path = os.path.join(project_root, "data", "databases", "chroma_db")
+client = chromadb.PersistentClient(path=chromadb_path)
 collection = client.get_collection(name="review_synthesis")
 search_analyzer = None  # Lazy loading for search matches
 
@@ -244,9 +247,27 @@ class ProductService:
             answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
         )
     
-    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
+        
+        # Get the product from product_df to ensure we have the correct pricing
+        from src.search.product_search import product_df
+        
+        # Find the product in product_df by PRODUCT_ID
+        product_row = product_df[product_df['PRODUCT_ID'] == int(product_id)]
+        
+        if not product_row.empty:
+            # Use the pricing data from product_df
+            row = product_row.iloc[0]
+            
+            # Update metadata with correct pricing from product_df
+            metadata['PRICE'] = row.get('PRICE', metadata.get('PRICE', 0.0))
+            metadata['AUTOSHIP_PRICE'] = row.get('AUTOSHIP_PRICE', metadata.get('AUTOSHIP_PRICE', 0.0))
+            metadata['RATING_AVG'] = row.get('RATING_AVG', metadata.get('RATING_AVG', 0.0))
+            metadata['RATING_CNT'] = row.get('RATING_CNT', metadata.get('RATING_CNT', 0))
+            metadata['CLEAN_NAME'] = row.get('CLEAN_NAME', metadata.get('CLEAN_NAME', ''))
+            metadata['PURCHASE_BRAND'] = row.get('PURCHASE_BRAND', metadata.get('PURCHASE_BRAND', ''))
         
         # Analyze search matches if query is provided
         search_matches = None
@@ -257,9 +278,9 @@ class ProductService:
                 query_terms = self.search_analyzer.extract_query_terms(query)
                 criteria_time = time.time() - analysis_start
                 
-                # Analyze matches
+                # Analyze matches with pet profile and user context
                 match_start = time.time()
-                search_matches = self.search_analyzer.analyze_product_matches(metadata, query)
+                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context)
                 match_time = time.time() - match_start
                 
                 logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
@@ -272,7 +293,16 @@ class ProductService:
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:
-            results = collection.get(where={"PRODUCT_ID": str(product_id)})
+            # Use the same collection as the search method
+            from src.search.product_search import review_collection
+            
+            # Try to get the product using the same approach as search
+            # First try with string product ID
+            results = review_collection.get(where={"PRODUCT_ID": str(product_id)})
+            
+            # If no results with string, try with integer
+            if not results["metadatas"] or len(results["metadatas"]) == 0:
+                results = review_collection.get(where={"PRODUCT_ID": product_id})
             
             if not results["metadatas"] or len(results["metadatas"]) == 0:
                 return None
@@ -289,8 +319,93 @@ class ProductService:
             else:
                 meta_dict = dict(metadata)
             
+            # Get the product from product_df to ensure we have the correct pricing
+            from src.search.product_search import product_df
+            
+            # Find the product in product_df by PRODUCT_ID
+            product_row = product_df[product_df['PRODUCT_ID'] == product_id]
+            
+            if not product_row.empty:
+                # Use the pricing data from product_df
+                row = product_row.iloc[0]
+                
+                # Update metadata with correct pricing from product_df
+                meta_dict['PRICE'] = row.get('PRICE', meta_dict.get('PRICE', 0.0))
+                meta_dict['AUTOSHIP_PRICE'] = row.get('AUTOSHIP_PRICE', meta_dict.get('AUTOSHIP_PRICE', 0.0))
+                meta_dict['RATING_AVG'] = row.get('RATING_AVG', meta_dict.get('RATING_AVG', 0.0))
+                meta_dict['RATING_CNT'] = row.get('RATING_CNT', meta_dict.get('RATING_CNT', 0))
+                meta_dict['CLEAN_NAME'] = row.get('CLEAN_NAME', meta_dict.get('CLEAN_NAME', ''))
+                meta_dict['PURCHASE_BRAND'] = row.get('PURCHASE_BRAND', meta_dict.get('PURCHASE_BRAND', ''))
+            
             product = self._metadata_to_product(meta_dict)
             return product
         except Exception as e:
             logger.error(f"Error fetching product {product_id}: {e}")
             return None
+
+    async def search_products(self, query: str, limit: int = 30, include_search_matches: bool = True, pet_profile: dict = None, user_context: dict = None) -> dict:
+        """
+        Search for products using semantic search and return with proper pricing from product_df
+        """
+        try:
+            from src.search.product_search import query_products, rank_products
+            
+            # Query products using the existing search functionality
+            results = query_products(query)
+            
+            if not results or not results['metadatas'] or not results['metadatas'][0]:
+                logger.warning(f"No products found for query: {query}")
+                return {
+                    "products": [],
+                    "reply": f"No products found matching '{query}'"
+                }
+            
+            # Rank the products
+            ranked_results = rank_products(results)
+            
+            # Convert to Product objects with proper pricing
+            products = []
+            for metadata, document, product_id, distance in ranked_results[:limit]:
+                # Get the product from product_df to ensure we have the correct pricing
+                from src.search.product_search import product_df
+                
+                # Find the product in product_df by PRODUCT_ID
+                product_row = product_df[product_df['PRODUCT_ID'] == int(product_id)]
+                
+                if not product_row.empty:
+                    # Use the pricing data from product_df
+                    row = product_row.iloc[0]
+                    
+                    # Update metadata with correct pricing from product_df
+                    metadata['PRICE'] = row.get('PRICE', metadata.get('PRICE', 0.0))
+                    metadata['AUTOSHIP_PRICE'] = row.get('AUTOSHIP_PRICE', metadata.get('AUTOSHIP_PRICE', 0.0))
+                    metadata['RATING_AVG'] = row.get('RATING_AVG', metadata.get('RATING_AVG', 0.0))
+                    metadata['RATING_CNT'] = row.get('RATING_CNT', metadata.get('RATING_CNT', 0))
+                    metadata['CLEAN_NAME'] = row.get('CLEAN_NAME', metadata.get('CLEAN_NAME', ''))
+                    metadata['PURCHASE_BRAND'] = row.get('PURCHASE_BRAND', metadata.get('PURCHASE_BRAND', ''))
+                
+                # Convert to Product object with pet profile and user context
+                product = self._ranked_result_to_product(
+                    (metadata, document, product_id, distance), 
+                    query if include_search_matches else None,
+                    pet_profile,
+                    user_context
+                )
+                products.append(product)
+            
+            # Generate a reply message
+            reply = f"Found {len(products)} products matching '{query}'"
+            if products:
+                reply += f". Top result: {products[0].brand} {products[0].title} - ${products[0].price:.2f}"
+            
+            return {
+                "products": products,
+                "reply": reply
+            }
+            
+        except Exception as e:
+            logger.error(f"Error searching products: {e}")
+            return {
+                "products": [],
+                "reply": f"Error searching for products: {str(e)}"
+            }

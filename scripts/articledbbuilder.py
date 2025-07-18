@@ -5,7 +5,12 @@ from tqdm import tqdm
 import chromadb
 
 # === Load Articles ===
-with open('data/chromadb/all_wp_posts.json', 'r') as file:
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+articles_path = os.path.join(project_root, 'data', 'backend', 'articles', 'all_wp_posts.json')
+
+with open(articles_path, 'r') as file:
     articles = json.load(file)
 
 # === HTML to Markdown Conversion ===
@@ -95,7 +100,8 @@ metadatas = [
 ids = [str(article['id']) for article in articles]
 
 # === Initialize ChromaDB Persistent Client ===
-client = chromadb.PersistentClient(path="./chroma_db")
+chromadb_path = os.path.join(project_root, 'data', 'databases', 'chroma_db')
+client = chromadb.PersistentClient(path=chromadb_path)
 collection = client.get_or_create_collection(name="wordpress_articles")
 
 # === Batch Indexing ===

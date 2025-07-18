@@ -6,8 +6,10 @@ class ArticleService:
     def __init__(self):
         # Use the same ChromaDB path as other services
         try:
-            # self.client = chromadb.PersistentClient(path="../scripts/chroma_db")
-            self.client = chromadb.HttpClient(host='localhost', port=8001)
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+            chromadb_path = os.path.join(project_root, "data", "databases", "chroma_db")
+            self.client = chromadb.PersistentClient(path=chromadb_path)
             self.collection = self.client.get_collection(name="wordpress_articles")
         except Exception as e:
             print(f"Error initializing ChromaDB client: {e}")
