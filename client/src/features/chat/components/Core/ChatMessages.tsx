@@ -3,7 +3,7 @@ import { Loader2, Bot } from 'lucide-react';
 import { Skeleton } from '../../../../ui/Feedback/Skeleton';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatSuggestions } from './ChatSuggestions';
-import { ChatContext, ChatMessage, PetProfileInfo } from '../../../../types';
+import { ChatContext, ChatMessage } from '../../../../types';
 import { isTransitionMessage } from "../../../../lib/utils";
 
 interface ChatMessagesProps {
@@ -22,10 +22,6 @@ interface ChatMessagesProps {
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   onTagClick?: (tag: string) => void;
-  onPetSelect?: (petId: string) => void;
-  onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: PetProfileInfo) => void;
-  onPetEditSave?: (updatedPet: PetProfileInfo) => void;
-  onPetEditCancel?: () => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -44,10 +40,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   onScroll,
   scrollContainerRef,
   onTagClick,
-  onPetSelect,
-  onPetProfileAction,
-  onPetEditSave,
-  onPetEditCancel,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -73,10 +65,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             isStreaming={streamingMessageId === message.id}
             showExitButton={index === lastProductMessageIndex && activeChatContext?.type === 'product'}
             onTagClick={onTagClick}
-            onPetSelect={onPetSelect}
-            onPetProfileAction={onPetProfileAction}
-            onPetEditSave={onPetEditSave}
-            onPetEditCancel={onPetEditCancel}
           />
         ))
       )}

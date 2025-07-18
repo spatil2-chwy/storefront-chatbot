@@ -28,7 +28,7 @@ export default function ProductListing() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
-  const [birthdayPet, setBirthdayPet] = useState<{pet_name: string, image: string} | null>(null);
+  const [birthdayPet, setBirthdayPet] = useState<{ pet_name: string, image: string } | null>(null);
 
   const contextInitialized = useRef(false);
   const isMobile = useIsMobile();
@@ -96,12 +96,12 @@ export default function ProductListing() {
 
 
   // Use global state for search results and query
-  const { 
-    searchResults, 
-    setSearchResults, 
-    currentSearchQuery, 
-    setCurrentSearchQuery, 
-    hasSearched, 
+  const {
+    searchResults,
+    setSearchResults,
+    currentSearchQuery,
+    setCurrentSearchQuery,
+    hasSearched,
     setHasSearched,
     setShouldAutoOpen,
     comparingProducts,
@@ -115,23 +115,23 @@ export default function ProductListing() {
   // Set general context and auto-open chatbot when navigating to this page
   useEffect(() => {
     if (contextInitialized.current) return;
-    
+
     // Only add transition message if we're coming from a different context
     const newContext = { type: 'general' as const };
-    
+
     if (currentContext.type !== 'general') {
       addTransitionMessage(currentContext, newContext);
     }
-    
+
     setCurrentContext(newContext);
-    
+
     // Check if user had closed the chatbot before
     const wasChatClosed = localStorage.getItem('chatClosed') === 'true';
     if (wasChatClosed) {
       setShouldAutoOpen(true);
       localStorage.removeItem('chatClosed'); // Reset the flag
     }
-    
+
     contextInitialized.current = true;
   }, [currentContext, addTransitionMessage, setCurrentContext, setShouldAutoOpen]);
 
@@ -143,7 +143,7 @@ export default function ProductListing() {
       setSelectedMatchFilters([]);
       setSelectedCategories([]);
     };
-    
+
     window.addEventListener('clearChat', handleClearChatEvent);
     return () => window.removeEventListener('clearChat', handleClearChatEvent);
   }, [setHasSearched]);
@@ -166,8 +166,8 @@ export default function ProductListing() {
 
           if (!pet.birthday) return false;
           const birthday = new Date(pet.birthday);
-          return birthday.getMonth() === today.getMonth() && 
-                 birthday.getDate() === today.getDate();
+          return birthday.getMonth() === today.getMonth() &&
+            birthday.getDate() === today.getDate();
         });
 
         if (birthdayPet) {
@@ -180,7 +180,7 @@ export default function ProductListing() {
           // Mark that we've shown the birthday popup today
           localStorage.setItem(`birthday-shown-${new Date().toDateString()}`, 'true');
         }
-      } catch (error) { 
+      } catch (error) {
         console.error('Failed to check for birthday pets:', error);
       }
     };
@@ -203,7 +203,7 @@ export default function ProductListing() {
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(product => {
         if (!product.search_matches) return false;
-        
+
         // Check if product has matches for any of the selected values
         const productValues = new Set();
         product.search_matches.forEach(match => {
@@ -214,9 +214,9 @@ export default function ProductListing() {
             }
           }
         });
-        
+
         // Product must have at least one match for the selected values
-        return selectedCategories.some(selectedValue => 
+        return selectedCategories.some(selectedValue =>
           productValues.has(selectedValue)
         );
       });
@@ -224,9 +224,9 @@ export default function ProductListing() {
 
     // Apply match field filters
     if (selectedMatchFilters.length > 0) {
-      filtered = filtered.filter(product => 
-        product.search_matches && 
-        product.search_matches.some(match => 
+      filtered = filtered.filter(product =>
+        product.search_matches &&
+        product.search_matches.some(match =>
           match.matched_terms.some(term => selectedMatchFilters.includes(term))
         )
       );
@@ -248,21 +248,21 @@ export default function ProductListing() {
         filtered.sort((a, b) => {
           const aCategories = new Set();
           const bCategories = new Set();
-          
+
           a.search_matches?.forEach(match => {
             if (match.field.includes(':')) {
               const [category] = match.field.split(':', 1);
               aCategories.add(category.trim());
             }
           });
-          
+
           b.search_matches?.forEach(match => {
             if (match.field.includes(':')) {
               const [category] = match.field.split(':', 1);
               bCategories.add(category.trim());
             }
           });
-          
+
           return bCategories.size - aCategories.size;
         });
         break;
@@ -277,7 +277,7 @@ export default function ProductListing() {
   const handleSearch = async (query: string) => {
     const trimmedQuery = query.trim();
     setCurrentSearchQuery(trimmedQuery);
-    
+
     if (!trimmedQuery) {
       // Clear search results if query is empty
       setSearchResults([]);
@@ -301,12 +301,12 @@ export default function ProductListing() {
       // This will trigger the chat widget to handle the search query through its streaming flow
       setChatQuery(trimmedQuery);
       setShouldOpenChat(true);
-      
+
       // Reset the trigger after a delay to ensure ChatWidget has time to process
       setTimeout(() => {
         setShouldOpenChat(false);
       }, 2000);
-      
+
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setSearchResults([]);
@@ -348,8 +348,8 @@ export default function ProductListing() {
   };
 
   const handleMatchFilterToggle = (field: string) => {
-    setSelectedMatchFilters(prev => 
-      prev.includes(field) 
+    setSelectedMatchFilters(prev =>
+      prev.includes(field)
         ? prev.filter(f => f !== field)
         : [...prev, field]
     );
@@ -371,12 +371,12 @@ export default function ProductListing() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
-        onSearch={handleSearch} 
+      <Header
+        onSearch={handleSearch}
         onOpenChatWithQuery={handleOpenChatWithQuery}
         hasSearched={hasSearched}
       />
-      
+
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8" data-main-content>
         {/* Autoship Banner */}
         <Card className="bg-chewy-light-blue mb-6">
@@ -404,7 +404,7 @@ export default function ProductListing() {
                   )}
                 </p>
               </div>
-              
+
               {/* Sort and Filter Dropdowns - only show when there are results */}
               {filteredResults.length > 0 && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -459,11 +459,10 @@ export default function ProductListing() {
                   <Badge
                     key={term}
                     variant={selectedMatchFilters.includes(term) ? "default" : "outline"}
-                    className={`cursor-pointer text-xs ${
-                      selectedMatchFilters.includes(term) 
-                        ? 'bg-blue-600 text-white' 
+                    className={`cursor-pointer text-xs ${selectedMatchFilters.includes(term)
+                        ? 'bg-blue-600 text-white'
                         : 'text-blue-700 border-blue-300 hover:bg-blue-100'
-                    }`}
+                      }`}
                     onClick={() => handleMatchFilterToggle(term)}
                   >
                     {term} ({count})
@@ -529,11 +528,10 @@ export default function ProductListing() {
               )}
 
               {filteredResults.length > 0 ? (
-                <div className={`grid gap-6 auto-rows-fr product-grid ${
-                  isChatSidebarOpen 
-                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4' // With wider sidebar: 1, 2, 3, 4 columns
-                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'  // Without sidebar: 1, 2, 4, 5, 6 columns
-                }`}>
+                <div className={`grid gap-6 auto-rows-fr product-grid ${isChatSidebarOpen
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4'
+                  }`}>
                   {filteredResults.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -541,14 +539,14 @@ export default function ProductListing() {
               ) : (
                 <div className="text-center py-12">
                   <p className="text-gray-500 text-lg">
-                    {searchResults.length > 0 
-                      ? "No products match your current filters." 
+                    {searchResults.length > 0
+                      ? "No products match your current filters."
                       : "No products found matching your criteria."
                     }
                   </p>
                   <p className="text-gray-400 text-sm mt-2">
-                    {searchResults.length > 0 
-                      ? "Try adjusting your filters or clearing them to see more results." 
+                    {searchResults.length > 0
+                      ? "Try adjusting your filters or clearing them to see more results."
                       : "Try adjusting your search terms or ask the chatbot for help."
                     }
                   </p>
@@ -559,7 +557,7 @@ export default function ProductListing() {
         )}
       </main>
 
-      <ChatWidget 
+      <ChatWidget
         initialQuery={chatQuery}
         shouldOpen={shouldOpenChat}
         shouldClearChat={false}
@@ -568,7 +566,7 @@ export default function ProductListing() {
 
       <ComparisonFooter />
       {birthdayPet && showBirthdayPopup && (
-        <BirthdayPopup 
+        <BirthdayPopup
           petName={birthdayPet.pet_name}
           petImage={birthdayPet.image}
           onClose={() => setShowBirthdayPopup(false)}

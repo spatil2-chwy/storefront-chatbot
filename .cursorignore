@@ -10,6 +10,7 @@ server/logs/
 
 # ─── Chroma vector database (large binary blobs) ──────────────
 data/databases/
+/data/
 
 # ─── Raw backend data (if you’re only querying the DB) ────────
 data/backend/*.json

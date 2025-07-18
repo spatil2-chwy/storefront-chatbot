@@ -124,9 +124,9 @@ class SearchAnalyzer:
         
         return matches
         
-    def analyze_product_matches(self, metadata: dict, query: str) -> List[SearchMatch]:
+    def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None) -> List[SearchMatch]:
         """
-        Semantic matching - if something from user's question is very similar to product metadata, show it
+        Semantic matching - only use pet profile and user query information for search analysis
         """
         
         start_time = time.time()
@@ -139,26 +139,16 @@ class SearchAnalyzer:
         
         matches = []
         
-        # Get all product metadata values for matching
+        # Only use pet-relevant product fields for matching
         product_fields = {
-            'Brands': metadata.get('PURCHASE_BRAND', ''),
-            'Categories': metadata.get('CATEGORY_LEVEL1', ''),
-            'Subcategories': metadata.get('CATEGORY_LEVEL2', ''),
-            'Product Types': metadata.get('CATEGORY_LEVEL3', ''),
-            'Ingredients': metadata.get('INGREDIENTS', ''),
             'Pet Types': metadata.get('ATTR_PET_TYPE', ''),
             'Life Stages': metadata.get('LIFE_STAGE', ''),
             'Size/Weight': metadata.get('BREED_SIZE', ''),
             'Product Forms': metadata.get('PRODUCT_TYPE', ''),
             'Food Forms': metadata.get('ATTR_FOOD_FORM', ''),
-            'Parent Company': metadata.get('PARENT_COMPANY', ''),
-            'Merchandising 1': metadata.get('MERCH_CLASSIFICATION1', ''),
-            'Merchandising 2': metadata.get('MERCH_CLASSIFICATION2', ''),
-            'Merchandising 3': metadata.get('MERCH_CLASSIFICATION3', ''),
-            'Merchandising 4': metadata.get('MERCH_CLASSIFICATION4', ''),
         }
         
-        # Add diet tags from metadata keys
+        # Add diet tags from metadata keys (relevant for pet allergies)
         diet_tags = []
         for key in metadata:
             if key.startswith('specialdiettag:'):
@@ -166,7 +156,42 @@ class SearchAnalyzer:
                 diet_tags.append(diet_tag)
         product_fields['diet_tags'] = ', '.join(diet_tags)
         
-        # Match query terms against all product fields
+        # If pet profile is provided, enhance the query with pet-specific terms
+        enhanced_query_terms = query_terms.copy()
+        if pet_profile:
+            # Add pet type to search terms
+            if pet_profile.get('type'):
+                pet_type_terms = self.extract_query_terms(pet_profile['type'])
+                enhanced_query_terms.extend(pet_type_terms)
+            
+            # Add breed to search terms
+            if pet_profile.get('breed'):
+                breed_terms = self.extract_query_terms(pet_profile['breed'])
+                enhanced_query_terms.extend(breed_terms)
+            
+            # Add life stage to search terms
+            if pet_profile.get('life_stage'):
+                life_stage_terms = self.extract_query_terms(pet_profile['life_stage'])
+                enhanced_query_terms.extend(life_stage_terms)
+            
+            # Add size/weight to search terms
+            if pet_profile.get('size'):
+                size_terms = self.extract_query_terms(pet_profile['size'])
+                enhanced_query_terms.extend(size_terms)
+            
+            # Add allergy information to search terms
+            if pet_profile.get('allergies'):
+                enhanced_query_terms.extend(['allergy', 'hypoallergenic', 'sensitive'])
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_query_terms = []
+        for term in enhanced_query_terms:
+            if term not in seen:
+                seen.add(term)
+                unique_query_terms.append(term)
+        
+        # Match query terms against pet-relevant product fields only
         for field_name, field_value in product_fields.items():
             if not field_value or not field_value.strip():
                 continue
@@ -198,7 +223,7 @@ class SearchAnalyzer:
                 continue
             
             # Calculate semantic similarity between query terms and field terms
-            semantic_matches = self.exact_match_terms(query_terms, field_terms)
+            semantic_matches = self.exact_match_terms(unique_query_terms, field_terms)
             
             # Create SearchMatch for each semantic match
             for query_term, product_term, confidence in semantic_matches:
@@ -211,6 +236,6 @@ class SearchAnalyzer:
                 matches.append(match)
         
         analysis_time = time.time() - start_time
-        logger.debug(f"🔍 SearchAnalyzer analyzed {len(matches)} matches in {analysis_time:.3f}s")
+        logger.debug(f"🔍 SearchAnalyzer analyzed {len(matches)} pet-relevant matches in {analysis_time:.3f}s")
         
         return matches

@@ -5,11 +5,13 @@ import { Switch, Route, Redirect } from "wouter";
 import { Toaster } from "@/ui/Feedback/Toaster";
 import { TooltipProvider } from "@/ui/Tooltips/Tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { GlobalChatProvider } from "@/features/Chat/context";
+import { GlobalChatProvider } from "@/features/chat/context";
+import { CartProvider } from "@/features/cart/context";
 import Login from "@/pages/Login";
 import ProductListing from "@/pages/ProductListing";
 import ProductDetail from "@/pages/ProductDetail";
 import ProductComparison from "@/pages/ProductComparison";
+import Checkout from "@/pages/Checkout";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 import TestBirthdayPopup from "@/pages/TestBirthdayPopup";
@@ -54,6 +56,11 @@ function Router() {
           <ProductComparison />
         </ProtectedRoute>
       </Route>
+      <Route path="/checkout">
+        <ProtectedRoute>
+          <Checkout />
+        </ProtectedRoute>
+      </Route>
       <Route path="/profile">
         <ProtectedRoute>
           <Profile />
@@ -73,10 +80,12 @@ function App() {
   return (
     <TooltipProvider>
       <AuthProvider>
-        <GlobalChatProvider>
-          <Toaster />
-          <Router />
-        </GlobalChatProvider>
+        <CartProvider>
+          <GlobalChatProvider>
+            <Toaster />
+            <Router />
+          </GlobalChatProvider>
+        </CartProvider>
       </AuthProvider>
     </TooltipProvider>
   );

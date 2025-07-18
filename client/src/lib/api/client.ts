@@ -89,4 +89,18 @@ export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
     body: data ? JSON.stringify(data) : undefined,
   });
   return response.json();
+}
+
+// Helper for DELETE requests
+export async function apiDelete<T>(endpoint: string): Promise<T> {
+  const response = await apiRequest(endpoint, {
+    method: 'DELETE',
+  });
+  
+  // Handle cases where DELETE doesn't return content
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  }
+  return {} as T;
 } 

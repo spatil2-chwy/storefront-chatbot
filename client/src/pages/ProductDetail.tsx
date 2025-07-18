@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link } from 'wouter';
 import { ArrowLeft, Heart, RotateCcw, Truck, Undo, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/layout/Header';
-import ChatWidget from '@/features/Chat/components/ChatWidget';
-import ComparisonFooter from '@/features/Product/components/ComparisonFooter';
-import SearchMatches from '@/features/Product/components/SearchMatches';
-import { useProduct } from '@/features/Product/hooks';
+import ChatWidget from '@/features/chat/components/ChatWidget';
+import ComparisonFooter from '@/features/product/components/ComparisonFooter';
+import SearchMatches from '@/features/product/components/SearchMatches';
+import { useProduct } from '@/features/product/hooks';
 import { Product } from '../types';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent } from '@/ui/Cards/Card';
@@ -13,7 +13,9 @@ import { RadioGroup, RadioGroupItem } from '@/ui/RadioButtons/RadioGroup';
 import { Label } from '@/ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
 import { Badge } from '@/ui/Display/Badge';
-import { useGlobalChat } from '@/features/Chat/context';
+import { useGlobalChat } from '@/features/chat/context';
+import { useCart } from '@/features/cart/context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProductDetail() {
   const [match, params] = useRoute('/product/:id');
@@ -27,10 +29,16 @@ export default function ProductDetail() {
   
   // Get search query from global state
   const { currentSearchQuery, setShouldAutoOpen, currentContext, setCurrentContext, addTransitionMessage } = useGlobalChat();
+  
+  // Cart functionality
+  const { addToCart, isInCart, getCartItemCount } = useCart();
+  const { toast } = useToast();
 
   const currentPrice = product?.price || 0;
   const autoshipPrice = product?.autoshipPrice || 0;
   const hasAutoship = autoshipPrice > 0;
+  const inCart = product?.id ? isInCart(product.id) : false;
+  const cartCount = product?.id ? getCartItemCount(product.id) : 0;
 
   // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
@@ -62,6 +70,21 @@ export default function ProductDetail() {
       setPurchaseOption(hasAutoship ? 'autoship' : 'buyonce');
     }
   }, [product, hasAutoship]);
+
+  const handleAddToCart = () => {
+    if (!product?.id) {
+      console.error('Cannot add product to cart: product ID is missing');
+      return;
+    }
+
+    const qty = parseInt(quantity);
+    addToCart(product, qty, purchaseOption as 'buyonce' | 'autoship');
+    
+    toast({
+      title: "Added to cart",
+      description: `${qty} × ${product.title} added to your cart`,
+    });
+  };
 
   useEffect(() => {
     if (product && product.images && product.images.length > 0) {
@@ -341,9 +364,22 @@ export default function ProductDetail() {
                 <span>Free 365-day returns Details</span>
               </div>
 
-              <Button className="w-full bg-chewy-blue hover:bg-blue-700 text-white py-4 px-6 rounded-xl font-semibold text-lg">
+              <Button 
+                className={`w-full py-4 px-6 rounded-xl font-semibold text-lg ${
+                  inCart 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-chewy-blue hover:bg-blue-700 text-white'
+                }`}
+                onClick={handleAddToCart}
+              >
                 <div className="flex items-center justify-center space-x-2">
-                  {hasAutoship ? (
+                  {inCart ? (
+                    <>
+                      <span>In Cart</span>
+                      {cartCount > 1 && <span>({cartCount})</span>}
+                      {hasAutoship && <span>- Add More</span>}
+                    </>
+                  ) : hasAutoship ? (
                     <>
                       <span>Set Up</span>
                       <RotateCcw className="w-4 h-4" />

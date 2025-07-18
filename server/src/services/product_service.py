@@ -247,7 +247,7 @@ class ProductService:
             answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
         )
     
-    def _ranked_result_to_product(self, ranked_result, query: str = None) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
@@ -278,9 +278,9 @@ class ProductService:
                 query_terms = self.search_analyzer.extract_query_terms(query)
                 criteria_time = time.time() - analysis_start
                 
-                # Analyze matches
+                # Analyze matches with pet profile and user context
                 match_start = time.time()
-                search_matches = self.search_analyzer.analyze_product_matches(metadata, query)
+                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context)
                 match_time = time.time() - match_start
                 
                 logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
@@ -343,7 +343,7 @@ class ProductService:
             logger.error(f"Error fetching product {product_id}: {e}")
             return None
 
-    async def search_products(self, query: str, limit: int = 30, include_search_matches: bool = True) -> dict:
+    async def search_products(self, query: str, limit: int = 30, include_search_matches: bool = True, pet_profile: dict = None, user_context: dict = None) -> dict:
         """
         Search for products using semantic search and return with proper pricing from product_df
         """
@@ -384,8 +384,13 @@ class ProductService:
                     metadata['CLEAN_NAME'] = row.get('CLEAN_NAME', metadata.get('CLEAN_NAME', ''))
                     metadata['PURCHASE_BRAND'] = row.get('PURCHASE_BRAND', metadata.get('PURCHASE_BRAND', ''))
                 
-                # Convert to Product object
-                product = self._ranked_result_to_product((metadata, document, product_id, distance), query if include_search_matches else None)
+                # Convert to Product object with pet profile and user context
+                product = self._ranked_result_to_product(
+                    (metadata, document, product_id, distance), 
+                    query if include_search_matches else None,
+                    pet_profile,
+                    user_context
+                )
                 products.append(product)
             
             # Generate a reply message

@@ -22,25 +22,30 @@ export default function ChatWidget({
   onClearChat, 
   chatContext
 }: ChatWidgetProps) {
+  // Use global state for search results and query
   const { 
-    messages, 
+    messages,
     addMessage,
-    updateMessage,
-    clearMessages,
-    isOpen, 
-    setIsOpen,
-    comparingProducts,
-    isInComparisonMode,
-    clearComparison,
-    shouldAutoOpen,
-    hasSearched,
+    searchResults, 
+    setSearchResults, 
+    currentSearchQuery, 
+    setCurrentSearchQuery, 
+    hasSearched, 
     setHasSearched,
     setShouldAutoOpen,
-    isMainChatHidden,
-    setSearchResults,
-    setCurrentSearchQuery,
+    comparingProducts,
+    isInComparisonMode,
     currentContext,
-    setCurrentContext
+    setCurrentContext,
+    addTransitionMessage,
+    updateMessage,
+    isOpen: isChatSidebarOpen,
+    setIsOpen,
+    shouldAutoOpen,
+    clearMessages,
+    clearComparison,
+    isMainChatHidden,
+    isOpen
   } = useGlobalChat();
   
   const { user } = useAuth();
@@ -54,7 +59,7 @@ export default function ChatWidget({
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [userHasScrolled, setUserHasScrolled] = useState(false); // Track if user has manually scrolled
   const [selectedImage, setSelectedImage] = useState<File | null>(null); // Track selected image for upload
-  const [selectedPet, setSelectedPet] = useState<PetProfileInfo | null>(null); // Track selected pet
+  const [selectedPet, setSelectedPet] = useState<PetProfileInfo | undefined>(undefined); // Track selected pet
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null); // Ref for the messages container
   const processedQueryRef = useRef<string>(''); // Track processed queries to avoid duplicates
@@ -94,7 +99,7 @@ export default function ChatWidget({
           timestamp: new Date(),
         };
         addMessage(browseMessage);
-        setSelectedPet(null);
+        setSelectedPet(undefined);
         setCurrentContext({ type: 'general' });
       } else if (response.type === 'pet_profile' && response.pet_info) {
         // User selected a pet - show pet profile
@@ -142,16 +147,30 @@ export default function ChatWidget({
         selectedPet: petInfo 
       });
     } else if (action === 'edit_info' && petInfo) {
-      // User wants to edit pet info - show edit form
-      const editMessage: ChatMessage = {
-        id: `pet-edit-${Date.now()}`,
-        content: "Let's update your pet's information:",
-        sender: 'ai',
-        timestamp: new Date(),
-        isPetEdit: true,
-        petEditData: petInfo,
-      };
-      addMessage(editMessage);
+      // User wants to edit pet info - enable inline editing on the current message
+      // Find the pet profile message and update it to editing mode
+      const petProfileMessage = messages.find(msg => 
+        msg.isPetProfile && msg.petProfileInfo?.id === petInfo.id
+      );
+      
+      if (petProfileMessage) {
+        updateMessage(petProfileMessage.id, (msg) => ({
+          ...msg,
+          isEditing: true
+        }));
+      } else {
+        // Fallback: create a new message if the original wasn't found
+        const editMessage: ChatMessage = {
+          id: `pet-edit-${Date.now()}`,
+          content: "Let's update your pet's information:",
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetProfile: true,
+          petProfileInfo: petInfo,
+          isEditing: true,
+        };
+        addMessage(editMessage);
+      }
     }
   };
 
@@ -160,16 +179,30 @@ export default function ChatWidget({
     try {
       const response = await chatApi.updatePetProfile(updatedPet.id, updatedPet);
       
-      // Show updated pet profile
-      const updatedProfileMessage: ChatMessage = {
-        id: `pet-profile-updated-${Date.now()}`,
-        content: `Great! What are you looking for today?`,
-        sender: 'ai',
-        timestamp: new Date(),
-        isPetProfile: true,
-        petProfileInfo: response.pet_info,
-      };
-      addMessage(updatedProfileMessage);
+      // Find and update the pet profile message
+      const petProfileMessage = messages.find(msg => 
+        msg.isPetProfile && msg.petProfileInfo?.id === updatedPet.id
+      );
+      
+      if (petProfileMessage) {
+        updateMessage(petProfileMessage.id, (msg) => ({
+          ...msg,
+          petProfileInfo: response.pet_info,
+          isEditing: false
+        }));
+      } else {
+        // Fallback: create a new message with the updated profile
+        const updatedProfileMessage: ChatMessage = {
+          id: `pet-profile-updated-${Date.now()}`,
+          content: `Great! What are you looking for today?`,
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetProfile: true,
+          petProfileInfo: response.pet_info,
+          isEditing: false,
+        };
+        addMessage(updatedProfileMessage);
+      }
       
       setSelectedPet(response.pet_info);
       setCurrentContext({ 
@@ -190,13 +223,18 @@ export default function ChatWidget({
 
   // Handle pet edit cancel
   const handlePetEditCancel = () => {
-    // Remove the edit message and show the original pet profile
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.isPetEdit) {
-      // Remove the edit message
-      const updatedMessages = messages.slice(0, -1);
-      // This would need to be handled through the context
-      // For now, just add a cancel message
+    // Find and update the pet profile message to disable editing
+    const petProfileMessage = messages.find(msg => 
+      msg.isPetProfile && msg.isEditing
+    );
+    
+    if (petProfileMessage) {
+      updateMessage(petProfileMessage.id, (msg) => ({
+        ...msg,
+        isEditing: false
+      }));
+    } else {
+      // Fallback: add a cancel message
       const cancelMessage: ChatMessage = {
         id: `pet-edit-cancel-${Date.now()}`,
         content: "No problem! Let's continue with the current information.",
@@ -534,7 +572,7 @@ export default function ChatWidget({
     clearMessages();
     setInputValue('');
     setSelectedImage(null);
-    setSelectedPet(null);
+    setSelectedPet(undefined);
     resetProcessedQuery();
     resetComparisonTracker();
     resetGreeting();

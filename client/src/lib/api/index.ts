@@ -3,7 +3,8 @@
 
 // Export all API modules for direct importing
 export { authApi } from './auth';
+export { cartApi } from './cart';
 export { chatApi } from './chat';
 export { productsApi } from './products';
 export { usersApi } from './users';
-export { ApiError, apiRequest, apiGet, apiPost } from './client';
+export { ApiError, apiRequest, apiGet, apiPost, apiPut, apiDelete } from './client';

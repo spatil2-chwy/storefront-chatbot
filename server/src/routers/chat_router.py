@@ -255,6 +255,8 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
 async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
     # Streaming chatbot endpoint - returns Server-Sent Events with real-time responses
     user_context = ""
+    pet_profile = None
+    user_context_data = None
     
     # Get user context if customer_key is provided
     if request.customer_key:
@@ -267,6 +269,7 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
     
     # Add selected pet context if provided
     if request.selected_pet:
+        pet_profile = request.selected_pet  # Use the selected pet as pet profile
         pet_context = f"Selected Pet: {request.selected_pet.get('name', 'Unknown')} ({request.selected_pet.get('type', 'Unknown')})"
         if request.selected_pet.get('breed') and request.selected_pet.get('breed').lower() != 'unknown':
             pet_context += f", {request.selected_pet.get('breed')}"
@@ -287,7 +290,9 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
                 user_input=request.message,
                 history=request.history,
                 user_context=user_context,
-                image_base64=request.image
+                image_base64=request.image,
+                pet_profile=pet_profile,
+                user_context_data=user_context_data
             )
             
             print(f"Streaming response for: {request.message}")
