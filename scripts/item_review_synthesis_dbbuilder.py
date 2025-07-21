@@ -25,7 +25,7 @@ df = pd.read_csv(
     header=None,  # No header row in CSV
     names=[
         "PRODUCT_ID", "PART_NUMBER", "PARENT_ID", "PARENT_PART_NUMBER", "TYPE", "NAME", 
-        "DESCRIPTION_LONG", "CATEGORY_LEVEL1", "CATEGORY_LEVEL2", "CATEGORY_LEVEL3", 
+        "DESCRIPTION_LONG", "CATEGORY_LEVEL_1", "CATEGORY_LEVEL_2", "CATEGORY_LEVEL_3", 
         "PRICE", "RATING_AVG", "RATING_CNT", "ATTR_PET_TYPE", "ATTR_FOOD_FORM", 
         "ATTR_SPECIAL_DIET", "IS_FOOD_FLAG", "INGREDIENTS", "MERCH_CLASSIFICATION1", 
         "MERCH_CLASSIFICATION2", "PARENT_COMPANY", "LIFE_STAGE", "MERCH_CLASSIFICATION3", 
@@ -39,7 +39,7 @@ df = pd.read_csv(
         "PARENT_ID": str,
         "PARENT_PART_NUMBER": str
     },
-    low_memory=False
+    low_memory=False,
 )
 
 # === Step 2: Separate Products and Items ===
@@ -55,7 +55,7 @@ print("Loading review synthesis data...")
 with open(REVIEW_SYNTH_PATH, "r") as f:
     review_entries = [json.loads(line) for line in f]
 
-# Create review map using part numbers (as per original logic)
+# Create review map using part numbers
 review_map = {str(entry["product_id"]): entry for entry in review_entries}
 print(f"Review synthesis entries: {len(review_entries)}")
 
@@ -100,15 +100,47 @@ def get_review_synthesis_for_item(item_row, product_id_to_review, review_map, pr
     # Third try: default
     return default_synth, "default"
 
+# === Step 6.5: Data Backfill Function ===
+def backfill_item_data_from_parent(item_row, parent_lookup):
+    """
+    Backfill missing item data from parent product where safe to do so.
+    Returns a copy of the item row with backfilled data.
+    """
+    item_data = item_row.copy()
+    parent_id = item_row['PARENT_ID']
+    
+    if pd.notna(parent_id) and parent_id in parent_lookup:
+        parent = parent_lookup[parent_id]
+        
+        # All fields to backfill
+        fields_to_backfill = [
+            'CATEGORY_LEVEL_1', 'CATEGORY_LEVEL_2', 'CATEGORY_LEVEL_3',
+            'PURCHASE_BRAND', 'ATTR_PET_TYPE', 'ATTR_FOOD_FORM', 
+            'ATTR_SPECIAL_DIET', 'IS_FOOD_FLAG', 'DESCRIPTION_LONG', 'INGREDIENTS'
+        ]
+        
+        # Backfill fields if item is missing them
+        for field in fields_to_backfill:
+            if field in parent and (pd.isna(item_data[field]) or item_data[field] == '' or item_data[field] == 'nan'):
+                item_data[field] = parent[field]
+    
+    # Ensure INGREDIENTS is always a string
+    if pd.isna(item_data['INGREDIENTS']) or item_data['INGREDIENTS'] == '' or item_data['INGREDIENTS'] == 'nan':
+        item_data['INGREDIENTS'] = ""
+    else:
+        item_data['INGREDIENTS'] = str(item_data['INGREDIENTS'])
+    
+    return item_data
+
 # === Step 7: Filter and Prepare Items ===
 print("Preparing items for processing...")
 items_df = items.fillna({
     "NAME": "",
     "CLEAN_NAME": "",
     "DESCRIPTION_LONG": "",
-    "CATEGORY_LEVEL1": "",
-    "CATEGORY_LEVEL2": "",
-    "CATEGORY_LEVEL3": "",
+    "CATEGORY_LEVEL_1": "",
+    "CATEGORY_LEVEL_2": "",
+    "CATEGORY_LEVEL_3": "",
     "PRICE": 0.0,
     "AUTOSHIP_PRICE": 0.0,
     "RATING_AVG": 0.0,
@@ -124,6 +156,9 @@ items_df = items.fillna({
     "Answered FAQs": "",
 })
 
+# Ensure INGREDIENTS column is string type
+items_df['INGREDIENTS'] = items_df['INGREDIENTS'].astype(str)
+
 # === Step 8: Pre-compute Optimizations ===
 print("Pre-computing parent and sibling mappings...")
 
@@ -134,7 +169,18 @@ for _, parent in products.iterrows():
         "PARENT_PRODUCT_ID": parent['PRODUCT_ID'],
         "PARENT_PART_NUMBER": parent['PART_NUMBER'],
         "PARENT_NAME": parent['NAME'],
-        "PARENT_CLEAN_NAME": parent['CLEAN_NAME']
+        "PARENT_CLEAN_NAME": parent['CLEAN_NAME'],
+        # Add fields for backfilling
+        "CATEGORY_LEVEL_1": parent.get('CATEGORY_LEVEL_1', ''),
+        "CATEGORY_LEVEL_2": parent.get('CATEGORY_LEVEL_2', ''),
+        "CATEGORY_LEVEL_3": parent.get('CATEGORY_LEVEL_3', ''),
+        "PURCHASE_BRAND": parent.get('PURCHASE_BRAND', ''),
+        "ATTR_PET_TYPE": parent.get('ATTR_PET_TYPE', ''),
+        "ATTR_FOOD_FORM": parent.get('ATTR_FOOD_FORM', ''),
+        "ATTR_SPECIAL_DIET": parent.get('ATTR_SPECIAL_DIET', ''),
+        "IS_FOOD_FLAG": parent.get('IS_FOOD_FLAG', ''),
+        "DESCRIPTION_LONG": parent.get('DESCRIPTION_LONG', ''),
+        "INGREDIENTS": parent.get('INGREDIENTS', '')
     }
 
 # Pre-compute sibling items by parent_id to avoid repeated lookups
@@ -161,12 +207,6 @@ items_with_parent_backfill = 0
 items_with_default = 0
 total_items = len(items_df)
 
-# save to csv
-item_csv_path = os.path.join(project_root, "data", "backend", "products", "item_df.csv")
-os.makedirs(os.path.dirname(item_csv_path), exist_ok=True)
-items_df.to_csv(item_csv_path, index=False)
-print(f"✅ Saved items dataframe to: {item_csv_path}")
-
 # Pre-compute review synthesis for all items using vectorized operations
 print("Pre-computing review synthesis for all items...")
 review_synthesis_results = []
@@ -177,8 +217,13 @@ for _, row in items_df.iterrows():
 
 print("✅ Pre-computed review synthesis for all items")
 
-# Process items with pre-computed data
+# Process items with pre-computed data and apply backfill
+processed_items = []
 for idx, (_, row) in enumerate(tqdm(items_df.iterrows(), desc="Building documents and metadata", total=len(items_df))):
+    # Apply data backfill from parent
+    row = backfill_item_data_from_parent(row, parent_lookup)
+    processed_items.append(row)
+    
     product_id = row["PRODUCT_ID"]
     part_number = row["PART_NUMBER"]
     
@@ -241,21 +286,21 @@ for idx, (_, row) in enumerate(tqdm(items_df.iterrows(), desc="Building document
         "PART_NUMBER": part_number,
         "NAME": row["NAME"],
         "CLEAN_NAME": row["CLEAN_NAME"],
-        "PURCHASE_BRAND": row["PURCHASE_BRAND"],
-        "CATEGORY_LEVEL1": row["CATEGORY_LEVEL1"],
-        "CATEGORY_LEVEL2": row["CATEGORY_LEVEL2"],
-        "CATEGORY_LEVEL3": row["CATEGORY_LEVEL3"],
+        "PURCHASE_BRAND": parent_info.get("PURCHASE_BRAND", ""),
+        "CATEGORY_LEVEL_1": parent_info.get("CATEGORY_LEVEL_1", ""),
+        "CATEGORY_LEVEL_2": parent_info.get("CATEGORY_LEVEL_2", ""),
+        "CATEGORY_LEVEL_3": parent_info.get("CATEGORY_LEVEL_3", ""),
         "PRICE": row["PRICE"],
         "AUTOSHIP_PRICE": row["AUTOSHIP_PRICE"],
         "RATING_AVG": row["RATING_AVG"],
         "RATING_CNT": row["RATING_CNT"],
-        "DESCRIPTION_LONG": row["DESCRIPTION_LONG"],
+        "DESCRIPTION_LONG": parent_info.get("DESCRIPTION_LONG", ""),
         "THUMBNAIL": row["THUMBNAIL"],
         "FULLIMAGE": row["FULLIMAGE"],
-        "ATTR_PET_TYPE": row["ATTR_PET_TYPE"],
-        "ATTR_FOOD_FORM": row["ATTR_FOOD_FORM"],
-        "ATTR_SPECIAL_DIET": row["ATTR_SPECIAL_DIET"],
-        "INGREDIENTS": row["INGREDIENTS"],
+        "ATTR_PET_TYPE": parent_info.get("ATTR_PET_TYPE", ""),
+        "ATTR_FOOD_FORM": parent_info.get("ATTR_FOOD_FORM", ""),
+        "ATTR_SPECIAL_DIET": parent_info.get("ATTR_SPECIAL_DIET", ""),
+        "INGREDIENTS": str(parent_info.get("INGREDIENTS", "")),
         "review_synthesis": json.dumps(review_data),
         "review_synthesis_source": source,
         "review_synthesis_flag": source != "default",  # True if has review synthesis (direct or parent backfill)
@@ -267,27 +312,27 @@ for idx, (_, row) in enumerate(tqdm(items_df.iterrows(), desc="Building document
 
     # Add special diet tags
     special_diet = row["ATTR_SPECIAL_DIET"]
-    if special_diet and str(special_diet).strip():
+    if pd.notna(special_diet) and str(special_diet).strip() and str(special_diet) != "nan":
         for tag in map(str.strip, str(special_diet).split(',')):
             if tag:
                 metadata[f"specialdiettag:{tag}"] = True
 
     # Add ingredient tags
     ingredients = row["INGREDIENTS"]
-    if ingredients and str(ingredients).strip():
+    if pd.notna(ingredients) and str(ingredients).strip() and str(ingredients) != "nan":
         for tag in map(str.strip, str(ingredients).split(',')):
             if tag:
                 metadata[f"ingredienttag:{tag.lower()}"] = True
 
     # Add category tags
-    category1 = row["CATEGORY_LEVEL1"]
-    if category1 and str(category1).strip():
+    category1 = row["CATEGORY_LEVEL_1"]
+    if pd.notna(category1) and str(category1).strip() and str(category1) != "nan":
         tag = str(category1).strip()
         if tag:
             metadata[f"categorytag1:{tag}"] = True
     
-    category2 = row["CATEGORY_LEVEL2"]
-    if category2 and str(category2).strip():
+    category2 = row["CATEGORY_LEVEL_2"]
+    if pd.notna(category2) and str(category2).strip() and str(category2) != "nan":
         tag = str(category2).strip()
         if tag:
             metadata[f"categorytag2:{tag}"] = True
@@ -295,6 +340,13 @@ for idx, (_, row) in enumerate(tqdm(items_df.iterrows(), desc="Building document
     documents.append(combined_text)
     metadatas.append(metadata)
     ids.append(product_id)
+
+# Save processed items to CSV with proper string handling
+item_csv_path = os.path.join(project_root, "data", "backend", "products", "item_df.csv")
+os.makedirs(os.path.dirname(item_csv_path), exist_ok=True)
+processed_df = pd.DataFrame(processed_items)
+processed_df.to_csv(item_csv_path, index=False)
+print(f"✅ Saved processed items dataframe to: {item_csv_path}")
 
 # Print review synthesis statistics
 print(f"📊 Review Synthesis Statistics:")
@@ -376,16 +428,17 @@ try:
             query_texts=["customers love this product"],
             n_results=1
         )
-        print(f"✅ Test query successful, found {len(results['ids'][0])} results")
-        
-        # Show sample result
-        if results['ids'][0]:
-            sample_id = results['ids'][0][0]
-            sample_metadata = results['metadatas'][0][0]
-            print(f"Sample result:")
-            print(f"  ID: {sample_id}")
-            print(f"  Name: {sample_metadata.get('NAME', 'N/A')}")
-            print(f"  Review source: {sample_metadata.get('review_synthesis_source', 'N/A')}")
+        if results and 'ids' in results and results['ids'] and results['ids'][0]:
+            print(f"✅ Test query successful, found {len(results['ids'][0])} results")
+            
+            # Show sample result
+            if results['metadatas'] and results['metadatas'][0]:
+                sample_id = results['ids'][0][0]
+                sample_metadata = results['metadatas'][0][0]
+                print(f"Sample result:")
+                print(f"  ID: {sample_id}")
+                print(f"  Name: {sample_metadata.get('NAME', 'N/A')}")
+                print(f"  Review source: {sample_metadata.get('review_synthesis_source', 'N/A')}")
         
 except Exception as e:
     print(f"❌ Error verifying upload: {str(e)}")
