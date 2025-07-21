@@ -14,15 +14,20 @@ import {
   LogOut,
   Heart,
   Weight,
-  Gift
+  Gift,
+  ShoppingBag,
+  Package
 } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
+import { ordersApi, OrderSummary } from '@/lib/api/orders';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const [pets, setPets] = useState<any[]>([]); // Changed type to any[] as Pet is not exported
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -31,10 +36,11 @@ export default function Profile() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  // Fetch user's pets
+  // Fetch user's pets and orders
   useEffect(() => {
     if (user) {
       fetchUserPets();
+      fetchUserOrders();
     }
   }, [user]);
 
@@ -48,6 +54,19 @@ export default function Profile() {
       console.error('Error fetching pets:', error);
     } finally {
       setLoadingPets(false);
+    }
+  };
+
+  const fetchUserOrders = async () => {
+    try {
+      if (user?.customer_id) {
+        const ordersData = await ordersApi.getCustomerOrders(user.customer_id);
+        setOrders(ordersData);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
     }
   };
 
@@ -196,6 +215,72 @@ export default function Profile() {
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Order History Section */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5" />
+                  Recent Orders ({orders.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingOrders ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-chewy-blue"></div>
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No orders yet. Start shopping to see your order history!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {orders.slice(0, 5).map((order) => (
+                      <Card key={order.order_id} className="border border-gray-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-gray-900">Order #{order.order_id}</span>
+                                <Badge 
+                                  variant={order.status === 'delivered' ? 'default' : 'secondary'}
+                                  className={
+                                    order.status === 'delivered' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : order.status === 'shipped'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }
+                                >
+                                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                <span>{new Date(order.order_date).toLocaleDateString()} • </span>
+                                <span>{order.items_count} item{order.items_count !== 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-gray-900">
+                                ${order.total_amount.toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {orders.length > 5 && (
+                      <div className="text-center pt-4">
+                        <Button variant="outline" size="sm">
+                          View All Orders ({orders.length})
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
