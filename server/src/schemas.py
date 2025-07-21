@@ -167,3 +167,76 @@ class Product(ProductBase):
 class SearchResponse(BaseModel):
     products: List[Product]
     reply: str
+
+# Order Schemas
+class OrderItemBase(BaseModel):
+    product_id: int
+    product_title: str
+    product_brand: Optional[str] = None
+    product_image: Optional[str] = None
+    quantity: int
+    purchase_option: str = "buyonce"  # buyonce or autoship
+    unit_price: float
+    total_price: float
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItem(OrderItemBase):
+    item_id: int
+    order_id: int
+    
+    class Config:
+        from_attributes = True
+
+class OrderBase(BaseModel):
+    customer_id: int
+    subtotal: float
+    shipping_cost: float = 0.0
+    tax_amount: float = 0.0
+    total_amount: float
+    
+    # Shipping Information
+    shipping_first_name: str
+    shipping_last_name: str
+    shipping_email: EmailStr
+    shipping_phone: Optional[str] = None
+    shipping_address: str
+    shipping_city: str
+    shipping_state: str
+    shipping_zip_code: str
+    
+    # Payment Information (masked)
+    payment_method: str = "credit_card"
+    card_last_four: Optional[str] = None
+    cardholder_name: Optional[str] = None
+    
+    # Billing Address (optional)
+    billing_address: Optional[str] = None
+    billing_city: Optional[str] = None
+    billing_state: Optional[str] = None
+    billing_zip_code: Optional[str] = None
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+
+class Order(OrderBase):
+    order_id: int
+    status: str = "processing"
+    order_date: datetime
+    created_at: datetime
+    updated_at: datetime
+    items: List[OrderItem] = []
+    
+    class Config:
+        from_attributes = True
+
+class OrderSummary(BaseModel):
+    order_id: int
+    order_date: datetime
+    status: str
+    total_amount: float
+    items_count: int
+    
+    class Config:
+        from_attributes = True
