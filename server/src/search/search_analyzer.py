@@ -45,7 +45,7 @@ class SearchAnalyzer:
         
         # Initialize Semantic Model - this is the expensive operation
         self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.similarity_threshold = 0.8
+        self.similarity_threshold = 1
 
         # Define fields that should preserve multi-word entities
         self.preserve_multiword_fields = {
@@ -334,34 +334,5 @@ class SearchAnalyzer:
         
         if category_tags:
             relevant_fields['Category Tags'] = ', '.join(category_tags)
-        
-        # Add review synthesis content only if it contains query terms
-        review_synthesis = metadata.get("review_synthesis", "{}")
-        if review_synthesis and isinstance(review_synthesis, str):
-            try:
-                import json
-                review_data = json.loads(review_synthesis)
-                if isinstance(review_data, dict):
-                    # What customers love
-                    customers_love_list = review_data.get("what_customers_love", [])
-                    if customers_love_list:
-                        customers_love_text = ' '.join(customers_love_list) if isinstance(customers_love_list, list) else str(customers_love_list)
-                        if any(term in customers_love_text.lower() for term in query_terms):
-                            relevant_fields['What Customers Love'] = customers_love_text
-                    
-                    # What to watch out for
-                    watch_out_list = review_data.get("what_to_watch_out_for", [])
-                    if watch_out_list:
-                        watch_out_text = ' '.join(watch_out_list) if isinstance(watch_out_list, list) else str(watch_out_list)
-                        if any(term in watch_out_text.lower() for term in query_terms):
-                            relevant_fields['What to Watch Out For'] = watch_out_text
-                    
-                    # Should you buy it
-                    should_you_buy_it = review_data.get("should_you_buy_it", "")
-                    if should_you_buy_it and any(term in should_you_buy_it.lower() for term in query_terms):
-                        relevant_fields['Should You Buy It'] = str(should_you_buy_it)
-            except (json.JSONDecodeError, TypeError):
-                # If review synthesis is not valid JSON, skip it
-                pass
         
         return relevant_fields
