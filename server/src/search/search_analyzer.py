@@ -144,7 +144,6 @@ class SearchAnalyzer:
             # Core product information
             'Product Name': metadata.get('NAME', ''),
             'Clean Name': metadata.get('CLEAN_NAME', ''),
-            'Description': metadata.get('DESCRIPTION_LONG', ''),
             
             # Categorization
             'Category Level 1': metadata.get('CATEGORY_LEVEL1', ''),
@@ -229,14 +228,7 @@ class SearchAnalyzer:
                 # If review synthesis is not valid JSON, skip it
                 pass
         
-        # Add FAQ content for better matching
-        answered_faqs = metadata.get("answered_faqs", "")
-        if answered_faqs and str(answered_faqs).strip():
-            product_fields['Answered FAQs'] = str(answered_faqs)
-        
-        unanswered_faqs = metadata.get("unanswered_faqs", "")
-        if unanswered_faqs and str(unanswered_faqs).strip():
-            product_fields['Unanswered FAQs'] = str(unanswered_faqs)
+
         
         # If pet profile is provided, enhance the query with pet-specific terms
         enhanced_query_terms = query_terms.copy()

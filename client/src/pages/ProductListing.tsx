@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/ui/Cards/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
 import { Badge } from '@/ui/Display/Badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useGlobalChat } from '@/features/Chat/context';
+import { useGlobalChat } from '@/features/chat/context';
 import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
