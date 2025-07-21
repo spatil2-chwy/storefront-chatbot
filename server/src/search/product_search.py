@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
-product_df_path = os.path.join(project_root, "data", "backend", "products", "product_df.csv")
+product_df_path = os.path.join(project_root, "data", "backend", "products", "item_df.csv")
 product_df = pd.read_csv(product_df_path)
 
 import os
@@ -151,7 +151,64 @@ def query_products(query: str, required_ingredients=(), excluded_ingredients=(),
     filter_time = time.time() - filter_start
     logger.info(f"Filtering out excluded ingredients completed in {filter_time:.4f} seconds")
 
+    # Deduplicate by parent product to avoid showing multiple variants of the same product
+    dedup_start = time.time()
+    results = deduplicate_by_parent(results)
+    dedup_time = time.time() - dedup_start
+    logger.info(f"Deduplication completed in {dedup_time:.4f} seconds")
+
     return results
+
+
+def deduplicate_by_parent(results):
+    """Deduplicate results by keeping only the highest-ranked item per parent product"""
+    if not results['metadatas'][0]:
+        return results
+    
+    # Group results by parent product ID
+    parent_groups = {}
+    
+    for i, metadata in enumerate(results['metadatas'][0]):
+        parent_id = metadata.get('PARENT_PRODUCT_ID', metadata.get('PRODUCT_ID'))
+        
+        if parent_id not in parent_groups:
+            parent_groups[parent_id] = []
+        
+        # Store the index and all data for this item
+        parent_groups[parent_id].append({
+            'index': i,
+            'metadata': metadata,
+            'document': results['documents'][0][i] if i < len(results['documents'][0]) else '',
+            'product_id': results['ids'][0][i] if i < len(results['ids'][0]) else '',
+            'distance': results['distances'][0][i] if i < len(results['distances'][0]) else 0.0
+        })
+    
+    # For each parent, keep only the first (highest-ranked) item
+    deduplicated_indices = []
+    for parent_id, items in parent_groups.items():
+        # Sort by distance (lower distance = higher rank) and take the first
+        items.sort(key=lambda x: x['distance'])
+        deduplicated_indices.append(items[0]['index'])
+    
+    # Sort the deduplicated indices to maintain original order
+    deduplicated_indices.sort()
+    
+    # Create new results with only the deduplicated items
+    deduplicated_results = {
+        'metadatas': [[]],
+        'documents': [[]],
+        'ids': [[]],
+        'distances': [[]]
+    }
+    
+    for idx in deduplicated_indices:
+        deduplicated_results['metadatas'][0].append(results['metadatas'][0][idx])
+        deduplicated_results['documents'][0].append(results['documents'][0][idx])
+        deduplicated_results['ids'][0].append(results['ids'][0][idx])
+        deduplicated_results['distances'][0].append(results['distances'][0][idx])
+    
+    logger.info(f"Deduplicated {len(results['metadatas'][0])} results to {len(deduplicated_results['metadatas'][0])} unique parent products")
+    return deduplicated_results
 
 
 def rank_products(results):
