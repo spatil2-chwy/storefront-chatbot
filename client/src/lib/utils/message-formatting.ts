@@ -1,5 +1,4 @@
 // Message formatting utilities for chat components
-// Message formatting utilities for chat components
 export const formatMessageContent = (content: string): string => {
   let formattedContent = content;
   
@@ -7,30 +6,30 @@ export const formatMessageContent = (content: string): string => {
   formattedContent = formattedContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline break-all">$1</a>');
   
   // Convert **bold** to <strong>
-  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
   
   // Convert *italic* to <em>
-  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<em class="text-gray-600 italic">$1</em>');
   
   // Convert ~~strikethrough~~ to <del>
-  formattedContent = formattedContent.replace(/~~(.*?)~~/g, '<del class="line-through">$1</del>');
+  formattedContent = formattedContent.replace(/~~(.*?)~~/g, '<del class="line-through text-gray-500">$1</del>');
   
-  // Handle custom headers with emojis (💡 Quick Answer, ✨ Key Benefits, 🔍 Product Details, �� Refine Your Search)
-  formattedContent = formattedContent.replace(/^💡 Quick Answer$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-blue-600">💡 Quick Answer</h3>');
-  formattedContent = formattedContent.replace(/^✨ Key Benefits$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-green-600">✨ Key Benefits</h3>');
-  formattedContent = formattedContent.replace(/^🔍 Product Details$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-purple-600">�� Product Details</h3>');
-  formattedContent = formattedContent.replace(/^�� Refine Your Search$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-orange-600">�� Refine Your Search</h3>');
+  // Handle custom headers with emojis with clean, minimal styling
+  formattedContent = formattedContent.replace(/^💡 Quick Answer$/gm, '<div class="flex items-center space-x-2 mb-4 mt-2"><div class="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center"><span class="text-blue-600 text-xs">💡</span></div><h3 class="text-base font-bold text-blue-900">Quick Answer</h3></div>');
+  formattedContent = formattedContent.replace(/^✨ Key Benefits$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center"><span class="text-green-600 text-xs">✨</span></div><h3 class="text-base font-bold text-green-900">Key Benefits</h3></div>');
+  formattedContent = formattedContent.replace(/^🔍 Product Details$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center"><span class="text-purple-600 text-xs">🔍</span></div><h3 class="text-base font-bold text-purple-900">Product Details</h3></div>');
+  formattedContent = formattedContent.replace(/^🔎 Refine Your Search$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center"><span class="text-orange-600 text-xs">🔎</span></div><h3 class="text-base font-bold text-orange-900">Refine Your Search</h3></div>');
   
   // Handle standard headers (# Header)
-  formattedContent = formattedContent.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
-  formattedContent = formattedContent.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>');
-  formattedContent = formattedContent.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
+  formattedContent = formattedContent.replace(/^### (.*$)/gm, '<h3 class="text-base font-semibold mt-4 mb-2 text-gray-900">$1</h3>');
+  formattedContent = formattedContent.replace(/^## (.*$)/gm, '<h2 class="text-lg font-bold mt-4 mb-2 text-gray-900">$1</h2>');
+  formattedContent = formattedContent.replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mt-4 mb-2 text-gray-900">$1</h1>');
   
   // Handle blockquotes (> quote)
-  formattedContent = formattedContent.replace(/^> (.*$)/gm, '<blockquote class="border-l-4 border-gray-300 pl-4 italic text-gray-700 my-2">$1</blockquote>');
+  formattedContent = formattedContent.replace(/^> (.*$)/gm, '<blockquote class="border-l-3 border-blue-300 pl-3 italic text-gray-700 my-2 bg-blue-50 py-2 rounded-r text-sm">$1</blockquote>');
   
   // Handle horizontal rules (---)
-  formattedContent = formattedContent.replace(/^---$/gm, '<hr class="my-4 border-gray-300">');
+  formattedContent = formattedContent.replace(/^---$/gm, '<hr class="my-3 border-gray-200">');
   
   // Handle simple tables (basic support)
   formattedContent = formattedContent.replace(/\|(.+)\|/g, (match, content) => {
@@ -46,7 +45,7 @@ export const formatMessageContent = (content: string): string => {
     formattedContent = formattedContent.replace(/(<tr>.*?<\/tr>)/g, '<table class="border-collapse border border-gray-300 my-2"><tbody>$1</tbody></table>');
   }
   
-  // Convert numbered lists (1. item) and bullet lists (- item, * item) to HTML lists
+  // Convert numbered lists (1. item) and bullet lists (- item, * item) to HTML lists with clean styling
   const lines = formattedContent.split('\n');
   let inList = false;
   let listType = '';
@@ -65,12 +64,12 @@ export const formatMessageContent = (content: string): string => {
           inList = false;
           listType = '';
         }
-        processedLines.push('<ul class="list-none space-y-1 my-2">');
+        processedLines.push('<ul class="list-none space-y-2 my-3">');
         inTaskList = true;
       }
       const isChecked = taskListMatch[1] === 'x';
       const checkbox = isChecked ? '☑' : '☐';
-      processedLines.push(`<li class="flex items-center ml-2"><span class="mr-2">${checkbox}</span>${taskListMatch[2]}</li>`);
+      processedLines.push(`<li class="flex items-center p-2 bg-gray-50 rounded-lg"><span class="mr-2 text-green-600">${checkbox}</span>${taskListMatch[2]}</li>`);
       return;
     }
     
@@ -83,11 +82,11 @@ export const formatMessageContent = (content: string): string => {
           processedLines.push('</ul>');
           inTaskList = false;
         }
-        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-2 ml-4">');
+        processedLines.push('<ol class="list-decimal list-outside space-y-1 my-3 ml-4">');
         inList = true;
         listType = 'ol';
       }
-      processedLines.push(`<li class="pl-2">${numberListMatch[2]}</li>`);
+      processedLines.push(`<li class="pl-2 py-0.5">${numberListMatch[2]}</li>`);
       return;
     }
     
@@ -99,11 +98,11 @@ export const formatMessageContent = (content: string): string => {
           processedLines.push('</ul>');
           inTaskList = false;
         }
-        processedLines.push('<ul class="list-disc list-inside space-y-1 my-2">');
+        processedLines.push('<ul class="list-disc list-inside space-y-1 my-3">');
         inList = true;
         listType = 'ul';
       }
-      processedLines.push(`<li class="ml-2">${trimmedLine.substring(2)}</li>`);
+      processedLines.push(`<li class="ml-2 py-0.5">${trimmedLine.substring(2)}</li>`);
       return;
     }
     
@@ -122,10 +121,10 @@ export const formatMessageContent = (content: string): string => {
     
     if (trimmedLine) {
       // Don't wrap headers in <p> tags
-      if (trimmedLine.match(/^<h[1-6]/)) {
+      if (trimmedLine.match(/^<h[1-6]/) || trimmedLine.match(/^<div class="flex items-center/)) {
         processedLines.push(trimmedLine);
       } else {
-        processedLines.push(`<p class="my-2">${trimmedLine}</p>`);
+        processedLines.push(`<p class="my-1.5 leading-relaxed text-sm">${trimmedLine}</p>`);
       }
     }
   });
