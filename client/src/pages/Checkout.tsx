@@ -12,6 +12,7 @@ import { Badge } from '@/ui/Display/Badge';
 import { useCart } from '@/features/cart/context';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { ordersApi, OrderCreate, OrderItem } from '@/lib/api/orders';
 
 interface CheckoutFormData {
   // Shipping Information
@@ -131,11 +132,73 @@ export default function Checkout() {
       return;
     }
 
+    if (!user?.customer_id) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!cart || cart.items.length === 0) {
+      toast({
+        title: "Empty Cart",
+        description: "Your cart is empty. Please add items before placing an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      // Simulate API call for order processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Convert cart items to order items
+      const orderItems: OrderItem[] = cart.items.map(item => ({
+        product_id: item.product.id!,
+        product_title: item.product.title || '',
+        product_brand: item.product.brand || '',
+        product_image: item.product.image || '',
+        quantity: item.quantity,
+        purchase_option: item.purchaseOption,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+
+      // Prepare order data
+      const orderData: OrderCreate = {
+        customer_id: user.customer_id,
+        subtotal: getTotalPrice(),
+        shipping_cost: calculateShipping(),
+        tax_amount: calculateTax(),
+        total_amount: calculateTotal(),
+        
+        // Shipping Information
+        shipping_first_name: formData.firstName,
+        shipping_last_name: formData.lastName,
+        shipping_email: formData.email,
+        shipping_phone: formData.phone,
+        shipping_address: formData.address,
+        shipping_city: formData.city,
+        shipping_state: formData.state,
+        shipping_zip_code: formData.zipCode,
+        
+        // Payment Information (masked for security)
+        payment_method: "credit_card",
+        card_last_four: formData.cardNumber.slice(-4),
+        cardholder_name: formData.cardName,
+        
+        // Billing Address (if different from shipping)
+        billing_address: formData.billingAddressSameAsShipping ? undefined : formData.billingAddress,
+        billing_city: formData.billingAddressSameAsShipping ? undefined : formData.billingCity,
+        billing_state: formData.billingAddressSameAsShipping ? undefined : formData.billingState,
+        billing_zip_code: formData.billingAddressSameAsShipping ? undefined : formData.billingZipCode,
+        
+        items: orderItems
+      };
+
+      // Create the order
+      const order = await ordersApi.createOrder(orderData);
       
       // Clear cart and show success
       clearCart();
@@ -143,13 +206,14 @@ export default function Checkout() {
       
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order for ${getTotalItems()} items has been placed.`,
+        description: `Your order #${order.order_id} for ${getTotalItems()} items has been placed.`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Order creation failed:', error);
       toast({
         title: "Order Failed",
-        description: "There was an error processing your order. Please try again.",
+        description: error.message || "There was an error processing your order. Please try again.",
         variant: "destructive",
       });
     } finally {
