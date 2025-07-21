@@ -56,7 +56,25 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
         try:
-            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, user_context)
+            # Filter user_context to only include pet-relevant information for search analyzer
+            # This prevents persona/shopping preferences from influencing category matching
+            filtered_user_context = None
+            if user_context:
+                # Only include pet-related context, not shopping preferences
+                filtered_user_context = {
+                    'pet_type': user_context.get('pet_type'),
+                    'pet_breed': user_context.get('pet_breed'),
+                    'pet_size': user_context.get('pet_size'),
+                    'pet_life_stage': user_context.get('pet_life_stage'),
+                    'pet_allergies': user_context.get('pet_allergies'),
+                }
+                # Remove None values
+                filtered_user_context = {k: v for k, v in filtered_user_context.items() if v is not None}
+                # If empty, set to None
+                if not filtered_user_context:
+                    filtered_user_context = None
+            
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
