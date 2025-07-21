@@ -16,6 +16,13 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
+def capitalize_field_value(value: str) -> str:
+    """Capitalize the first letter of each word in a field value"""
+    if not value:
+        return value
+    
+    return ' '.join(word.capitalize() for word in value.split())
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -247,11 +254,13 @@ class SearchAnalyzer:
             for query_match, product_term, confidence in phrase_matches:
                 # Only include matches with confidence >= 0.8
                 if confidence == 1:
+                    # Capitalize the product term for better display
+                    capitalized_product_term = capitalize_field_value(product_term)
                     match = SearchMatch(
-                        field=f"{field_name}: {product_term}",
+                        field=f"{field_name}: {capitalized_product_term}",
                         matched_terms=[query_match] if isinstance(query_match, str) else query_match.split(),
                         confidence=float(confidence),
-                        field_value=product_term
+                        field_value=capitalized_product_term
                     )
                     matches.append(match)
         
@@ -308,7 +317,7 @@ class SearchAnalyzer:
             if key.startswith('specialdiettag:'):
                 diet_tag = key.split(':', 1)[1]
                 if any(term in diet_tag.lower() for term in query_terms):
-                    diet_tags.append(diet_tag)
+                    diet_tags.append(capitalize_field_value(diet_tag))
         
         if diet_tags:
             relevant_fields['Diet Tags'] = ', '.join(diet_tags)
@@ -319,7 +328,7 @@ class SearchAnalyzer:
             if key.startswith('ingredienttag:'):
                 ingredient_tag = key.split(':', 1)[1]
                 if any(term in ingredient_tag.lower() for term in query_terms):
-                    ingredient_tags.append(ingredient_tag)
+                    ingredient_tags.append(capitalize_field_value(ingredient_tag))
         
         if ingredient_tags:
             relevant_fields['Ingredient Tags'] = ', '.join(ingredient_tags)
@@ -330,7 +339,7 @@ class SearchAnalyzer:
             if key.startswith('categorytag'):
                 category_tag = key.split(':', 1)[1]
                 if any(term in category_tag.lower() for term in query_terms):
-                    category_tags.append(category_tag)
+                    category_tags.append(capitalize_field_value(category_tag))
         
         if category_tags:
             relevant_fields['Category Tags'] = ', '.join(category_tags)
