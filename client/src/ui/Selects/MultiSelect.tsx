@@ -69,51 +69,47 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between",
+            "w-full justify-between border-gray-200 hover:border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 py-2 px-3 h-auto min-h-0",
             !selectedValues.length && "text-muted-foreground",
             className
           )}
           disabled={disabled}
         >
           {selectedValues.length === 0 ? (
-            placeholder
+            <span className="text-muted-foreground">{placeholder}</span>
           ) : (
             <div className="flex flex-wrap gap-1 max-w-[calc(100%-20px)]">
-              {selectedOptions.slice(0, 2).map((option) => (
+              {selectedOptions.map((option) => (
                 <Badge
                   key={option.value}
                   variant="secondary"
-                  className="text-xs"
+                  className="text-xs bg-purple-100 text-purple-800 border border-purple-200"
                 >
                   {option.label}
                 </Badge>
               ))}
-              {selectedValues.length > 2 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{selectedValues.length - 2} more
-                </Badge>
-              )}
             </div>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-full p-0 border border-gray-200 shadow-lg" align="start">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+          <CommandInput placeholder={searchPlaceholder} className="border-0 focus:ring-0" />
+          <CommandList className="max-h-[200px]">
+            <CommandEmpty className="text-gray-500 py-2">{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}
                   onSelect={() => handleSelect(option.value)}
+                  className="hover:bg-purple-50 focus:bg-purple-50"
                 >
                   <div
                     className={cn(
-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-gray-300",
                       selectedValues.includes(option.value)
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-purple-500 border-purple-500 text-white"
                         : "opacity-50 [&_svg]:invisible"
                     )}
                   >
@@ -140,35 +136,6 @@ export function MultiSelect({
           </CommandList>
         </Command>
       </PopoverContent>
-      {selectedValues.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {selectedOptions.map((option) => (
-            <Badge
-              key={option.value}
-              variant="secondary"
-              className="text-xs"
-            >
-              {option.label}
-              <button
-                type="button"
-                className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleRemove(option.value)
-                  }
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                }}
-                onClick={() => handleRemove(option.value)}
-              >
-                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
     </Popover>
   )
 } 

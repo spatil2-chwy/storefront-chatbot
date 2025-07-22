@@ -720,7 +720,8 @@ export default function Profile() {
                                   options={allergiesOptions}
                                   selectedValues={Array.isArray(editFormData?.allergies) ? editFormData.allergies : parseAllergies(editFormData?.allergies || '')}
                                   onSelectionChange={(selectedValues) => handleEditFormChange('allergies', selectedValues)}
-                                  placeholder="Select allergies"
+                                  placeholder="Select allergies..."
+                                  searchPlaceholder="Search allergies..."
                                   className="mt-1"
                                 />
                               </div>

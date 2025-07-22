@@ -314,7 +314,8 @@ export const PetEdit: React.FC<PetEditProps> = ({
             options={allergiesOptions}
             selectedValues={parseAllergies(formData.allergies || '')}
             onSelectionChange={(selectedValues) => handleInputChange('allergies', formatAllergies(selectedValues))}
-            placeholder="Select allergies"
+            placeholder="Select allergies..."
+            searchPlaceholder="Search allergies..."
           />
         </div>
       </div>
