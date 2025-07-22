@@ -13,13 +13,7 @@ export const formatMessageContent = (content: string): string => {
   
   // Convert ~~strikethrough~~ to <del>
   formattedContent = formattedContent.replace(/~~(.*?)~~/g, '<del class="line-through text-gray-500">$1</del>');
-  
-  // Handle custom headers with emojis with clean, minimal styling
-  formattedContent = formattedContent.replace(/^💡 Quick Answer$/gm, '<div class="flex items-center space-x-2 mb-4 mt-2"><div class="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center"><span class="text-blue-600 text-xs">💡</span></div><h3 class="text-base font-bold text-blue-900">Quick Answer</h3></div>');
-  formattedContent = formattedContent.replace(/^✨ Key Benefits$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center"><span class="text-green-600 text-xs">✨</span></div><h3 class="text-base font-bold text-green-900">Key Benefits</h3></div>');
-  formattedContent = formattedContent.replace(/^🔍 Product Details$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center"><span class="text-purple-600 text-xs">🔍</span></div><h3 class="text-base font-bold text-purple-900">Product Details</h3></div>');
-  formattedContent = formattedContent.replace(/^🔎 Refine Your Search$/gm, '<div class="flex items-center space-x-2 mb-3 mt-6"><div class="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center"><span class="text-orange-600 text-xs">🔎</span></div><h3 class="text-base font-bold text-orange-900">Refine Your Search</h3></div>');
-  
+    
   // Handle standard headers (# Header)
   formattedContent = formattedContent.replace(/^### (.*$)/gm, '<h3 class="text-base font-semibold mt-4 mb-2 text-gray-900">$1</h3>');
   formattedContent = formattedContent.replace(/^## (.*$)/gm, '<h2 class="text-lg font-bold mt-4 mb-2 text-gray-900">$1</h2>');
