@@ -91,23 +91,36 @@ class SearchAnalyzer:
         
         field_terms = []
         
-        # For fields that should preserve multi-word entities
+        # For fields that should preserve multi-word entities (especially Brand)
         if field_name in self.preserve_multiword_fields:
             # Split by common separators but preserve the whole phrases
             phrases = re.split(r'[,;|&]', field_value)
+            complete_phrases_added = []
+            
             for phrase in phrases:
                 phrase = phrase.strip()
                 if phrase and len(phrase) > 2:
-                    field_terms.append(phrase.lower())
+                    phrase_lower = phrase.lower()
+                    field_terms.append(phrase_lower)
+                    complete_phrases_added.append(phrase_lower)
             
-            # Also add individual words for partial matching
-            tokens = word_tokenize(field_value.lower())
-            for token in tokens:
-                cleaned_token = re.sub(r'[^\w\s]', '', token)
-                if cleaned_token and cleaned_token not in self.stop_words and len(cleaned_token) > 2:
-                    root_word = self.lemmatizer.lemmatize(cleaned_token)
-                    if root_word not in field_terms:
-                        field_terms.append(root_word)
+            # For Brand field, only add individual words if they're not part of a complete phrase
+            # This prevents "purina" "pro" "plan" when "purina pro plan" exists
+            if field_name == 'Brand':
+                # Don't add individual words for brands - keep only complete brand names
+                pass
+            else:
+                # For other preserve_multiword_fields, add individual words for partial matching
+                tokens = word_tokenize(field_value.lower())
+                for token in tokens:
+                    cleaned_token = re.sub(r'[^\w\s]', '', token)
+                    if (cleaned_token and cleaned_token not in self.stop_words and 
+                        len(cleaned_token) > 2):
+                        root_word = self.lemmatizer.lemmatize(cleaned_token)
+                        # Only add if it's not already covered by a complete phrase
+                        if not any(root_word in phrase for phrase in complete_phrases_added):
+                            if root_word not in field_terms:
+                                field_terms.append(root_word)
         
         else:
             # For other fields, use the original word-level splitting
@@ -128,8 +141,8 @@ class SearchAnalyzer:
                     if original_root not in field_terms:
                         field_terms.append(original_root)
         
-        return field_terms
-    
+        return field_terms    
+
     def phrase_match_terms(self, query_terms: List[str], product_terms: List[str]) -> List[tuple]:
         """
         Find matches between query terms and product terms, handling both phrases and individual words

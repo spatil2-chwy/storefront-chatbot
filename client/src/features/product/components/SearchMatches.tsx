@@ -27,25 +27,10 @@ export default function SearchMatches({
       const cleanCategory = category.trim();
       const cleanValue = value.trim();
       
-      // Map categories to more user-friendly labels
-      const categoryLabels: { [key: string]: string } = {
-        // New metadata-driven categories
-        'Brands': 'Brand',
-        'Categories': 'Category',
-        'Ingredients': 'Ingredient',
-        'Diet & Health': 'Diet',
-        'Pet Types': 'Pet Type',
-        'Product Forms': 'Form',
-        'Life Stages': 'Life Stage',
-        'Size/Weight': 'Size',
-        };
-      
-      const displayCategory = categoryLabels[cleanCategory] || cleanCategory;
-      
       return {
         category: cleanCategory,
         value: cleanValue,
-        displayText: `${displayCategory}: ${cleanValue}`
+        displayText: match.field
       };
     }
     
@@ -133,38 +118,14 @@ export default function SearchMatches({
       
       <div className="space-y-1">
         {Object.values(groupedMatches).map((group, index) => {
-          // Map categories to more user-friendly labels
-          const categoryLabels: { [key: string]: string } = {
-            // New metadata-driven categories
-            'Brands': 'Brand',
-            'Categories': 'Category',
-            'Ingredients': 'Ingredient',
-            'Diet & Health': 'Diet',
-            'Pet Types': 'Pet Type',
-            'Product Forms': 'Form',
-            'Life Stages': 'Life Stage',
-            'Size/Weight': 'Size',
-            
-            // Legacy categories (for backward compatibility)
-            'Pet Type': 'Pet Type',
-            'Life Stage': 'Life Stage',
-            'Brand': 'Brand',
-            'Product Type': 'Item',
-            'Health Concern': 'Health',
-            'Form': 'Form',
-            'Diet/Special Needs': 'Diet',
-            'Flavor': 'Flavor'
-          };
-          
-          const displayCategory = categoryLabels[group.category] || group.category;
-          const displayText = `${displayCategory}: ${group.values.join(', ')}`;
+          const displayText = `${group.category}: ${group.values.join(', ')}`;
           
           return (
             <div key={index} className="flex items-center">
               <Badge
                 variant="outline"
                 className={`text-xs px-2 py-0.5 ${getConfidenceColor(group.confidence)} font-normal`}
-                title={`${displayCategory}: ${group.values.join(', ')} (${Math.round(group.confidence * 100)}% confidence)`}
+                title={`${displayText} (${Math.round(group.confidence * 100)}% confidence)`}
               >
                 <div className="flex items-center space-x-1">
                   {getCategoryIcon(group.field)}
