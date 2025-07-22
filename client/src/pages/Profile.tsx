@@ -8,6 +8,7 @@ import { Separator } from '@/ui/Layout/Separator';
 import { Input } from '@/ui/Input/Input';
 import { Label } from '@/ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
+import { MultiSelect, MultiSelectOption } from '@/ui/Selects/MultiSelect';
 import { Switch } from '@/ui/Toggles/Switch';
 import {
   User,
@@ -42,6 +43,34 @@ export default function Profile() {
   const [savingPet, setSavingPet] = useState<number | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+
+  // Allergy options for MultiSelect
+  const allergiesOptions: MultiSelectOption[] = [
+    { value: 'Beef', label: 'Beef' },
+    { value: 'Chicken', label: 'Chicken' },
+    { value: 'Corn', label: 'Corn' },
+    { value: 'Dairy', label: 'Dairy' },
+    { value: 'Egg', label: 'Egg' },
+    { value: 'Fish', label: 'Fish' },
+    { value: 'Lamb', label: 'Lamb' },
+    { value: 'Other', label: 'Other' },
+    { value: 'Pork', label: 'Pork' },
+    { value: 'Rabbit', label: 'Rabbit' },
+    { value: 'Soy', label: 'Soy' },
+    { value: 'Wheat', label: 'Wheat' },
+    { value: 'None', label: 'None' }
+  ];
+
+  // Helper function to parse allergies string to array
+  const parseAllergies = (allergies: string): string[] => {
+    if (!allergies || allergies.trim() === '') return [];
+    return allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy !== '');
+  };
+
+  // Helper function to format allergies array to string
+  const formatAllergies = (allergies: string[]): string => {
+    return allergies.join(', ');
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -209,7 +238,7 @@ export default function Profile() {
       weight: pet.weight || 0,
       life_stage: pet.life_stage || '',
       birthday: pet.birthday || '',
-      allergies: pet.allergy_count > 0
+      allergies: parseAllergies(pet.allergies || '')
     });
   };
 
@@ -222,7 +251,7 @@ export default function Profile() {
   const handleEditFormChange = (field: string, value: any) => {
     setEditFormData((prev: any) => ({
       ...prev,
-      [field]: value
+      [field]: field === 'allergies' ? value : value
     }));
   };
 
@@ -240,7 +269,7 @@ export default function Profile() {
         weight: editFormData.weight,
         life_stage: editFormData.life_stage,
         birthday: editFormData.birthday,
-        allergy_count: editFormData.allergies ? 1 : 0
+        allergies: Array.isArray(editFormData.allergies) ? formatAllergies(editFormData.allergies) : editFormData.allergies
       };
 
       // Update via chat API (which handles the pet profile updates)
@@ -687,15 +716,13 @@ export default function Profile() {
 
                               <div>
                                 <Label className="text-sm font-medium">Allergies</Label>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <Switch
-                                    checked={editFormData?.allergies || false}
-                                    onCheckedChange={(checked) => handleEditFormChange('allergies', checked)}
-                                  />
-                                  <span className="text-sm text-gray-600">
-                                    {editFormData?.allergies ? 'Has allergies' : 'No allergies'}
-                                  </span>
-                                </div>
+                                <MultiSelect
+                                  options={allergiesOptions}
+                                  selectedValues={Array.isArray(editFormData?.allergies) ? editFormData.allergies : parseAllergies(editFormData?.allergies || '')}
+                                  onSelectionChange={(selectedValues) => handleEditFormChange('allergies', selectedValues)}
+                                  placeholder="Select allergies"
+                                  className="mt-1"
+                                />
                               </div>
                             </div>
                           ) : (
@@ -744,7 +771,7 @@ export default function Profile() {
                                    <div className="flex items-center gap-2 text-gray-600 bg-blue-50 rounded-lg p-2">
                                      <Heart className="h-4 w-4 text-chewy-blue" />
                                      <span className="font-medium">Allergies:</span>
-                                     <span>{pet.allergy_count > 0 ? `${pet.allergy_count} allergies` : 'None'}</span>
+                                     <span>{pet.allergies && pet.allergies.trim() ? pet.allergies : 'None'}</span>
                                    </div>
 
                                    {pet.adopted && (

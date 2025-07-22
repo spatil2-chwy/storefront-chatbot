@@ -39,7 +39,7 @@ export interface Pet {
   adopted: boolean;        // Whether pet was adopted
   adoption_date: string | null; // When adopted
   weight: number;          // Weight in pounds
-  allergy_count: number;   // Number of allergies
+  allergies: string;       // Comma-separated allergy values
   status: string;          // Current status
   image?: string;          // Optional pet image URL
 }
@@ -62,7 +62,7 @@ export interface PetProfileInfo {
   weight: number;
   life_stage: string;
   birthday: string | null;
-  allergies: boolean;
+  allergies: string;       // Comma-separated allergy values
   is_new: boolean;
 }
 

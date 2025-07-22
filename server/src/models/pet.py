@@ -56,7 +56,9 @@ class PetProfile(Base):
     time_created = Column(SQLiteDateTime)
     time_updated = Column(SQLiteDateTime)
     weight = Column(Float)
-    allergy_count = Column(Integer)
+    allergies = Column(String, nullable=True)  # Comma-separated allergy values
+    # Note: allergy_count column still exists in database but is deprecated
+    # It will be removed in a future migration
     photo_count = Column(Integer)
     pet_breed_id = Column(Integer)
     pet_type_id = Column(Integer)

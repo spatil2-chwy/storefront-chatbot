@@ -3,6 +3,7 @@ import { Button } from '../../../../ui/Buttons/Button';
 import { Input } from '../../../../ui/Input/Input';
 import { Label } from '../../../../ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../ui/Selects/Select';
+import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSelect';
 import { Switch } from '../../../../ui/Toggles/Switch';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
@@ -28,6 +29,34 @@ export const PetProfile: React.FC<PetProfileProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Allergy options for MultiSelect
+  const allergiesOptions: MultiSelectOption[] = [
+    { value: 'Beef', label: 'Beef' },
+    { value: 'Chicken', label: 'Chicken' },
+    { value: 'Corn', label: 'Corn' },
+    { value: 'Dairy', label: 'Dairy' },
+    { value: 'Egg', label: 'Egg' },
+    { value: 'Fish', label: 'Fish' },
+    { value: 'Lamb', label: 'Lamb' },
+    { value: 'Other', label: 'Other' },
+    { value: 'Pork', label: 'Pork' },
+    { value: 'Rabbit', label: 'Rabbit' },
+    { value: 'Soy', label: 'Soy' },
+    { value: 'Wheat', label: 'Wheat' },
+    { value: 'None', label: 'None' }
+  ];
+
+  // Helper function to parse allergies string to array
+  const parseAllergies = (allergies: string): string[] => {
+    if (!allergies || allergies.trim() === '') return [];
+    return allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy !== '');
+  };
+
+  // Helper function to format allergies array to string
+  const formatAllergies = (allergies: string[]): string => {
+    return allergies.join(', ');
+  };
 
   // Update form data when petInfo changes
   React.useEffect(() => {
@@ -390,22 +419,20 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           <div className="flex items-center justify-between py-2">
             <span className="font-semibold text-gray-700">Allergies:</span>
             {isEditing ? (
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={formData.allergies}
-                  onCheckedChange={(checked) => handleInputChange('allergies', checked)}
-                />
-                <span className="text-sm text-gray-600">
-                  {formData.allergies ? 'Yes' : 'No'}
-                </span>
-              </div>
+              <MultiSelect
+                options={allergiesOptions}
+                selectedValues={parseAllergies(formData.allergies || '')}
+                onSelectionChange={(selectedValues) => handleInputChange('allergies', formatAllergies(selectedValues))}
+                placeholder="Select allergies"
+                className="w-full max-w-xs"
+              />
             ) : (
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                petInfo.allergies 
+                petInfo.allergies && petInfo.allergies.trim() 
                   ? 'bg-red-100 text-red-800' 
                   : 'bg-green-100 text-green-800'
               }`}>
-                {petInfo.allergies ? 'Yes' : 'None'}
+                {petInfo.allergies && petInfo.allergies.trim() ? petInfo.allergies : 'None'}
               </span>
             )}
           </div>

@@ -23,7 +23,7 @@ class PetProfileBase(BaseModel):
     time_created: datetime
     time_updated: Optional[datetime]
     weight: Optional[int]
-    allergy_count: Optional[int]
+    allergies: Optional[str]  # Comma-separated allergy values
     photo_count: Optional[int]
     pet_breed_id: Optional[int]
     pet_type_id: Optional[int]

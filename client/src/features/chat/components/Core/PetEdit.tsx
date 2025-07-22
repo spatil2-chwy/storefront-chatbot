@@ -3,6 +3,7 @@ import { Button } from '../../../../ui/Buttons/Button';
 import { Input } from '../../../../ui/Input/Input';
 import { Label } from '../../../../ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../ui/Selects/Select';
+import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSelect';
 import { Switch } from '../../../../ui/Toggles/Switch';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
@@ -22,6 +23,34 @@ export const PetEdit: React.FC<PetEditProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Allergy options for MultiSelect
+  const allergiesOptions: MultiSelectOption[] = [
+    { value: 'Beef', label: 'Beef' },
+    { value: 'Chicken', label: 'Chicken' },
+    { value: 'Corn', label: 'Corn' },
+    { value: 'Dairy', label: 'Dairy' },
+    { value: 'Egg', label: 'Egg' },
+    { value: 'Fish', label: 'Fish' },
+    { value: 'Lamb', label: 'Lamb' },
+    { value: 'Other', label: 'Other' },
+    { value: 'Pork', label: 'Pork' },
+    { value: 'Rabbit', label: 'Rabbit' },
+    { value: 'Soy', label: 'Soy' },
+    { value: 'Wheat', label: 'Wheat' },
+    { value: 'None', label: 'None' }
+  ];
+
+  // Helper function to parse allergies string to array
+  const parseAllergies = (allergies: string): string[] => {
+    if (!allergies || allergies.trim() === '') return [];
+    return allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy !== '');
+  };
+
+  // Helper function to format allergies array to string
+  const formatAllergies = (allergies: string[]): string => {
+    return allergies.join(', ');
+  };
 
   const handleInputChange = (field: keyof PetProfileInfo, value: string | number | boolean) => {
     setFormData(prev => ({
@@ -281,16 +310,12 @@ export const PetEdit: React.FC<PetEditProps> = ({
         {/* Allergies */}
         <div className="space-y-2">
           <Label htmlFor="pet-allergies">Allergies</Label>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="pet-allergies"
-              checked={formData.allergies}
-              onCheckedChange={(checked) => handleInputChange('allergies', checked)}
-            />
-            <span className="text-sm text-gray-600">
-              {formData.allergies ? 'Has allergies' : 'No allergies'}
-            </span>
-          </div>
+          <MultiSelect
+            options={allergiesOptions}
+            selectedValues={parseAllergies(formData.allergies || '')}
+            onSelectionChange={(selectedValues) => handleInputChange('allergies', formatAllergies(selectedValues))}
+            placeholder="Select allergies"
+          />
         </div>
       </div>
 
