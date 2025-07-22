@@ -103,8 +103,19 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     let transitionType: 'general' | 'product' | 'comparison' | undefined = undefined;
     
     if (toContext.type === 'product' && toContext.product) {
-      transitionContent = `Now discussing: ${toContext.product.brand} ${toContext.product.title}`;
-      transitionType = 'product';
+      // Check if this is a variant change (same product family, different variant)
+      if (fromContext.type === 'product' && fromContext.product && 
+          fromContext.product.brand === toContext.product.brand &&
+          fromContext.product.title?.split(',')[0] === toContext.product.title?.split(',')[0]) {
+        // This is a variant change
+        const variant = toContext.product.current_variant || toContext.product.title?.split(',')[1]?.trim();
+        transitionContent = `Switched to ${variant} variant`;
+        transitionType = 'product';
+      } else {
+        // This is a new product
+        transitionContent = `Now discussing: ${toContext.product.brand} ${toContext.product.title}`;
+        transitionType = 'product';
+      }
     } else if (toContext.type === 'comparison' && toContext.products && toContext.products.length > 0) {
       transitionContent = `Now comparing: ${toContext.products.length} products`;
       transitionType = 'comparison';

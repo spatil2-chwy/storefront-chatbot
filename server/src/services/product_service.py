@@ -182,6 +182,48 @@ class ProductService:
             # Extract should_you_buy_it (it's stored as a string)
             should_you_buy_it = review_synthesis.get("should_you_buy_it", "")
 
+        # Parse sibling items from JSON
+        sibling_items = []
+        items_json = metadata.get("items", "[]")
+        if items_json:
+            try:
+                import json
+                items_data = json.loads(items_json) if isinstance(items_json, str) else items_json
+                if isinstance(items_data, list):
+                    for item in items_data:
+                        if isinstance(item, dict):
+                            # Extract variant from clean_name (everything after first comma)
+                            clean_name = item.get("CLEAN_NAME", "")
+                            variant = None
+                            if clean_name and "," in clean_name:
+                                parts = clean_name.split(",", 1)
+                                if len(parts) > 1:
+                                    variant = parts[1].strip()
+                            
+                            sibling_item = {
+                                "id": self.safe_int(item.get("PRODUCT_ID", 0)),
+                                "name": self.safe_str(item.get("NAME", "")),
+                                "clean_name": self.safe_str(item.get("CLEAN_NAME", "")),
+                                "price": self.safe_float(item.get("PRICE", 0.0)),
+                                "autoship_price": self.safe_float(item.get("AUTOSHIP_PRICE", 0.0)),
+                                "rating": self.safe_float(item.get("RATING_AVG", 0.0)),
+                                "review_count": self.safe_int(item.get("RATING_CNT", 0)),
+                                "thumbnail": self.reformat_image_link(item.get("THUMBNAIL", "")),
+                                "fullimage": self.reformat_image_link(item.get("FULLIMAGE", "")),
+                                "variant": variant
+                            }
+                            sibling_items.append(sibling_item)
+            except Exception as e:
+                logger.warning(f"Error parsing sibling items: {e}")
+
+        # Extract current variant from the main product's clean name
+        current_variant = None
+        clean_name = metadata.get("CLEAN_NAME", "")
+        if clean_name and "," in clean_name:
+            parts = clean_name.split(",", 1)
+            if len(parts) > 1:
+                current_variant = parts[1].strip()
+
         return Product(
             # ===== CORE PRODUCT INFORMATION =====
             id=self.safe_int(metadata.get("PRODUCT_ID", 0)),
@@ -245,6 +287,10 @@ class ProductService:
             # ===== FAQ CONTENT =====
             unanswered_faqs=self.safe_str(metadata.get("unanswered_faqs", "")) or None,
             answered_faqs=self.safe_str(metadata.get("answered_faqs", "")) or None,
+            
+            # ===== SIBLING ITEMS & VARIANTS =====
+            sibling_items=sibling_items,
+            current_variant=current_variant,
         )
     
     def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None) -> Product:
