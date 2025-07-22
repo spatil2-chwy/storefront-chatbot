@@ -3,14 +3,33 @@
 import { Product } from '../../types';
 import { apiGet, apiPost } from './client';
 
+export interface LandingCategory {
+  name: string;
+  description: string;
+  search_query: string;
+  products: Product[];
+}
+
+export interface LandingProductsData {
+  categories: {
+    [key: string]: LandingCategory;
+  };
+  generated_at: string;
+}
+
 export const productsApi = {
+  // Get landing page products
+  async getLandingProducts(): Promise<LandingProductsData> {
+    return apiGet<LandingProductsData>('/products/landing/products');
+  },
+
   // Search for products by query
-  async searchProducts(query: string, limit: number = 10): Promise<{products: Product[]}> {
+  async searchProducts(query: string, limit: number = 30): Promise<{ products: Product[] }> {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('limit', limit.toString());
     
-    return apiGet<{products: Product[]}>(`/products/search?${params.toString()}`);
+    return apiGet<{ products: Product[] }>(`/products/search?${params.toString()}`);
   },
 
   // Get search statistics
