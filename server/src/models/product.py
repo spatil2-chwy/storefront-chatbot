@@ -8,6 +8,18 @@ class Size(BaseModel):
     price: Optional[float] = None
     pricePerLb: Optional[str] = None
     
+class SiblingItem(BaseModel):
+    id: int  # PRODUCT_ID
+    name: str  # NAME
+    clean_name: str  # CLEAN_NAME
+    price: float  # PRICE
+    autoship_price: float  # AUTOSHIP_PRICE
+    rating: float  # RATING_AVG
+    review_count: int  # RATING_CNT
+    thumbnail: str  # THUMBNAIL
+    fullimage: str  # FULLIMAGE
+    variant: Optional[str] = None  # Extracted variant (e.g., "3.3-lb bag", "7-lb bag")
+    
 class SearchMatch(BaseModel):
     field: str  # e.g., "title", "description", "category", "brand", "keywords"
     matched_terms: List[str]  # e.g., ["dental", "dog"]
@@ -37,3 +49,5 @@ class Product(BaseModel):
     should_you_buy_it: Optional[str] = None  # should_you_buy_it
     unanswered_faqs: Optional[str] = None  # Unanswered FAQs
     answered_faqs: Optional[str] = None  # Answered FAQs
+    sibling_items: Optional[List[SiblingItem]] = None  # Sibling items for variant switching
+    current_variant: Optional[str] = None  # Current variant being displayed

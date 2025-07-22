@@ -136,6 +136,19 @@ class SearchMatch(BaseModel):
     confidence: float  # 0.0 to 1.0, how confident we are in this match
     field_value: Optional[str] = None  # the actual field value that matched
 
+# Sibling item for product variants
+class SiblingItem(BaseModel):
+    id: int  # PRODUCT_ID
+    name: str  # NAME
+    clean_name: str  # CLEAN_NAME
+    price: float  # PRICE
+    autoship_price: float  # AUTOSHIP_PRICE
+    rating: float  # RATING_AVG
+    review_count: int  # RATING_CNT
+    thumbnail: str  # THUMBNAIL
+    fullimage: str  # FULLIMAGE
+    variant: Optional[str] = None  # Extracted variant (e.g., "3.3-lb bag", "7-lb bag")
+
 class ProductBase(BaseModel):
     id: int
     title: str
@@ -159,6 +172,8 @@ class ProductBase(BaseModel):
     should_you_buy_it: Optional[str]
     unanswered_faqs: Optional[str] = None
     answered_faqs: Optional[str] = None
+    sibling_items: Optional[List[SiblingItem]] = None
+    current_variant: Optional[str] = None
 
 class Product(ProductBase):
     class Config:
