@@ -6,6 +6,8 @@ from src.database import get_db
 from src.schemas import Product as ProductSchema, SearchResponse
 from src.models.product import Product
 from src.services.product_service import ProductService
+import json
+import os
 
 router = APIRouter(prefix="/products", tags=["products"])
 product_svc = ProductService()
@@ -101,3 +103,23 @@ async def read_product(product_id: int, db: Session = Depends(get_db)):
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")
     return prod
+
+@router.get("/landing/products", response_model=Dict)
+async def get_landing_products():
+    """Get pre-generated landing page products for different categories."""
+    try:
+        # Get the path to the landing products JSON file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
+        landing_products_path = os.path.join(project_root, "data", "backend", "products", "landing_products.json")
+        
+        if not os.path.exists(landing_products_path):
+            raise HTTPException(status_code=404, detail="Landing products file not found")
+        
+        with open(landing_products_path, 'r') as f:
+            landing_products = json.load(f)
+        
+        return landing_products
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading landing products: {str(e)}")
