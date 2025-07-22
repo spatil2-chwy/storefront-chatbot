@@ -3,6 +3,7 @@ import { Button } from '../../../../ui/Buttons/Button';
 import { Input } from '../../../../ui/Input/Input';
 import { Label } from '../../../../ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../ui/Selects/Select';
+import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSelect';
 import { Switch } from '../../../../ui/Toggles/Switch';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
@@ -29,9 +30,49 @@ export const PetProfile: React.FC<PetProfileProps> = ({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Allergy options for MultiSelect
+  const allergiesOptions: MultiSelectOption[] = [
+    { value: 'Beef', label: 'Beef' },
+    { value: 'Chicken', label: 'Chicken' },
+    { value: 'Corn', label: 'Corn' },
+    { value: 'Dairy', label: 'Dairy' },
+    { value: 'Egg', label: 'Egg' },
+    { value: 'Fish', label: 'Fish' },
+    { value: 'Lamb', label: 'Lamb' },
+    { value: 'Other', label: 'Other' },
+    { value: 'Pork', label: 'Pork' },
+    { value: 'Rabbit', label: 'Rabbit' },
+    { value: 'Soy', label: 'Soy' },
+    { value: 'Wheat', label: 'Wheat' },
+    { value: 'None', label: 'None' }
+  ];
+
+  // Helper function to parse allergies string to array
+  const parseAllergies = (allergies: string): string[] => {
+    if (!allergies || allergies.trim() === '') return [];
+    return allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy !== '');
+  };
+
+  // Helper function to format allergies array to string
+  const formatAllergies = (allergies: string[]): string => {
+    return allergies.join(', ');
+  };
+
   // Update form data when petInfo changes
   React.useEffect(() => {
-    setFormData(petInfo);
+    console.log('PetProfile: petInfo received:', petInfo);
+    setFormData({
+      ...petInfo,
+      // Ensure all required fields have fallbacks
+      name: petInfo.name || '',
+      breed: petInfo.breed || '',
+      gender: petInfo.gender || '',
+      weight: petInfo.weight || 0,
+      life_stage: petInfo.life_stage || '',
+      birthday: petInfo.birthday || null,
+      allergies: petInfo.allergies || '',
+      is_new: petInfo.is_new || false
+    });
   }, [petInfo]);
 
   // Close calendar when clicking outside
@@ -192,6 +233,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           </Select>
         );
       } else if (field === 'type') {
+        console.log('PetProfile: rendering type field, formData.type:', formData.type);
         return (
           <Select
             value={formData.type}
@@ -261,12 +303,12 @@ export const PetProfile: React.FC<PetProfileProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="w-36 text-sm border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors pr-8 py-2 px-3 rounded-md text-left flex items-center justify-between"
+                className="w-36 text-sm border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors py-2 px-3 rounded-md text-left flex items-center justify-between"
               >
                 <span className={formData.birthday ? 'text-gray-900' : 'text-gray-500'}>
                   {formData.birthday ? formatDateForDisplay(formData.birthday) : 'Select date'}
                 </span>
-                <Calendar className="h-4 w-4 text-purple-400" />
+                <Calendar className="h-4 w-4 text-purple-400 ml-auto" />
               </button>
               
               {isCalendarOpen && (
@@ -387,25 +429,26 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             <span className="font-semibold text-gray-700">Weight:</span>
             {renderField('Weight', formatWeight(petInfo.weight), 'weight')}
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="font-semibold text-gray-700">Allergies:</span>
+          <div className="flex items-start justify-between py-2">
+            <span className="font-semibold text-gray-700 mt-2">Allergies:</span>
             {isEditing ? (
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={formData.allergies}
-                  onCheckedChange={(checked) => handleInputChange('allergies', checked)}
+              <div className="flex flex-col space-y-1 w-full max-w-[200px]">
+                <MultiSelect
+                  options={allergiesOptions}
+                  selectedValues={parseAllergies(formData.allergies || '')}
+                  onSelectionChange={(selectedValues) => handleInputChange('allergies', formatAllergies(selectedValues))}
+                  placeholder="Select allergies..."
+                  searchPlaceholder="Search allergies..."
+                  className="w-full min-h-[32px]"
                 />
-                <span className="text-sm text-gray-600">
-                  {formData.allergies ? 'Yes' : 'No'}
-                </span>
               </div>
             ) : (
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                petInfo.allergies 
-                  ? 'bg-red-100 text-red-800' 
-                  : 'bg-green-100 text-green-800'
+              <span className={`px-3 py-1 rounded-full text-xs font-medium mt-1 ${
+                petInfo.allergies && petInfo.allergies.trim() 
+                  ? 'bg-red-100 text-red-800 border border-red-200' 
+                  : 'bg-green-100 text-green-800 border border-green-200'
               }`}>
-                {petInfo.allergies ? 'Yes' : 'None'}
+                {petInfo.allergies && petInfo.allergies.trim() ? petInfo.allergies : 'None'}
               </span>
             )}
           </div>

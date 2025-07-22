@@ -128,7 +128,7 @@ async def select_pet(request: PetSelectionRequest, db: Session = Depends(get_db)
             "weight": pet.weight,
             "life_stage": pet.life_stage,
             "birthday": pet.birthday.isoformat() if pet.birthday else None,
-            "allergies": pet.allergy_count > 0 if pet.allergy_count else False,
+            "allergies": pet.allergies or "",
             "is_new": pet.pet_new
         }
         
@@ -172,7 +172,7 @@ async def get_pet_profile(pet_profile_id: int, db: Session = Depends(get_db)):
             "weight": pet.weight or 0,
             "life_stage": pet.life_stage or "",
             "birthday": pet.birthday.isoformat() if pet.birthday else None,
-            "allergies": pet.allergy_count > 0 if pet.allergy_count else False,
+            "allergies": pet.allergies or "",
             "is_new": pet.pet_new or False
         }
         
@@ -213,8 +213,8 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
             else:
                 existing_pet.birthday = None
         if "allergies" in pet_data:
-            # Convert boolean allergies to allergy_count
-            existing_pet.allergy_count = 1 if pet_data["allergies"] else 0
+            # Store allergies as comma-separated string
+            existing_pet.allergies = pet_data["allergies"]
         
         # Save changes
         updated_pet = pet_svc.update_pet(db, pet_profile_id, existing_pet)
@@ -232,7 +232,7 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
             "weight": updated_pet.weight,
             "life_stage": updated_pet.life_stage,
             "birthday": updated_pet.birthday.isoformat() if updated_pet.birthday else None,
-            "allergies": updated_pet.allergy_count > 0 if updated_pet.allergy_count else False,
+            "allergies": updated_pet.allergies or "",
             "is_new": updated_pet.pet_new
         }
         

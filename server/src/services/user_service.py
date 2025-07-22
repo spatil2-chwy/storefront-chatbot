@@ -99,7 +99,7 @@ class UserService:
                 "life_stage": pet.life_stage,
                 "gender": pet.gender,
                 "age_months": self._calculate_age_months(pet.birthday) if pet.birthday else None,
-                "allergies": pet.allergy_count > 0 if pet.allergy_count else False,
+                "allergies": pet.allergies or "",
                 "is_new": pet.pet_new,
                 "status": pet.status
             }

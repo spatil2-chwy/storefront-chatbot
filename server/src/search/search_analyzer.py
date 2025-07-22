@@ -238,7 +238,10 @@ class SearchAnalyzer:
                 enhanced_query_terms.extend(size_terms)
             
             # Add allergy information to search terms
-            if pet_profile.get('allergies'):
+            if pet_profile.get('allergies') and pet_profile.get('allergies').strip():
+                # Split allergies by comma and add each allergy to search terms
+                allergies = [allergy.strip() for allergy in pet_profile.get('allergies').split(',')]
+                enhanced_query_terms.extend(allergies)
                 enhanced_query_terms.extend(['allergy', 'hypoallergenic', 'sensitive'])
         
         # Remove duplicates while preserving order
