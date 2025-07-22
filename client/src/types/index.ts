@@ -73,6 +73,20 @@ export interface Size {
   pricePerLb?: string;
 }
 
+// Sibling item for product variants
+export interface SiblingItem {
+  id: number; // PRODUCT_ID
+  name: string; // NAME
+  clean_name: string; // CLEAN_NAME
+  price: number; // PRICE
+  autoship_price: number; // AUTOSHIP_PRICE
+  rating: number; // RATING_AVG
+  review_count: number; // RATING_CNT
+  thumbnail: string; // THUMBNAIL
+  fullimage: string; // FULLIMAGE
+  variant?: string; // Extracted variant (e.g., "3.3-lb bag", "7-lb bag")
+}
+
 // Search match analysis data
 export interface SearchMatch {
   field: string; // e.g., "title", "description", "category", "brand", "keywords"
@@ -105,6 +119,8 @@ export interface Product {
   should_you_buy_it?: string; // should_you_buy_it
   unanswered_faqs?: string; // Unanswered FAQs
   answered_faqs?: string; // Answered FAQs
+  sibling_items?: SiblingItem[]; // Sibling items for variant switching
+  current_variant?: string; // Current variant being displayed
 }
 
 // Cart item structure

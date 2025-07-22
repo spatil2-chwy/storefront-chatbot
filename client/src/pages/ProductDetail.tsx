@@ -5,8 +5,9 @@ import Header from '@/layout/Header';
 import ChatWidget from '@/features/chat/components/ChatWidget';
 import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import SearchMatches from '@/features/product/components/SearchMatches';
+import SiblingItems from '@/features/product/components/SiblingItems';
 import { useProduct } from '@/features/product/hooks';
-import { Product } from '../types';
+import { Product, SiblingItem } from '../types';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { RadioGroup, RadioGroupItem } from '@/ui/RadioButtons/RadioGroup';
@@ -16,12 +17,15 @@ import { Badge } from '@/ui/Display/Badge';
 import { useGlobalChat } from '@/features/chat/context';
 import { useCart } from '@/features/cart/context';
 import { useToast } from '@/hooks/use-toast';
+import { productsApi } from '@/lib/api';
 
 export default function ProductDetail() {
   const [match, params] = useRoute('/product/:id');
   const [selectedImage, setSelectedImage] = useState('');
   const [purchaseOption, setPurchaseOption] = useState('autoship');
   const [quantity, setQuantity] = useState('1');
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  const [isLoadingVariant, setIsLoadingVariant] = useState(false);
 
   // Use the custom hook to fetch product data
   const { product, loading, error } = useProduct(params?.id ? parseInt(params.id) : null);
@@ -34,19 +38,26 @@ export default function ProductDetail() {
   const { addToCart, isInCart, getCartItemCount } = useCart();
   const { toast } = useToast();
 
-  const currentPrice = product?.price || 0;
-  const autoshipPrice = product?.autoshipPrice || 0;
+  // Update current product when product data changes
+  useEffect(() => {
+    if (product) {
+      setCurrentProduct(product);
+    }
+  }, [product]);
+
+  const currentPrice = currentProduct?.price || 0;
+  const autoshipPrice = currentProduct?.autoshipPrice || 0;
   const hasAutoship = autoshipPrice > 0;
-  const inCart = product?.id ? isInCart(product.id) : false;
-  const cartCount = product?.id ? getCartItemCount(product.id) : 0;
+  const inCart = currentProduct?.id ? isInCart(currentProduct.id) : false;
+  const cartCount = currentProduct?.id ? getCartItemCount(currentProduct.id) : 0;
 
   // Set product context and auto-open chatbot when navigating to this page
   useEffect(() => {
-    if (product && !contextInitialized.current) {
-      const newContext = { type: 'product' as const, product: product };
+    if (currentProduct && !contextInitialized.current) {
+      const newContext = { type: 'product' as const, product: currentProduct };
       
       // Only add transition message if context is actually changing
-      if (currentContext.type !== 'product' || currentContext.product?.id !== product.id) {
+      if (currentContext.type !== 'product' || currentContext.product?.id !== currentProduct.id) {
         addTransitionMessage(currentContext, newContext);
       }
       
@@ -62,37 +73,80 @@ export default function ProductDetail() {
       
       contextInitialized.current = true;
     }
-  }, [product, currentContext, setCurrentContext, setShouldAutoOpen, addTransitionMessage]);
+  }, [currentProduct, currentContext, setCurrentContext, setShouldAutoOpen, addTransitionMessage]);
 
   // Set default purchase option based on autoship availability
   useEffect(() => {
-    if (product) {
+    if (currentProduct) {
       setPurchaseOption(hasAutoship ? 'autoship' : 'buyonce');
     }
-  }, [product, hasAutoship]);
+  }, [currentProduct, hasAutoship]);
+
+  // Handle variant selection
+  const handleVariantSelect = async (siblingItem: SiblingItem) => {
+    if (siblingItem.id === currentProduct?.id) {
+      return; // Already selected
+    }
+
+    setIsLoadingVariant(true);
+    try {
+      // Fetch the selected variant's full product data
+      const variantProduct = await productsApi.getProduct(siblingItem.id);
+      
+      // Update the current product with the variant data
+      setCurrentProduct(variantProduct);
+      
+      // Update the chat context to reflect the new variant
+      const newContext = { 
+        type: 'product' as const, 
+        product: variantProduct 
+      };
+      setCurrentContext(newContext);
+      
+      // Add a transition message to inform the chat about the variant change
+      if (currentProduct) {
+        addTransitionMessage(
+          { type: 'product', product: currentProduct }, 
+          newContext
+        );
+      }
+      
+      // Update URL to reflect the new product ID
+      window.history.replaceState(null, '', `/product/${siblingItem.id}`);
+    } catch (error) {
+      console.error('Error switching variant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to switch variant. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingVariant(false);
+    }
+  };
 
   const handleAddToCart = () => {
-    if (!product?.id) {
+    if (!currentProduct?.id) {
       console.error('Cannot add product to cart: product ID is missing');
       return;
     }
 
     const qty = parseInt(quantity);
-    addToCart(product, qty, purchaseOption as 'buyonce' | 'autoship');
+    addToCart(currentProduct, qty, purchaseOption as 'buyonce' | 'autoship');
     
     toast({
       title: "Added to cart",
-      description: `${qty} × ${product.title} added to your cart`,
+      description: `${qty} × ${currentProduct.title} added to your cart`,
     });
   };
 
   useEffect(() => {
-    if (product && product.images && product.images.length > 0) {
-      setSelectedImage(product.images[0]);
-    } else if (product && product.image) {
-      setSelectedImage(product.image);
+    if (currentProduct && currentProduct.images && currentProduct.images.length > 0) {
+      setSelectedImage(currentProduct.images[0]);
+    } else if (currentProduct && currentProduct.image) {
+      setSelectedImage(currentProduct.image);
     }
-  }, [product]);
+  }, [currentProduct]);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -155,7 +209,7 @@ export default function ProductDetail() {
     );
   }
 
-  if (error || !product) {
+  if (error || !currentProduct) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -191,7 +245,7 @@ export default function ProductDetail() {
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
-              {renderImage(selectedImage || product?.image || '', product.title || 'Product', "w-full h-96 object-cover rounded-xl")}
+              {renderImage(selectedImage || currentProduct?.image || '', currentProduct.title || 'Product', "w-full h-96 object-cover rounded-xl")}
               {/* Fallback image (hidden by default) */}
               <div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-xl hidden">
                 <div className="text-center">
@@ -199,7 +253,7 @@ export default function ProductDetail() {
                   <p className="text-gray-500">Image not available</p>
                 </div>
               </div>
-              {product.deal && (
+              {currentProduct.deal && (
                 <div className="absolute top-4 left-4">
                   <Badge className="bg-red-500 text-white">Deal</Badge>
                 </div>
@@ -210,9 +264,9 @@ export default function ProductDetail() {
             </div>
             
             {/* Thumbnail Images */}
-            {product.images && product.images.length > 1 && (
+            {currentProduct.images && currentProduct.images.length > 1 && (
               <div className="flex space-x-2">
-                {product.images.map((image, index) => (
+                {currentProduct.images.map((image, index) => (
                   <div key={index} className="relative">
                     <div 
                       onClick={() => setSelectedImage(image)}
@@ -234,11 +288,11 @@ export default function ProductDetail() {
             )}
             
             {/* Show main product image as thumbnail if no additional images */}
-            {(!product.images || product.images.length <= 1) && product.image && (
+            {(!currentProduct.images || currentProduct.images.length <= 1) && currentProduct.image && (
               <div className="flex space-x-2">
                 <div className="relative">
                   <div className="cursor-pointer">
-                    {renderImage(product.image, product.title || 'Product', `w-16 h-16 object-cover rounded-lg border-2 border-chewy-blue`)}
+                    {renderImage(currentProduct.image, currentProduct.title || 'Product', `w-16 h-16 object-cover rounded-lg border-2 border-chewy-blue`)}
                     {/* Fallback thumbnail (hidden by default) */}
                     <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-lg border-2 border-chewy-blue hidden">
                       <ImageIcon className="w-6 h-6 text-gray-400" />
@@ -254,20 +308,20 @@ export default function ProductDetail() {
             <div>
               <div className="flex items-center space-x-3 mb-2">
                 <Badge variant="outline" className="text-xs font-medium text-gray-600 border-gray-300">
-                  {product.brand}
+                  {currentProduct.brand}
                 </Badge>
-                {product.deal && (
+                {currentProduct.deal && (
                   <Badge className="bg-red-500 text-white text-xs font-medium">Deal</Badge>
                 )}
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{currentProduct.title}</h1>
               
               {/* Search Matches - show detailed match information */}
-              {product.search_matches && product.search_matches.length > 0 && (
+              {currentProduct.search_matches && currentProduct.search_matches.length > 0 && (
                 <Card className="bg-blue-50 border-blue-200 mb-4">
                   <CardContent className="p-4">
                     <SearchMatches 
-                      matches={product.search_matches} 
+                      matches={currentProduct.search_matches} 
                       showTitle={true}
                       maxMatches={10}
                     />
@@ -278,11 +332,11 @@ export default function ProductDetail() {
               <div className="flex items-center mt-3">
                 <div className="flex items-center">
                   <div className="flex">
-                    {renderStars(product.rating || 0)}
+                    {renderStars(currentProduct.rating || 0)}
                   </div>
-                  <span className="text-sm text-gray-600 ml-2">{product.rating?.toFixed(1)}</span>
+                  <span className="text-sm text-gray-600 ml-2">{currentProduct.rating?.toFixed(1)}</span>
                   <span className="text-sm text-chewy-blue ml-2 hover:underline cursor-pointer">
-                    {product.reviewCount} Ratings
+                    {currentProduct.reviewCount} Ratings
                   </span>
                   <span className="text-sm text-gray-500 ml-2">56 Answered Questions</span>
                 </div>
@@ -328,8 +382,8 @@ export default function ProductDetail() {
                   {purchaseOption === 'buyonce' && (
                     <div className="ml-6 mt-2">
                       <div className="text-xl font-semibold text-gray-900">${currentPrice.toFixed(2)}</div>
-                      {product.originalPrice && product.originalPrice > currentPrice && (
-                        <div className="text-sm text-gray-500 line-through">${product.originalPrice.toFixed(2)}</div>
+                      {currentProduct.originalPrice && currentProduct.originalPrice > currentPrice && (
+                        <div className="text-sm text-gray-500 line-through">${currentProduct.originalPrice.toFixed(2)}</div>
                       )}
                     </div>
                   )}
@@ -392,20 +446,32 @@ export default function ProductDetail() {
               </Button>
             </div>
 
+                         {/* Sibling Items */}
+             {currentProduct.sibling_items && currentProduct.sibling_items.length > 0 && (
+                <div className="border-t pt-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">Variant Items</h3>
+                  <SiblingItems 
+                    siblingItems={currentProduct.sibling_items} 
+                    currentVariant={currentProduct.current_variant}
+                    onVariantSelect={handleVariantSelect}
+                  />
+                </div>
+              )}
+
             {/* Product Description */}
-            {product.description && (
+            {currentProduct.description && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Product Description</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{product.description}</p>
+                <p className="text-gray-600 text-sm leading-relaxed">{currentProduct.description}</p>
               </div>
             )}
 
             {/* Keywords/Tags */}
-            {product.keywords && product.keywords.length > 0 && (
+            {currentProduct.keywords && currentProduct.keywords.length > 0 && (
               <div className="border-t pt-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Product Ingredients</h3>
                 <div className="flex flex-wrap gap-2">
-                  {product.keywords.map((keyword, index) => (
+                  {currentProduct.keywords.map((keyword, index) => (
                     <Badge key={index} variant="secondary" className="text-xs">
                       {keyword}
                     </Badge>

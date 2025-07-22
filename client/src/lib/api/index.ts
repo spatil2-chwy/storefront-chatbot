@@ -7,4 +7,5 @@ export { cartApi } from './cart';
 export { chatApi } from './chat';
 export { productsApi } from './products';
 export { usersApi } from './users';
+export { ordersApi } from './orders';
 export { ApiError, apiRequest, apiGet, apiPost, apiPut, apiDelete } from './client';
