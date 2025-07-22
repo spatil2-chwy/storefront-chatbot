@@ -2,19 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Search, Filter, Grid, List, ChevronDown, Star, Loader2, Target } from 'lucide-react';
 import Header from '@/layout/Header';
 import ProductCard from '@/features/product/components/ProductCard';
-import ProductFilters from '@/features/product/components/ProductFilters';
 import CategoryFilterDropdown from '@/features/product/components/CategoryFilterDropdown';
+import LandingProducts from '@/features/product/components/LandingProducts';
 import ChatWidget from '@/features/chat/components/ChatWidget';
 import ComparisonFooter from '@/features/product/components/ComparisonFooter';
 import BirthdayPopup from '@/features/chat/components/Core/BirthdayPopup';
 import { usersApi } from '@/lib/api/users';
 import { chatApi } from '@/lib/api/chat';
+import { productsApi } from '@/lib/api/products';
 import { Product } from '../types';
 import { Card, CardContent } from '@/ui/Cards/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Selects/Select';
 import { Badge } from '@/ui/Display/Badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useGlobalChat } from '@/features/Chat/context';
+import { useGlobalChat } from '@/features/chat/context';
 import { useAuth } from '@/lib/auth';
 
 export default function ProductListing() {
@@ -29,6 +30,8 @@ export default function ProductListing() {
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
   const [birthdayPet, setBirthdayPet] = useState<{ pet_name: string, image: string } | null>(null);
+  const [landingProducts, setLandingProducts] = useState<any>(null);
+  const [landingProductsLoading, setLandingProductsLoading] = useState(false);
 
   const contextInitialized = useRef(false);
   const isMobile = useIsMobile();
@@ -188,6 +191,25 @@ export default function ProductListing() {
     checkForBirthdayPets();
   }, [user?.customer_key, user]);
 
+  // Load landing products when no search has been performed
+  useEffect(() => {
+    const loadLandingProducts = async () => {
+      if (hasSearched) return; // Don't load if user has already searched
+      
+      setLandingProductsLoading(true);
+      try {
+        const data = await productsApi.getLandingProducts();
+        setLandingProducts(data);
+      } catch (error) {
+        console.error('Failed to load landing products:', error);
+      } finally {
+        setLandingProductsLoading(false);
+      }
+    };
+
+    loadLandingProducts();
+  }, [hasSearched]);
+
   useEffect(() => {
     if (searchResults.length > 0) {
       applyFilters();
@@ -338,10 +360,11 @@ export default function ProductListing() {
     // setSelectedCategories([]);    // Keep category filter
   };
 
-  const handleFilterChange = (filters: any) => {
-    // Note: This function is currently disabled to avoid conflicts with the new filtering system
-    // TODO: Integrate brand and price filters with the new match-based filtering system
+  const handleCategoryClick = (searchQuery: string) => {
+    handleSearch(searchQuery);
   };
+
+
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -480,16 +503,30 @@ export default function ProductListing() {
 
         {/* Show landing page content when no search */}
         {!hasSearched && (
-          <div className="text-center py-12">
-            <div className="max-w-md mx-auto">
-              <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg mb-6">Find the perfect pet products with conversational search</p>
-              <div className="space-y-2 text-sm text-gray-400">
-                <p>• Search conversationally like "coconut oil free dog food" or "dog developed chicken allergy. Need Protein"</p>
-                <p>• Follow up with the chatbot for refined recommendations</p>
+          <>
+            {landingProductsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-chewy-blue" />
+                <span className="ml-2 text-gray-600">Loading featured products...</span>
               </div>
-            </div>
-          </div>
+            ) : landingProducts ? (
+              <LandingProducts 
+                data={landingProducts} 
+                onCategoryClick={handleCategoryClick}
+              />
+            ) : (
+              <div className="text-center py-12">
+                <div className="max-w-md mx-auto">
+                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg mb-6">Find the perfect pet products with conversational search</p>
+                  <div className="space-y-2 text-sm text-gray-400">
+                    <p>• Search conversationally like "coconut oil free dog food" or "dog developed chicken allergy. Need Protein"</p>
+                    <p>• Follow up with the chatbot for refined recommendations</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Show loading state for search */}
@@ -511,10 +548,6 @@ export default function ProductListing() {
         {/* Show product results */}
         {hasSearched && !isSearching && !searchError && (
           <div className="flex gap-8">
-            {!isMobile && filteredResults.length > 0 && (
-              <ProductFilters onFilterChange={handleFilterChange} />
-            )}
-
             {/* Product Grid */}
             <div className="flex-1">
               {/* Mobile Filter Button */}
