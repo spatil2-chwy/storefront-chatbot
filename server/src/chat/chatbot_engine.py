@@ -56,7 +56,25 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     products = []
     for i, ranked_result in enumerate(ranked_products[:30]):  # Limit to 30 products
         try:
-            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, user_context)
+            # Filter user_context to only include pet-relevant information for search analyzer
+            # This prevents persona/shopping preferences from influencing category matching
+            filtered_user_context = None
+            if user_context:
+                # Only include pet-related context, not shopping preferences
+                filtered_user_context = {
+                    'pet_type': user_context.get('pet_type'),
+                    'pet_breed': user_context.get('pet_breed'),
+                    'pet_size': user_context.get('pet_size'),
+                    'pet_life_stage': user_context.get('pet_life_stage'),
+                    'pet_allergies': user_context.get('pet_allergies'),
+                }
+                # Remove None values
+                filtered_user_context = {k: v for k, v in filtered_user_context.items() if v is not None}
+                # If empty, set to None
+                if not filtered_user_context:
+                    filtered_user_context = None
+            
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
@@ -128,14 +146,38 @@ def call_function(name, args):
 
 
 def format_products_for_llm(products, limit=10):
-    """Format products for LLM with review synthesis and FAQ data for follow-up generation"""
+    """Format products for LLM with review synthesis, FAQ data, and dynamic category analysis"""
     if not products:
         return "No products found."
     
-    # Get top 10 products with reviews or FAQs (similar to old logic)
+    # Dynamically extract category matches from search results
+    category_matches = {}
+    for product in products[:limit]:
+        if hasattr(product, 'search_matches') and product.search_matches:
+            for match in product.search_matches:
+                if ':' in match.field:
+                    category, value = match.field.split(':', 2)
+                    category = category.strip()
+                    value = value.strip()
+                    if category and value:
+                        if category not in category_matches:
+                            category_matches[category] = set()
+                        category_matches[category].add(value)
+    
+    # Format category information dynamically
+    category_info = []
+    for category, values in category_matches.items():
+        category_info.append(f"{category}: {', '.join(sorted(values))}")
+    
+    lines = []
+    if category_info:
+        lines.append("**Category Matches Found:**")
+        lines.append(", ".join(category_info))
+        lines.append("")
+    
+    # Get top products with reviews or FAQs
     products_with_content = []
     for product in products:
-        # Check if product has review synthesis or answered FAQs
         has_review_content = hasattr(product, 'what_customers_love') and product.what_customers_love
         has_faqs = hasattr(product, 'answered_faqs') and product.answered_faqs
         
@@ -145,29 +187,210 @@ def format_products_for_llm(products, limit=10):
                 break
     
     if not products_with_content:
-        # Fallback to top 5 products if none have reviews/FAQs
         products_with_content = products[:5]
     
-    lines = []
+    lines.append("**Top Product Recommendations:**")
     for i, p in enumerate(products_with_content):
-        # Basic product info
         product_line = f"{i+1}. {p.title}"
         
-        # Add review synthesis if available
         if hasattr(p, 'what_customers_love') and p.what_customers_love:
             product_line += f"\n   What customers love: {p.what_customers_love}"
         
         if hasattr(p, 'what_to_watch_out_for') and p.what_to_watch_out_for:
             product_line += f"\n   What to watch out for: {p.what_to_watch_out_for}"
         
-        # Add FAQ info if available
         if hasattr(p, 'answered_faqs') and p.answered_faqs:
             product_line += f"\n   Answered FAQs: {p.answered_faqs[:200]}..."
         
         lines.append(product_line)
     
-    return "Here are the top product recommendations with customer insights:\n\n" + "\n\n".join(lines)
+    return "\n\n".join(lines)
 
+
+def generate_dynamic_filter_buttons(products, pet_profile=None, user_context=None):
+    """Dynamically generate relevant filter buttons based on search results and context"""
+    if not products:
+        return []
+    
+    # Extract available filters from search results dynamically
+    available_filters = {}
+    
+    for product in products[:20]:  # Check first 20 products
+        if hasattr(product, 'search_matches') and product.search_matches:
+            for match in product.search_matches:
+                if ':' in match.field:
+                    category, value = match.field.split(':', 2)
+                    category = category.strip()
+                    value = value.strip()
+                    
+                    if category and value:
+                        if category not in available_filters:
+                            available_filters[category] = set()
+                        available_filters[category].add(value)
+    
+    # Generate filter buttons dynamically
+    buttons = []
+    
+    # Pet-specific filters based on pet profile
+    if pet_profile:
+        pet_type = pet_profile.get('type', '').lower()
+        if pet_type:
+            if 'dog' in pet_type:
+                buttons.append('<Show Dog Options>')
+            elif 'cat' in pet_type:
+                buttons.append('<Show Cat Options>')
+        
+        # Size-based filters
+        size = pet_profile.get('size', '').lower()
+        if size:
+            if any(word in size for word in ['small', 'mini', 'tiny']):
+                buttons.append('<Show Small Breed Options>')
+            elif any(word in size for word in ['large', 'giant', 'big']):
+                buttons.append('<Show Large Breed Options>')
+        
+        # Life stage filters
+        life_stage = pet_profile.get('life_stage', '').lower()
+        if life_stage:
+            if any(word in life_stage for word in ['senior', 'adult', 'mature']):
+                buttons.append('<Show Senior Options>')
+            elif any(word in life_stage for word in ['puppy', 'kitten', 'young']):
+                buttons.append('<Show Puppy Options>')
+    
+    # Category-specific filters based on search results
+    for category, values in available_filters.items():
+        if len(values) > 0:
+            # Take the most common value or first few values
+            top_values = sorted(list(values))[:2]
+            for value in top_values:
+                if category.lower() in ['categories', 'category level 1', 'category level 2']:
+                    buttons.append(f'<Show {value} Options>')
+                elif category.lower() in ['product forms', 'food form']:
+                    buttons.append(f'<Show {value} Options>')
+                elif category.lower() in ['brands', 'brand']:
+                    buttons.append(f'<Show {value} Options>')
+    
+    # Health-specific filters if health-related categories are found
+    health_keywords = ['health', 'wellness', 'supplement', 'vitamin', 'joint', 'dental', 'digestive']
+    for category, values in available_filters.items():
+        if any(keyword in category.lower() for keyword in health_keywords):
+            for value in values:
+                if any(keyword in value.lower() for keyword in health_keywords):
+                    buttons.append(f'<Show {value} Options>')
+    
+    return buttons[:6]  # Limit to 6 buttons to avoid overwhelming the user
+
+
+def extract_category_insights(products, pet_profile=None):
+    """Extract insights about categories found in search results for better response generation"""
+    if not products:
+        return {}
+    
+    insights = {
+        'matched_categories': {},
+        'pet_relevant_categories': {},
+        'top_categories': [],
+        'category_benefits': {}
+    }
+    
+    # Extract category matches
+    category_counts = {}
+    for product in products[:20]:
+        if hasattr(product, 'search_matches') and product.search_matches:
+            for match in product.search_matches:
+                if ':' in match.field:
+                    category, value = match.field.split(':', 2)
+                    category = category.strip()
+                    value = value.strip()
+                    
+                    if category and value:
+                        key = f"{category}: {value}"
+                        category_counts[key] = category_counts.get(key, 0) + 1
+                        
+                        if category not in insights['matched_categories']:
+                            insights['matched_categories'][category] = set()
+                        insights['matched_categories'][category].add(value)
+    
+    # Find top categories by frequency
+    sorted_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)
+    insights['top_categories'] = [cat for cat, count in sorted_categories[:5]]
+    
+    # Identify pet-relevant categories
+    if pet_profile:
+        pet_type = pet_profile.get('type', '').lower()
+        size = pet_profile.get('size', '').lower()
+        life_stage = pet_profile.get('life_stage', '').lower()
+        
+        for category, values in insights['matched_categories'].items():
+            category_lower = category.lower()
+            
+            # Pet type relevance
+            if pet_type and any(pet_word in category_lower for pet_word in ['pet type', 'pet types']):
+                insights['pet_relevant_categories']['pet_type'] = list(values)
+            
+            # Size relevance
+            if size and any(size_word in category_lower for size_word in ['size', 'breed size']):
+                insights['pet_relevant_categories']['size'] = list(values)
+            
+            # Life stage relevance
+            if life_stage and any(stage_word in category_lower for stage_word in ['life stage', 'life stages']):
+                insights['pet_relevant_categories']['life_stage'] = list(values)
+            
+            # Form relevance (important for small breeds)
+            if 'small' in size and any(form_word in category_lower for form_word in ['form', 'food form']):
+                insights['pet_relevant_categories']['form'] = list(values)
+    
+    return insights
+
+
+def analyze_query_for_categories(user_input, pet_profile=None):
+    """Analyze user query to identify relevant categories and context"""
+    if not user_input:
+        return {}
+    
+    analysis = {
+        'query_keywords': [],
+        'health_focus': [],
+        'size_considerations': [],
+        'life_stage_focus': [],
+        'form_preferences': []
+    }
+    
+    query_lower = user_input.lower()
+    
+    # Extract keywords from query
+    words = query_lower.split()
+    analysis['query_keywords'] = [word for word in words if len(word) > 2]
+    
+    # Identify health-related focus
+    health_keywords = ['supplement', 'vitamin', 'joint', 'dental', 'digestive', 'skin', 'coat', 'allergy', 'sensitive']
+    analysis['health_focus'] = [keyword for keyword in health_keywords if keyword in query_lower]
+    
+    # Identify size considerations
+    size_keywords = ['small', 'large', 'mini', 'giant', 'tiny', 'big']
+    analysis['size_considerations'] = [keyword for keyword in size_keywords if keyword in query_lower]
+    
+    # Identify life stage focus
+    stage_keywords = ['puppy', 'kitten', 'senior', 'adult', 'young', 'old']
+    analysis['life_stage_focus'] = [keyword for keyword in stage_keywords if keyword in query_lower]
+    
+    # Identify form preferences
+    form_keywords = ['chew', 'tablet', 'powder', 'liquid', 'soft', 'hard', 'treat']
+    analysis['form_preferences'] = [keyword for keyword in form_keywords if keyword in query_lower]
+    
+    # Add pet profile context
+    if pet_profile:
+        pet_type = pet_profile.get('type', '').lower()
+        size = pet_profile.get('size', '').lower()
+        life_stage = pet_profile.get('life_stage', '').lower()
+        
+        if pet_type:
+            analysis['query_keywords'].append(pet_type)
+        if size:
+            analysis['query_keywords'].append(size)
+        if life_stage:
+            analysis['query_keywords'].append(life_stage)
+    
+    return analysis
 
 
 def chat_stream_with_products(user_input: str, history: list, user_context: str = "", image_base64: Optional[str] = None, pet_profile: dict = None, user_context_data: dict = None):
@@ -403,16 +626,44 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     # Log context formatting time
                     evaluation_logger.log_timing(context_formatting_time=context_time)
                     
+                    # Generate dynamic filter buttons based on search results
+                    filter_buttons = generate_dynamic_filter_buttons(products, pet_profile, user_context_data)
+                    filter_context = f"\n\nAvailable Filters: {', '.join(filter_buttons)}" if filter_buttons else ""
+                    
+                    # Extract category insights for better response generation
+                    category_insights = extract_category_insights(products, pet_profile)
+                    insights_context = ""
+                    if category_insights:
+                        if category_insights['matched_categories']:
+                            insights_context += f"\n\nCategory Matches: {category_insights['matched_categories']}"
+                        if category_insights['pet_relevant_categories']:
+                            insights_context += f"\n\nPet-Relevant Categories: {category_insights['pet_relevant_categories']}"
+                        if category_insights['top_categories']:
+                            insights_context += f"\n\nTop Categories: {category_insights['top_categories'][:3]}"
+                    
+                    # Analyze user query for category relevance
+                    query_analysis = analyze_query_for_categories(user_input, pet_profile)
+                    query_context = ""
+                    if query_analysis:
+                        if query_analysis['health_focus']:
+                            query_context += f"\n\nHealth Focus: {query_analysis['health_focus']}"
+                        if query_analysis['size_considerations']:
+                            query_context += f"\n\nSize Considerations: {query_analysis['size_considerations']}"
+                        if query_analysis['form_preferences']:
+                            query_context += f"\n\nForm Preferences: {query_analysis['form_preferences']}"
+                    
                     full_history.append({
                         "role": "user",
                         "content": f"""
 - Carefully read the review theme synthesis to identify product trade-offs, standout features, or pain points across products.
+- Reference the category matches found in the search results when providing recommendations.
 - Ask 1-3 short, highly specific follow-up questions or make short statements that help the user narrow their choice.
 - Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
-- Only user review-data to generate follow-ups.
+- Only use review-data to generate follow-ups.
 - Do not repeat already answered or previously asked questions. Say "These look like great options based on the reviews — go with what fits your style or budget!" if no more questions or clarifications are left to be asked or made.
+- Use the available filters to suggest relevant next steps when appropriate.
 
-Product Reviews: {product_context}
+Product Reviews: {product_context}{filter_context}{insights_context}{query_context}
 
 You're not being chatty — you're being helpful, warm, and efficient."""
                     })

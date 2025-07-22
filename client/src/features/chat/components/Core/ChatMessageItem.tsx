@@ -446,7 +446,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   
                   return (
                     <>
-                      <div className="text-sm">
+                      <div className="text-sm leading-relaxed">
                         <SafeHtmlRenderer 
                           html={formatMessageContent(cleanContent)} 
                           className="prose prose-sm max-w-none"
