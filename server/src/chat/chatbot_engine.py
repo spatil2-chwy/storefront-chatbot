@@ -1,6 +1,7 @@
 import json
 import time
 import logging
+import re
 from typing import List, Dict, Any, Optional, Union, cast, Generator
 from src.search.product_search import query_products, rank_products
 from src.search.article_search import ArticleService
@@ -18,6 +19,173 @@ logger = logging.getLogger(__name__)
 client = get_openai_client()
 
 MODEL = "gpt-4.1"
+
+# Button generation system prompt addition
+button_generation_prompt_addition = """
+
+### 🔘 Dynamic Button Generation:
+
+At the **end of your response**, generate 3-4 contextually relevant action buttons that help users refine their search based on your recommendations and the conversation flow.
+
+**Button Format**: Place buttons on separate lines at the very end, formatted as: `<Button Text>`
+
+**Context-Aware Button Guidelines:**
+- **Make buttons specific to your response content** - for example, if you mention "soft chews vs hard chews", create buttons for both
+- **Answer questions you pose** - if you ask about ingredients, create buttons like `<Show Multi-Ingredient Options>` and `<Show Simple Formula Options>`
+- **Address specific mentions** - for example, if you mention "chicken sensitivity", include `<Show Chicken-Free Options>`
+- **Consider pet context** - use pet size, breed, age appropriately (e.g., `<Show Small Breed Options>` for Chihuahuas)
+- **Be actionable** - buttons should lead to meaningful product filtering
+
+**AVOID REDUNDANT OPTIONS:**
+- **Don't show buttons for information already known** about the pet (size, breed, life stage, type, allergies)
+- **Don't show buttons for filters already applied** in the conversation
+- **Focus on new, relevant options** that help narrow down the selection
+- **Consider what the user already knows** and what would be genuinely helpful next steps
+
+**Example Button Patterns:**
+- Ingredient-based: `<Show Salmon Options>`, `<Show Grain-Free Options>`
+- Form-based: `<Show Soft Chew Options>`, `<Show Liquid Supplements>`
+- Health-based: `<Show Joint Support Options>`, `<Show Sensitive Stomach Options>`
+- Preference-based: `<Show Budget-Friendly Options>`, `<Show Premium Options>`
+- Category-based: `<Show Treats Options>`, `<Show Food Options>`
+- Feature-based: `<Show Easy-to-Chew Options>`, `<Show Digestive Support Options>`
+
+**Button Placement**: Always place buttons at the very end of your response with no additional text after them.
+"""
+
+def extract_buttons_from_response(assistant_response, context_info=None):
+    """
+    Extract button commands from the assistant's response.
+    Looks for patterns like <Button Text> at the end of the response.
+    Optionally filters out redundant buttons based on context.
+    """
+    if not assistant_response:
+        return []
+    
+    # Look for button patterns: <text inside angle brackets>
+    button_pattern = r'<([^<>]+)>'
+    
+    # Find all button matches
+    matches = re.findall(button_pattern, assistant_response)
+    
+    if not matches:
+        return []
+    
+    # Clean up button text and validate
+    buttons = []
+    for match in matches:
+        button_text = match.strip()
+        
+        # Skip if it's not a button-like pattern (avoid false matches)
+        if (len(button_text) < 5 or  # Too short
+            len(button_text) > 50 or  # Too long
+            button_text.lower().startswith('http') or  # URL
+            any(char in button_text for char in ['/', '\\', '@', '#'])):  # Invalid chars
+            continue
+        
+        # Check for redundant buttons based on context
+        if context_info and is_redundant_button(button_text, context_info):
+            continue
+            
+        buttons.append(f"<{button_text}>")
+    
+    return buttons[:6]  # Limit to 6 buttons max
+
+
+def is_redundant_button(button_text, context_info):
+    """
+    Check if a button is redundant based on available context information.
+    """
+    button_lower = button_text.lower()
+    
+    # Check for size-based redundancy
+    if context_info.get('known_pet_size'):
+        size_keywords = ['small breed', 'large breed', 'small dog', 'large dog']
+        if any(keyword in button_lower for keyword in size_keywords):
+            return True
+    
+    # Check for life stage redundancy
+    if context_info.get('known_life_stage'):
+        stage_keywords = ['puppy', 'senior', 'adult', 'kitten']
+        if any(keyword in button_lower for keyword in stage_keywords):
+            return True
+    
+    # Check for pet type redundancy
+    if context_info.get('known_pet_type'):
+        type_keywords = ['dog', 'cat', 'bird', 'fish']
+        if any(keyword in button_lower for keyword in type_keywords):
+            return True
+    
+    # Check for allergy redundancy
+    if context_info.get('known_allergies'):
+        for allergy in context_info['known_allergies']:
+            if allergy in button_lower and ('free' in button_lower or 'free' in button_lower):
+                return True
+    
+    # Check for applied filter redundancy
+    if context_info.get('applied_filters'):
+        for filter_name in context_info['applied_filters']:
+            if filter_name.replace('_', ' ') in button_lower:
+                return True
+    
+    return False
+
+
+def clean_response_text(assistant_response):
+    """
+    Remove button markup from the response text for display,
+    leaving clean response text without the button commands.
+    """
+    if not assistant_response:
+        return assistant_response
+    
+    # Remove button patterns from the end of the response
+    lines = assistant_response.strip().split('\n')
+    
+    # Remove lines that are just button patterns
+    while lines and re.match(r'^\s*<[^<>]+>\s*$', lines[-1]):
+        lines.pop()
+    
+    return '\n'.join(lines).strip()
+
+
+class ButtonAwareGenerator:
+    """
+    Wrapper class that yields chunks and stores extracted buttons
+    """
+    def __init__(self, generator, on_complete_callback, context_info=None):
+        self.generator = generator
+        self.on_complete_callback = on_complete_callback
+        self.context_info = context_info
+        self.extracted_buttons = []
+        self.clean_response = ""
+        self.complete_response = ""
+        self.start_time = time.time()
+    
+    def __iter__(self):
+        try:
+            for chunk in self.generator:
+                self.complete_response += chunk
+                yield chunk
+        finally:
+            # Extract buttons and clean response with context awareness
+            self.extracted_buttons = extract_buttons_from_response(self.complete_response, self.context_info)
+            self.clean_response = clean_response_text(self.complete_response)
+            
+            response_time = time.time() - self.start_time
+            
+            # Call the completion callback with clean response
+            if self.on_complete_callback:
+                self.on_complete_callback(self.clean_response, response_time)
+
+
+def capture_streaming_response_with_buttons(generator, on_complete_callback, context_info=None):
+    """
+    Modified version of capture_streaming_response that extracts buttons
+    from the complete response and returns both clean text and buttons.
+    """
+    return ButtonAwareGenerator(generator, on_complete_callback, context_info)
+
 
 def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), pet_profile=None, user_context=None):
     """Searches for pet products based on user query and filters.
@@ -207,197 +375,12 @@ def format_products_for_llm(products, limit=10):
     return "\n\n".join(lines)
 
 
-def generate_dynamic_filter_buttons(products, pet_profile=None, user_context=None):
-    """Dynamically generate relevant filter buttons based on search results and context"""
-    if not products:
-        return []
-    
-    # Extract available filters from search results dynamically
-    available_filters = {}
-    
-    for product in products[:20]:  # Check first 20 products
-        if hasattr(product, 'search_matches') and product.search_matches:
-            for match in product.search_matches:
-                if ':' in match.field:
-                    category, value = match.field.split(':', 2)
-                    category = category.strip()
-                    value = value.strip()
-                    
-                    if category and value:
-                        if category not in available_filters:
-                            available_filters[category] = set()
-                        available_filters[category].add(value)
-    
-    # Generate filter buttons dynamically
-    buttons = []
-    
-    # Pet-specific filters based on pet profile
-    if pet_profile:
-        pet_type = pet_profile.get('type', '').lower()
-        if pet_type:
-            if 'dog' in pet_type:
-                buttons.append('<Show Dog Options>')
-            elif 'cat' in pet_type:
-                buttons.append('<Show Cat Options>')
-        
-        # Size-based filters
-        size = pet_profile.get('size', '').lower()
-        if size:
-            if any(word in size for word in ['small', 'mini', 'tiny']):
-                buttons.append('<Show Small Breed Options>')
-            elif any(word in size for word in ['large', 'giant', 'big']):
-                buttons.append('<Show Large Breed Options>')
-        
-        # Life stage filters
-        life_stage = pet_profile.get('life_stage', '').lower()
-        if life_stage:
-            if any(word in life_stage for word in ['senior', 'adult', 'mature']):
-                buttons.append('<Show Senior Options>')
-            elif any(word in life_stage for word in ['puppy', 'kitten', 'young']):
-                buttons.append('<Show Puppy Options>')
-    
-    # Category-specific filters based on search results
-    for category, values in available_filters.items():
-        if len(values) > 0:
-            # Take the most common value or first few values
-            top_values = sorted(list(values))[:2]
-            for value in top_values:
-                if category.lower() in ['categories', 'category level 1', 'category level 2']:
-                    buttons.append(f'<Show {value} Options>')
-                elif category.lower() in ['product forms', 'food form']:
-                    buttons.append(f'<Show {value} Options>')
-                elif category.lower() in ['brands', 'brand']:
-                    buttons.append(f'<Show {value} Options>')
-    
-    # Health-specific filters if health-related categories are found
-    health_keywords = ['health', 'wellness', 'supplement', 'vitamin', 'joint', 'dental', 'digestive']
-    for category, values in available_filters.items():
-        if any(keyword in category.lower() for keyword in health_keywords):
-            for value in values:
-                if any(keyword in value.lower() for keyword in health_keywords):
-                    buttons.append(f'<Show {value} Options>')
-    
-    return buttons[:6]  # Limit to 6 buttons to avoid overwhelming the user
-
-
-def extract_category_insights(products, pet_profile=None):
-    """Extract insights about categories found in search results for better response generation"""
-    if not products:
-        return {}
-    
-    insights = {
-        'matched_categories': {},
-        'pet_relevant_categories': {},
-        'top_categories': [],
-        'category_benefits': {}
-    }
-    
-    # Extract category matches
-    category_counts = {}
-    for product in products[:20]:
-        if hasattr(product, 'search_matches') and product.search_matches:
-            for match in product.search_matches:
-                if ':' in match.field:
-                    category, value = match.field.split(':', 2)
-                    category = category.strip()
-                    value = value.strip()
-                    
-                    if category and value:
-                        key = f"{category}: {value}"
-                        category_counts[key] = category_counts.get(key, 0) + 1
-                        
-                        if category not in insights['matched_categories']:
-                            insights['matched_categories'][category] = set()
-                        insights['matched_categories'][category].add(value)
-    
-    # Find top categories by frequency
-    sorted_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)
-    insights['top_categories'] = [cat for cat, count in sorted_categories[:5]]
-    
-    # Identify pet-relevant categories
-    if pet_profile:
-        pet_type = pet_profile.get('type', '').lower()
-        size = pet_profile.get('size', '').lower()
-        life_stage = pet_profile.get('life_stage', '').lower()
-        
-        for category, values in insights['matched_categories'].items():
-            category_lower = category.lower()
-            
-            # Pet type relevance
-            if pet_type and any(pet_word in category_lower for pet_word in ['pet type', 'pet types']):
-                insights['pet_relevant_categories']['pet_type'] = list(values)
-            
-            # Size relevance
-            if size and any(size_word in category_lower for size_word in ['size', 'breed size']):
-                insights['pet_relevant_categories']['size'] = list(values)
-            
-            # Life stage relevance
-            if life_stage and any(stage_word in category_lower for stage_word in ['life stage', 'life stages']):
-                insights['pet_relevant_categories']['life_stage'] = list(values)
-            
-            # Form relevance (important for small breeds)
-            if 'small' in size and any(form_word in category_lower for form_word in ['form', 'food form']):
-                insights['pet_relevant_categories']['form'] = list(values)
-    
-    return insights
-
-
-def analyze_query_for_categories(user_input, pet_profile=None):
-    """Analyze user query to identify relevant categories and context"""
-    if not user_input:
-        return {}
-    
-    analysis = {
-        'query_keywords': [],
-        'health_focus': [],
-        'size_considerations': [],
-        'life_stage_focus': [],
-        'form_preferences': []
-    }
-    
-    query_lower = user_input.lower()
-    
-    # Extract keywords from query
-    words = query_lower.split()
-    analysis['query_keywords'] = [word for word in words if len(word) > 2]
-    
-    # Identify health-related focus
-    health_keywords = ['supplement', 'vitamin', 'joint', 'dental', 'digestive', 'skin', 'coat', 'allergy', 'sensitive']
-    analysis['health_focus'] = [keyword for keyword in health_keywords if keyword in query_lower]
-    
-    # Identify size considerations
-    size_keywords = ['small', 'large', 'mini', 'giant', 'tiny', 'big']
-    analysis['size_considerations'] = [keyword for keyword in size_keywords if keyword in query_lower]
-    
-    # Identify life stage focus
-    stage_keywords = ['puppy', 'kitten', 'senior', 'adult', 'young', 'old']
-    analysis['life_stage_focus'] = [keyword for keyword in stage_keywords if keyword in query_lower]
-    
-    # Identify form preferences
-    form_keywords = ['chew', 'tablet', 'powder', 'liquid', 'soft', 'hard', 'treat']
-    analysis['form_preferences'] = [keyword for keyword in form_keywords if keyword in query_lower]
-    
-    # Add pet profile context
-    if pet_profile:
-        pet_type = pet_profile.get('type', '').lower()
-        size = pet_profile.get('size', '').lower()
-        life_stage = pet_profile.get('life_stage', '').lower()
-        
-        if pet_type:
-            analysis['query_keywords'].append(pet_type)
-        if size:
-            analysis['query_keywords'].append(size)
-        if life_stage:
-            analysis['query_keywords'].append(life_stage)
-    
-    return analysis
-
-
 def chat_stream_with_products(user_input: str, history: list, user_context: str = "", image_base64: Optional[str] = None, pet_profile: dict = None, user_context_data: dict = None):
     """
     Streaming version of the chat function that yields text chunks as they're generated.
     Only streams the final response, not during function calls.
-    Returns a tuple of (generator, products) where generator yields text chunks and products is the list of found products.
+    Returns a tuple of (generator, products, buttons) where generator yields text chunks, 
+    products is the list of found products, and buttons are the extracted UI buttons.
     """
     start_time = time.time()
     logger.info(f"User context: {user_context}")
@@ -412,12 +395,21 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         has_image=bool(image_base64)
     )
     
-    # Create system message with user context if provided
+    # Analyze conversation context to avoid redundant button options
+    context_info = analyze_conversation_context(history, pet_profile, user_context_data)
+    context_guidance = generate_context_aware_button_guidance(context_info)
+    
+    # Create system message with user context and context-aware button generation instructions
     system_msg = function_call_system_prompt.copy()
+    system_msg["content"] += button_generation_prompt_addition
+    
+    # Add context-aware guidance to avoid redundant buttons
+    system_msg["content"] += f"\n\n**CONTEXT-AWARE BUTTON GUIDANCE:**\n{context_guidance}\n\nUse this information to avoid showing redundant button options based on what's already known about the pet or applied filters."
+    
     if user_context:
         system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Enhance user query with brand preferences and dietary needs if applicable. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
     
-        # check whether the user_input is already part of history
+    # Check whether the user_input is already part of history
     if user_input in [item["content"] for item in history]:
         # Create user message with optional image
         if image_base64:
@@ -474,6 +466,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
     evaluation_logger.log_chat_history(full_history)
     
     products = []
+    buttons = []
     assistant_reply = ""
 
     logger.debug(f"Streaming response type: {response.output[0].type if response.output else 'empty'}")
@@ -490,18 +483,19 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         full_history.append({"role": "assistant", "content": assistant_reply})
         logger.info(f"Streaming direct message response (no tool calls)")
         
-        # For simple message responses, yield the complete text
+        # For simple message responses, yield the complete text and extract buttons
         def simple_generator():
             yield assistant_reply
         
-        # Capture the streaming response for evaluation
+        # Capture the streaming response for evaluation and button extraction
         def on_simple_complete(response: str, response_time: float):
             total_time = time.time() - start_time
             evaluation_logger.log_assistant_response(response)
             evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
             evaluation_logger.save_log()
         
-        return capture_streaming_response(simple_generator(), on_simple_complete), products
+        generator = capture_streaming_response_with_buttons(simple_generator(), on_simple_complete, context_info)
+        return generator, products, generator.extracted_buttons
     else:
         function_start = time.time()
         logger.info(f"Streaming function calls detected after {function_start - start_time:.3f}s")
@@ -580,14 +574,16 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                             logger.error(f"Error in article streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
-                    # Capture the streaming response for evaluation
+                    # Capture the streaming response for evaluation and button extraction
                     def on_article_complete(response: str, response_time: float):
                         total_time = time.time() - start_time
                         evaluation_logger.log_assistant_response(response)
                         evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
                         evaluation_logger.save_log()
                     
-                    return capture_streaming_response(article_generator(), on_article_complete), products
+                    generator = capture_streaming_response_with_buttons(article_generator(), on_article_complete, context_info)
+                    # Extract buttons after streaming completes
+                    return generator, products, generator.extracted_buttons
                     
                 else:
                     # Add pet profile and user context to search_products arguments
@@ -626,32 +622,6 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     # Log context formatting time
                     evaluation_logger.log_timing(context_formatting_time=context_time)
                     
-                    # Generate dynamic filter buttons based on search results
-                    filter_buttons = generate_dynamic_filter_buttons(products, pet_profile, user_context_data)
-                    filter_context = f"\n\nAvailable Filters: {', '.join(filter_buttons)}" if filter_buttons else ""
-                    
-                    # Extract category insights for better response generation
-                    category_insights = extract_category_insights(products, pet_profile)
-                    insights_context = ""
-                    if category_insights:
-                        if category_insights['matched_categories']:
-                            insights_context += f"\n\nCategory Matches: {category_insights['matched_categories']}"
-                        if category_insights['pet_relevant_categories']:
-                            insights_context += f"\n\nPet-Relevant Categories: {category_insights['pet_relevant_categories']}"
-                        if category_insights['top_categories']:
-                            insights_context += f"\n\nTop Categories: {category_insights['top_categories'][:3]}"
-                    
-                    # Analyze user query for category relevance
-                    query_analysis = analyze_query_for_categories(user_input, pet_profile)
-                    query_context = ""
-                    if query_analysis:
-                        if query_analysis['health_focus']:
-                            query_context += f"\n\nHealth Focus: {query_analysis['health_focus']}"
-                        if query_analysis['size_considerations']:
-                            query_context += f"\n\nSize Considerations: {query_analysis['size_considerations']}"
-                        if query_analysis['form_preferences']:
-                            query_context += f"\n\nForm Preferences: {query_analysis['form_preferences']}"
-                    
                     full_history.append({
                         "role": "user",
                         "content": f"""
@@ -661,9 +631,9 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
 - Only include questions if there's real ambiguity or a decision to make. Don't ask generic questions.
 - Only use review-data to generate follow-ups.
 - Do not repeat already answered or previously asked questions. Say "These look like great options based on the reviews — go with what fits your style or budget!" if no more questions or clarifications are left to be asked or made.
-- Use the available filters to suggest relevant next steps when appropriate.
+- Generate contextually relevant action buttons at the end of your response based on your recommendations and questions.
 
-Product Reviews: {product_context}{filter_context}{insights_context}{query_context}
+Product Reviews: {product_context}
 
 You're not being chatty — you're being helpful, warm, and efficient."""
                     })
@@ -694,17 +664,109 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                             logger.error(f"Error in product streaming: {e}")
                             yield "Sorry, I'm having trouble processing your request right now. Please try again in a moment."
                     
-                    # Capture the streaming response for evaluation
+                    # Capture the streaming response for evaluation and button extraction
                     def on_product_complete(response: str, response_time: float):
+                        nonlocal buttons
                         total_time = time.time() - start_time
                         evaluation_logger.log_assistant_response(response)
                         evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
                         evaluation_logger.save_log()
                     
-                    return capture_streaming_response(product_generator(), on_product_complete), products
+                    generator = capture_streaming_response_with_buttons(product_generator(), on_product_complete, context_info)
+                    # Extract buttons after streaming completes
+                    return generator, products, generator.extracted_buttons
     
     # Fallback generator (this should never be reached in normal operation)
     def fallback_generator():
         yield "Sorry, I couldn't process your request."
     
-    return fallback_generator(), products
+    return fallback_generator(), products, []
+
+
+def analyze_conversation_context(history, pet_profile, user_context_data):
+    """
+    Analyze conversation context to determine what information is already available
+    and what redundant button options should be avoided.
+    """
+    context_info = {
+        'known_pet_type': None,
+        'known_pet_size': None,
+        'known_life_stage': None,
+        'known_allergies': [],
+        'known_breed': None,
+        'applied_filters': set(),
+        'mentioned_topics': set()
+    }
+    
+    # Extract information from pet profile
+    if pet_profile:
+        if pet_profile.get('type'):
+            context_info['known_pet_type'] = pet_profile['type'].lower()
+        if pet_profile.get('size'):
+            context_info['known_pet_size'] = pet_profile['size'].lower()
+        if pet_profile.get('life_stage'):
+            context_info['known_life_stage'] = pet_profile['life_stage'].lower()
+        if pet_profile.get('allergies'):
+            context_info['known_allergies'] = [allergy.lower() for allergy in pet_profile['allergies']]
+        if pet_profile.get('breed'):
+            context_info['known_breed'] = pet_profile['breed'].lower()
+    
+    # Extract information from user context data
+    if user_context_data:
+        if user_context_data.get('pet_type'):
+            context_info['known_pet_type'] = user_context_data['pet_type'].lower()
+        if user_context_data.get('pet_size'):
+            context_info['known_pet_size'] = user_context_data['pet_size'].lower()
+        if user_context_data.get('pet_life_stage'):
+            context_info['known_life_stage'] = user_context_data['pet_life_stage'].lower()
+        if user_context_data.get('pet_allergies'):
+            context_info['known_allergies'] = [allergy.lower() for allergy in user_context_data['pet_allergies']]
+        if user_context_data.get('pet_breed'):
+            context_info['known_breed'] = user_context_data['pet_breed'].lower()
+    
+    # Analyze conversation history for applied filters and mentioned topics
+    for message in history:
+        if message.get('role') == 'user':
+            content = message.get('content', '').lower()
+            # Look for filter mentions
+            if 'small breed' in content or 'small dog' in content:
+                context_info['applied_filters'].add('small_breed')
+            if 'large breed' in content or 'large dog' in content:
+                context_info['applied_filters'].add('large_breed')
+            if 'senior' in content or 'older' in content:
+                context_info['applied_filters'].add('senior')
+            if 'puppy' in content or 'young' in content:
+                context_info['applied_filters'].add('puppy')
+            if 'chicken' in content and ('allergy' in content or 'sensitive' in content):
+                context_info['applied_filters'].add('chicken_free')
+            if 'grain' in content and 'free' in content:
+                context_info['applied_filters'].add('grain_free')
+    
+    return context_info
+
+
+def generate_context_aware_button_guidance(context_info):
+    """
+    Generate specific guidance for button generation based on available context.
+    """
+    guidance = []
+    
+    if context_info['known_pet_type']:
+        guidance.append(f"- **Pet type already known**: {context_info['known_pet_type']} - avoid showing pet type buttons")
+    
+    if context_info['known_pet_size']:
+        guidance.append(f"- **Pet size already known**: {context_info['known_pet_size']} - avoid showing size-based buttons")
+    
+    if context_info['known_life_stage']:
+        guidance.append(f"- **Life stage already known**: {context_info['known_life_stage']} - avoid showing life stage buttons")
+    
+    if context_info['known_allergies']:
+        guidance.append(f"- **Known allergies**: {', '.join(context_info['known_allergies'])} - avoid showing allergen-free buttons for these")
+    
+    if context_info['applied_filters']:
+        guidance.append(f"- **Applied filters**: {', '.join(context_info['applied_filters'])} - avoid showing buttons for these filters")
+    
+    if guidance:
+        return "\n".join(guidance)
+    else:
+        return "- No specific context restrictions - show relevant buttons based on response content"
