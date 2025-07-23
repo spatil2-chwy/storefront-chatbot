@@ -37,8 +37,7 @@ python -m src.evaluation.llm_evaluation
 ### 4. Start Dashboard
 
 ```bash
-cd src/evaluation
-python dashboard.py
+streamlit run src/evaluation/dashboard.py
 ```
 
 Then visit `http://localhost:8050` for the interactive dashboard.

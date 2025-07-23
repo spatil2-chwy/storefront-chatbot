@@ -95,10 +95,9 @@ class EvaluationLogger:
                         "product_id": getattr(product, 'id', None),
                         "title": getattr(product, 'title', None),
                         "brand": getattr(product, 'brand', None),
-                        "category": getattr(product, 'category', None),
                         "price": getattr(product, 'price', None),
                         "rating": getattr(product, 'rating', None),
-                        "review_count": getattr(product, 'review_count', None)
+                        "semantic_similarity": getattr(product, 'semantic_similarity', None)
                     }
                     top_products.append(product_data)
                 except Exception as e:
