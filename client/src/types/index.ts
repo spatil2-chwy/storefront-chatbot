@@ -121,6 +121,7 @@ export interface Product {
   answered_faqs?: string; // Answered FAQs
   sibling_items?: SiblingItem[]; // Sibling items for variant switching
   current_variant?: string; // Current variant being displayed
+  semantic_similarity?: number; // Distance/similarity score from search results
 }
 
 // Cart item structure

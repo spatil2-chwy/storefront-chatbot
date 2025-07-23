@@ -101,7 +101,7 @@ class ProductService:
         
         return "https://via.placeholder.com/400x300?text=Image+Not+Found"
 
-    def _metadata_to_product(self, metadata: dict, search_matches: Optional[List] = None) -> Product:
+    def _metadata_to_product(self, metadata: dict, search_matches: Optional[List] = None, semantic_similarity: Optional[float] = None) -> Product:
         # Images: use FULLIMAGE (as list) and THUMBNAIL
         images = []
         if metadata.get("FULLIMAGE"):
@@ -291,6 +291,9 @@ class ProductService:
             # ===== SIBLING ITEMS & VARIANTS =====
             sibling_items=sibling_items,
             current_variant=current_variant,
+            
+            # ===== SEMANTIC SIMILARITY =====
+            semantic_similarity=semantic_similarity,
         )
     
     def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None) -> Product:
@@ -334,8 +337,8 @@ class ProductService:
                 logger.warning(f"Error analyzing search matches: {e}")
                 search_matches = None
         
-        # Use the existing _metadata_to_product method
-        return self._metadata_to_product(metadata, search_matches)
+        # Use the existing _metadata_to_product method with semantic similarity
+        return self._metadata_to_product(metadata, search_matches, distance)
 
     async def get_product(self, product_id: int) -> Optional[Product]:
         try:

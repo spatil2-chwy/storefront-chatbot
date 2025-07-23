@@ -51,3 +51,4 @@ class Product(BaseModel):
     answered_faqs: Optional[str] = None  # Answered FAQs
     sibling_items: Optional[List[SiblingItem]] = None  # Sibling items for variant switching
     current_variant: Optional[str] = None  # Current variant being displayed
+    semantic_similarity: Optional[float] = None  # Distance/similarity score from search results

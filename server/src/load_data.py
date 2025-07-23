@@ -5,28 +5,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from database import engine, Base
 
 def generate_sample_pet_data():
-    """Generate sample pet data with allergies"""
-    # Available allergy options
-    allergy_options = [
-        "Beef", "Chicken", "Corn", "Dairy", "Egg", "Fish", 
-        "Lamb", "Other", "Pork", "Rabbit", "Soy", "Wheat", "None"
-    ]
-    
+    """Generate sample pet data"""
     # Sample pet data
     pets_data = []
     
     # Generate 50 sample pets
     for i in range(1, 51):
-        # Randomly select 0-3 allergies
-        num_allergies = random.randint(0, 3)
-        if num_allergies == 0:
-            allergies = "None"
-        else:
-            # Select random allergies (excluding "None")
-            available_allergies = [a for a in allergy_options if a != "None"]
-            selected_allergies = random.sample(available_allergies, num_allergies)
-            allergies = ", ".join(selected_allergies)
-        
         pet_data = {
             'PET_PROFILE_ID': i,
             'CUSTOMER_ID': random.randint(1, 10),  # 10 customers
@@ -46,7 +30,7 @@ def generate_sample_pet_data():
             'TIME_CREATED': pd.Timestamp.now(),
             'TIME_UPDATED': pd.Timestamp.now(),
             'WEIGHT': random.uniform(5.0, 80.0),
-            'ALLERGIES': allergies,
+            'ALLERGIES': 'None', 
             'PHOTO_COUNT': random.randint(0, 5),
             'PET_BREED_ID': random.randint(1, 100),
             'PET_TYPE_ID': random.randint(1, 10),
@@ -98,9 +82,9 @@ def main():
     Base.metadata.create_all(bind=engine)
 
     # Updated paths to new structure
-    BASE = Path(__file__).resolve().parent.parent.parent  # storefront-chatbot
+    BASE = Path(__file__).resolve().parent.parent.parent 
     DATA = BASE / "data" / "backend"
-    USERS_TSV = DATA / "customers" / "customers_with_personas.tsv"  # Use enhanced customer data
+    USERS_TSV = DATA / "customers" / "customers_with_personas.tsv"  
     PETS_TSV  = DATA / "pets" / "pet_profiles.tsv"
 
     try:
