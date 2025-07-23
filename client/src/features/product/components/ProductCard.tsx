@@ -10,6 +10,7 @@ import SearchMatches from './SearchMatches';
 import { useGlobalChat } from '../../chat/context';
 import { useCart } from '../../cart/context';
 import { useToast } from '@/hooks/use-toast';
+import { useInteractions } from '@/hooks/use-interactions';
 
 interface ProductCardProps {
   product: Product;
@@ -29,6 +30,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const { addToCart, isInCart, getCartItemCount } = useCart();
   const { toast } = useToast();
+  const { logProductClick } = useInteractions();
 
   const isSelected = comparingProducts.some(p => p.id === product.id);
   const isComparisonFull = comparingProducts.length >= 4 && !isSelected;
@@ -166,7 +168,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <Card className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 h-full flex flex-col relative">
-        <Link href={`/product/${product.id}`} className="flex-1 flex flex-col">
+        <Link href={`/product/${product.id}`} className="flex-1 flex flex-col" onClick={() => logProductClick(product)}>
           {/* Product Image */}
           <div className="relative w-full h-48 bg-gray-50">
             {renderImage()}
