@@ -77,10 +77,11 @@ def update_interaction_based_persona(customer_key: int, interaction_history: lis
 
 # test
 if __name__ == "__main__":
+    print("Testing persona updater...")
+    
+    # Test 1: Chat-based persona update
     test_history = [
         {"role": "system", "content": "You are a helpful assistant. (This message gets thrown away)"},
-        # {"role": "user", "content": "Hi, im looking to purchase dog food from purina one"},
-        # {"role": "assistant", "content": "Sure, here you go!"}
         {"role": "user", "content": "im so upset, my dog just keeps ruining all his toys. I will just buy cheap toys from now on"},
         {"role": "assistant", "content": "I'm sorry to hear that. It's tough when pets are destructive."},
     ]
@@ -88,13 +89,17 @@ if __name__ == "__main__":
     # Get a database session for testing
     db = next(get_db())
     try:
-        update_persona(24612503152, test_history, db)
+        print("Testing chat-based persona update...")
+        result = update_persona(24612503152, test_history, db)
+        print(f"Chat-based update result: {result}")
+    except Exception as e:
+        print(f"Chat-based update error: {e}")
     finally:
         db.close()
 
+    # Test 2: Interaction-based persona update
     test_interaction_history = [
         {
-            "user_id": 13094240.0,
             "summary": {
                 "total_events": 16,
                 "purchases": 4,
@@ -108,88 +113,79 @@ if __name__ == "__main__":
                     "low": 3,
                     "mid": 10,
                     "high": 3
-                    }
-                },
-            "top_categories": 
-            [
-                {
-                "category": "Beds, Crates & Gear",
-                "purchase_ratio": 0.2,
-                "avg_price": 116.66,
-                "total_spend": 337.07,
-                "total_events": 5
-                },
-                {
-                "category": "Bowls & Feeders",
-                "purchase_ratio": 0.4,
-                "avg_price": 52.99,
-                "total_spend": 197.46,
-                "total_events": 5
+                }
             },
-            {
-                "category": "Food",
-                "purchase_ratio": 0.2,
-                "avg_price": 29.81,
-                "total_spend": 79.11,
-                "total_events": 5
-            }
+            "top_categories": [
+                {
+                    "category": "Beds, Crates & Gear",
+                    "purchase_ratio": 0.2,
+                    "avg_price": 116.66,
+                    "total_spend": 337.07,
+                    "total_events": 5
+                },
+                {
+                    "category": "Bowls & Feeders",
+                    "purchase_ratio": 0.4,
+                    "avg_price": 52.99,
+                    "total_spend": 197.46,
+                    "total_events": 5
+                },
+                {
+                    "category": "Food",
+                    "purchase_ratio": 0.2,
+                    "avg_price": 29.81,
+                    "total_spend": 79.11,
+                    "total_events": 5
+                }
             ],
             "top_brands": [
-            {
-                "brand": "Frisco",
-                "loyalty_score": 0.33,
-                "total_purchases": 1,
-                "total_spend": 306.0
-            },
-            {
-                "brand": "Neater Pets",
-                "loyalty_score": 0.4,
-                "total_purchases": 2,
-                "total_spend": 197.46
-            },
-            {
-                "brand": "Purina ONE",
-                "loyalty_score": 0.33,
-                "total_purchases": 1,
-                "total_spend": 69.04
-            },
-            {
-                "brand": "FurHaven",
-                "loyalty_score": 0.0,
-                "total_purchases": 0,
-                "total_spend": 31.07
-            },
-            {
-                "brand": "Friskies",
-                "loyalty_score": 0.0,
-                "total_purchases": 0,
-                "total_spend": 10.07
-            }
+                {
+                    "brand": "Frisco",
+                    "loyalty_score": 0.33,
+                    "total_purchases": 1,
+                    "total_spend": 306.0
+                },
+                {
+                    "brand": "Neater Pets",
+                    "loyalty_score": 0.4,
+                    "total_purchases": 2,
+                    "total_spend": 197.46
+                },
+                {
+                    "brand": "Purina ONE",
+                    "loyalty_score": 0.33,
+                    "total_purchases": 1,
+                    "total_spend": 69.04
+                }
             ],
             "recent_purchases": [
-            {
-                "name": "Neater Pets Neater Feeder Deluxe Elevated & Mess-Proof Dog Bowls, 1.5-cup & 2.2-cup, Red",
-                "category": "Bowls & Feeders",
-                "brand": "Neater Pets",
-                "diet": None,
-                "price": 38.99,
-                "times_bought": 1
-            },
-            {
-                "name": "Purina ONE Tender Selects Blend with Real Salmon Dry Cat Food, 16-lb bag",
-                "category": "Food",
-                "brand": "Purina ONE",
-                "diet": "Indoor,High-Protein,Natural,With Grain",
-                "price": 33.48,
-                "times_bought": 1
-            },
+                {
+                    "name": "Neater Pets Neater Feeder Deluxe Elevated & Mess-Proof Dog Bowls",
+                    "category": "Bowls & Feeders",
+                    "brand": "Neater Pets",
+                    "diet": None,
+                    "price": 38.99,
+                    "times_bought": 1
+                },
+                {
+                    "name": "Purina ONE Tender Selects Blend with Real Salmon Dry Cat Food",
+                    "category": "Food",
+                    "brand": "Purina ONE",
+                    "diet": "Indoor,High-Protein,Natural,With Grain",
+                    "price": 33.48,
+                    "times_bought": 1
+                }
             ]
         }
-        ]
+    ]
 
-
+    db = next(get_db())
     try:
-        update_interaction_based_persona(24612503152, test_interaction_history, db)
+        print("Testing interaction-based persona update...")
+        result = update_interaction_based_persona(24612503152, test_interaction_history, db)
+        print(f"Interaction-based update result: {result}")
+    except Exception as e:
+        print(f"Interaction-based update error: {e}")
     finally:
         db.close()
 

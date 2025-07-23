@@ -9,6 +9,7 @@ from src.database import get_db
 from src.schemas import InteractionRequest
 from src.services.persona_updater import update_interaction_based_persona
 from src.services.interaction_service import interaction_svc
+from src.services.interaction_processor import interaction_processor
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 
@@ -54,16 +55,21 @@ async def log_interaction(request: InteractionRequest, background_tasks: Backgro
     )
     
     # Get recent interaction history for this customer (last 24 hours)
-    interaction_history = interaction_svc.get_interaction_history(db, request.customer_key, hours_back=24)
+    raw_interaction_history = interaction_svc.get_interaction_history(db, request.customer_key, hours_back=24)
     
     # Check if we should trigger a persona update
-    if should_update_interaction_based_persona(interaction_history):
+    if should_update_interaction_based_persona(raw_interaction_history):
         print(f"Triggering persona update for customer {request.customer_key} - 3+ purchases detected")
-        # Add background task to update persona
-        background_tasks.add_task(
-            update_interaction_based_persona_background_task,
-            request.customer_key,
-            interaction_history
-        )
+        
+        # Process interactions into structured format
+        processed_interactions = interaction_processor.process_user_interactions(db, request.customer_key, hours_back=24)
+        
+        if processed_interactions:
+            # Add background task to update persona with processed data
+            background_tasks.add_task(
+                update_interaction_based_persona_background_task,
+                request.customer_key,
+                [processed_interactions]  # Wrap in list to match expected format
+            )
     
     return {"message": "Interaction logged successfully", "interaction_id": interaction.id}
