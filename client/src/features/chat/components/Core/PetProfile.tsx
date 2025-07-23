@@ -61,10 +61,11 @@ export const PetProfile: React.FC<PetProfileProps> = ({
   // Update form data when petInfo changes
   React.useEffect(() => {
     console.log('PetProfile: petInfo received:', petInfo);
-    setFormData({
+    const updatedFormData = {
       ...petInfo,
       // Ensure all required fields have fallbacks
       name: petInfo.name || '',
+      type: petInfo.type || '',
       breed: petInfo.breed || '',
       gender: petInfo.gender || '',
       weight: petInfo.weight || 0,
@@ -72,7 +73,9 @@ export const PetProfile: React.FC<PetProfileProps> = ({
       birthday: petInfo.birthday || null,
       allergies: petInfo.allergies || '',
       is_new: petInfo.is_new || false
-    });
+    };
+    console.log('PetProfile: setting formData:', updatedFormData);
+    setFormData(updatedFormData);
   }, [petInfo]);
 
   // Close calendar when clicking outside
@@ -196,6 +199,17 @@ export const PetProfile: React.FC<PetProfileProps> = ({
     return lifeStage;
   };
 
+  const formatType = (type: string) => {
+    if (type === 'DOG') return 'Dog';
+    if (type === 'CAT') return 'Cat';
+    if (type === 'BIRD') return 'Bird';
+    if (type === 'FISH') return 'Fish';
+    if (type === 'RABBIT') return 'Rabbit';
+    if (type === 'HAMSTER') return 'Hamster';
+    if (type === 'OTHER') return 'Other';
+    return type;
+  };
+
   const formatBirthday = (birthday: string | null) => {
     if (!birthday) return 'Unknown';
     try {
@@ -223,7 +237,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.gender}
             onValueChange={(value) => handleInputChange('gender', value)}
           >
-            <SelectTrigger className="w-24">
+            <SelectTrigger className="w-24" aria-label="Gender">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -234,13 +248,15 @@ export const PetProfile: React.FC<PetProfileProps> = ({
         );
       } else if (field === 'type') {
         console.log('PetProfile: rendering type field, formData.type:', formData.type);
+        console.log('PetProfile: petInfo.type:', petInfo.type);
+        console.log('PetProfile: isEditing:', isEditing);
         return (
           <Select
-            value={formData.type}
+            value={formData.type || petInfo.type || ''}
             onValueChange={(value) => handleInputChange('type', value)}
           >
-            <SelectTrigger className="w-24">
-              <SelectValue />
+            <SelectTrigger className="w-24" aria-label="Type">
+              <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="DOG">Dog</SelectItem>
@@ -259,7 +275,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.life_stage}
             onValueChange={(value) => handleInputChange('life_stage', value)}
           >
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="w-28" aria-label="Life Stage">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -297,56 +313,61 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             placeholder="Enter name"
           />
         );
-              } else if (field === 'birthday') {
-          return (
-            <div className="relative calendar-container">
-              <button
-                type="button"
-                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="w-36 text-sm border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors py-2 px-3 rounded-md text-left flex items-center justify-between"
-              >
-                <span className={formData.birthday ? 'text-gray-900' : 'text-gray-500'}>
-                  {formData.birthday ? formatDateForDisplay(formData.birthday) : 'Select date'}
-                </span>
-                <Calendar className="h-4 w-4 text-purple-400 ml-auto" />
-              </button>
-              
-              {isCalendarOpen && (
-                <div className="absolute top-full right-0 mt-1 bg-white border border-purple-200 rounded-lg shadow-lg z-50 p-4 min-w-64 calendar-container">
-                <div className="flex items-center justify-between mb-4">
-                  <button
-                    onClick={() => navigateMonth('prev')}
-                    className="p-1 hover:bg-purple-100 rounded-full transition-colors"
-                  >
-                    <ChevronLeft className="h-4 w-4 text-purple-600" />
-                  </button>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </h3>
-                  <button
-                    onClick={() => navigateMonth('next')}
-                    className="p-1 hover:bg-purple-100 rounded-full transition-colors"
-                  >
-                    <ChevronRight className="h-4 w-4 text-purple-600" />
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                    <div key={day} className="h-8 w-8 flex items-center justify-center text-xs font-medium text-gray-500">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1">
-                  {renderCalendar()}
-                </div>
+      } else if (field === 'birthday') {
+        return (
+          <div className="relative calendar-container">
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+              className="w-36 text-sm border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors py-2 px-3 rounded-md text-left flex items-center justify-between"
+            >
+              <span className={formData.birthday ? 'text-gray-900' : 'text-gray-500'}>
+                {formData.birthday ? formatDateForDisplay(formData.birthday) : 'Select date'}
+              </span>
+              <Calendar className="h-4 w-4 text-purple-400 ml-auto" />
+            </button>
+            
+            {isCalendarOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-white border border-purple-200 rounded-lg shadow-lg z-50 p-4 min-w-64 calendar-container">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4 text-purple-600" />
+                </button>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h3>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-purple-100 rounded-full transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4 text-purple-600" />
+                </button>
               </div>
-            )}
+              
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                  <div key={day} className="h-8 w-8 flex items-center justify-center text-xs font-medium text-gray-500">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-7 gap-1">
+                {renderCalendar()}
+              </div>
+            </div>
+          )}
           </div>
         );
       }
+    }
+    
+    // For view mode, format the value appropriately
+    if (field === 'type') {
+      return <span className="text-gray-900">{formatType(value as string)}</span>;
     }
     
     return <span className="text-gray-900">{value}</span>;
@@ -382,20 +403,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                 petInfo.name
               )}
             </h3>
-            <p className="text-sm text-gray-600 font-medium">
-              {isEditing ? (
-                <div className="flex items-center space-x-2 mt-1">
-                  <Input
-                    value={formData.breed}
-                    onChange={(e) => handleInputChange('breed', e.target.value)}
-                    className="w-full"
-                    placeholder="Breed"
-                  />
-                </div>
-              ) : (
-                petInfo.breed && petInfo.breed.toLowerCase() !== 'unknown' ? petInfo.breed : ''
-              )}
-            </p>
+
           </div>
         </div>
 
@@ -407,7 +415,27 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           </div>
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Type:</span>
-            {renderField('Type', petInfo.type, 'type')}
+            {isEditing ? (
+              <Select
+                value={formData.type?.toUpperCase() || petInfo.type?.toUpperCase() || ''}
+                onValueChange={(value) => handleInputChange('type', value)}
+              >
+                <SelectTrigger className="w-24" aria-label="Type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DOG">Dog</SelectItem>
+                  <SelectItem value="CAT">Cat</SelectItem>
+                  <SelectItem value="BIRD">Bird</SelectItem>
+                  <SelectItem value="FISH">Fish</SelectItem>
+                  <SelectItem value="RABBIT">Rabbit</SelectItem>
+                  <SelectItem value="HAMSTER">Hamster</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <span className="text-gray-900">{formatType(petInfo.type)}</span>
+            )}
           </div>
           {(petInfo.breed && petInfo.breed.toLowerCase() !== 'unknown') || isEditing ? (
             <div className="flex items-center justify-between py-2 border-b border-purple-100">

@@ -291,8 +291,8 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
     
     def generate_stream():
         try:
-            # Get the generator and products from chat_stream_with_products
-            stream_generator, products = chat_stream_with_products(
+            # Get the generator, products, and buttons from chat_stream_with_products
+            stream_generator, products, buttons = chat_stream_with_products(
                 user_input=request.message,
                 history=request.history,
                 user_context=user_context,
@@ -303,6 +303,7 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
             
             print(f"Streaming response for: {request.message}")
             print(f"Products found: {len(products) if products else 0}")
+            print(f"Buttons found: {buttons if buttons else 'None'}")
             
             # Send products first if there are any
             if products:
@@ -356,6 +357,18 @@ async def chatbot_stream(request: ChatRequest, db: Session = Depends(get_db)):
                 # print(f"Streaming chunk: {chunk[:10]}...")
                 # Format as Server-Sent Event
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            
+            # Send buttons if available
+            if buttons:
+                try:
+                    buttons_data = {'buttons': buttons}
+                    buttons_json = json.dumps(buttons_data, ensure_ascii=False)
+                    print(f"Sending buttons: {buttons}")
+                    yield f"data: {buttons_json}\n\n"
+                except Exception as e:
+                    print(f"Error serializing buttons data: {e}")
+                    import traceback
+                    traceback.print_exc()
             
             # Send end signal
             # print(f"Sending end signal")

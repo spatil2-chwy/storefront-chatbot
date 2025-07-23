@@ -232,7 +232,7 @@ export default function Profile() {
     setEditingPet(pet.pet_profile_id);
     setEditFormData({
       name: pet.pet_name || '',
-      type: pet.pet_type || '',
+      type: pet.pet_type?.toUpperCase() || '',
       breed: pet.pet_breed || '',
       gender: pet.gender || '',
       weight: pet.weight || 0,
@@ -736,7 +736,9 @@ export default function Profile() {
                                     <span className="text-lg">{getGenderIcon(pet.gender)}</span>
                                   </h3>
                                   <p className="text-gray-600 text-sm mt-1">
-                                    {pet.pet_breed} • {pet.pet_type}
+                                    {pet.pet_breed && pet.pet_breed.toLowerCase() !== 'unknown'
+                                      ? `${pet.pet_breed} • ${pet.pet_type}`
+                                      : `Unknown • ${pet.pet_type}`}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -755,19 +757,18 @@ export default function Profile() {
                               </div>
 
                                                                                                 <div className="grid grid-cols-1 gap-3 text-sm">
+
                                    <div className="flex items-center gap-2 text-gray-600 bg-blue-50 rounded-lg p-2">
                                      <Weight className="h-4 w-4 text-chewy-blue" />
                                      <span className="font-medium">Weight:</span>
-                                     <span>{pet.weight ? `${pet.weight} lbs` : 'Unknown'}</span>
+                                     <span>{pet.weight && pet.weight > 0 ? `${pet.weight} lbs` : 'Unknown'}</span>
                                    </div>
 
-                                   {pet.birthday && (
-                                     <div className="flex items-center gap-2 text-gray-600 bg-blue-50 rounded-lg p-2">
-                                       <Gift className="h-4 w-4 text-chewy-blue" />
-                                       <span className="font-medium">Born:</span>
-                                       <span>{formatDate(pet.birthday)}</span>
-                                     </div>
-                                   )}
+                                   <div className="flex items-center gap-2 text-gray-600 bg-blue-50 rounded-lg p-2">
+                                     <Gift className="h-4 w-4 text-chewy-blue" />
+                                     <span className="font-medium">Born:</span>
+                                     <span>{pet.birthday ? new Date(pet.birthday).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'Unknown'}</span>
+                                   </div>
 
                                    <div className="flex items-center gap-2 text-gray-600 bg-blue-50 rounded-lg p-2">
                                      <Heart className="h-4 w-4 text-chewy-blue" />
