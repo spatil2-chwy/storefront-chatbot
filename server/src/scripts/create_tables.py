@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from src.database import Base, get_database_url
 from src.models.persona_memory import PersonaUpdate, PersonaCategory
 from src.models.user import User  # Import to ensure table exists
+from src.models.interaction import Interaction
 
 
 def create_persona_tables():
@@ -25,6 +26,7 @@ def create_persona_tables():
     # Create only the new tables
     PersonaUpdate.__table__.create(engine, checkfirst=True)
     PersonaCategory.__table__.create(engine, checkfirst=True)
+    Interaction.__table__.create(engine, checkfirst=True)
     
     print("✅ Persona memory tables created successfully!")
     
