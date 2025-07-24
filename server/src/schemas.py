@@ -174,6 +174,7 @@ class ProductBase(BaseModel):
     answered_faqs: Optional[str] = None
     sibling_items: Optional[List[SiblingItem]] = None
     current_variant: Optional[str] = None
+    semantic_similarity: Optional[float] = None
 
 class Product(ProductBase):
     class Config:

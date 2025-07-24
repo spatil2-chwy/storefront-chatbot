@@ -305,7 +305,7 @@ def evaluate_single_log(log_file_path: str, save_result: bool = True, output_pat
     
     return evaluation_result
 
-def evaluate_all_logs(log_dir: str = "logs/logs", output_dir: str = "logs/llm_evaluations") -> List[Dict[str, Any]]:
+def evaluate_all_logs(log_dir: str = "../logs/logs", output_dir: str = "../logs/llm_evaluations") -> List[Dict[str, Any]]:
     """Evaluate all log files in a directory"""
     
     log_path = Path(log_dir)
@@ -350,8 +350,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Evaluate pipeline logs using LLM")
     parser.add_argument("--log-file", help="Single log file to evaluate")
-    parser.add_argument("--log-dir", default="logs/logs", help="Directory containing logs to evaluate")
-    parser.add_argument("--output-dir", default="logs/llm_evaluations", help="Directory to save results")
+    parser.add_argument("--log-dir", default="../logs/logs", help="Directory containing logs to evaluate")
+    parser.add_argument("--output-dir", default="../logs/llm_evaluations", help="Directory to save results")
     parser.add_argument("--model", default="gpt-4o", help="LLM model to use")
     parser.add_argument("--no-save", action="store_true", help="Don't save results to file")
     

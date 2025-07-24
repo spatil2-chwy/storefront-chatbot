@@ -2,10 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import json
 from datetime import datetime
 import re
+import os
+from pathlib import Path
+import sys
+
+# Add the server directory to Python path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from src.evaluation.llm_evaluation import evaluate_single_log
+from src.evaluation.quantitative_evaluation import generate_performance_report
 
 # Page configuration
 st.set_page_config(
@@ -84,40 +92,255 @@ st.markdown("""
         border-radius: 10px;
         margin: 0.5rem 0;
     }
+    .health-metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin: 0.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+    .health-metric-card:hover {
+        transform: translateY(-2px);
+    }
+    .health-metric-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .health-metric-card .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    .health-metric-card .metric-description {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+    .response-type-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin: 0.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .response-type-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .response-type-card .percentage {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    .metrics-section {
+        background: rgba(255,255,255,0.05);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    .status-excellent { color: #28a745; }
+    .status-good { color: #ffc107; }
+    .status-poor { color: #dc3545; }
+    .query-sample-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        color: white;
+        margin: 0.5rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .query-sample-card h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        text-align: center;
+    }
+    .query-item {
+        background: rgba(255,255,255,0.1);
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        border-left: 4px solid rgba(255,255,255,0.3);
+    }
+    .query-item:hover {
+        background: rgba(255,255,255,0.15);
+        border-left-color: rgba(255,255,255,0.6);
+    }
+    .query-number {
+        font-weight: bold;
+        color: #ffd700;
+        margin-right: 0.5rem;
+    }
+    .query-text {
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    .query-more {
+        text-align: center;
+        font-style: italic;
+        opacity: 0.8;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(255,255,255,0.05);
+        border-radius: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 class EvaluationDashboard:
     def __init__(self):
+        # Get the server directory (parent of src/evaluation)
+        server_dir = Path(__file__).parent.parent.parent
+        self.logs_dir = server_dir / "logs" / "logs"
+        self.llm_eval_dir = server_dir / "logs" / "llm_evaluations"
+        self.quantitative_dir = server_dir / "logs" / "quantitative_reports"
+        
+        # Ensure directories exist
+        self.llm_eval_dir.mkdir(parents=True, exist_ok=True)
+        self.quantitative_dir.mkdir(parents=True, exist_ok=True)
+        
         self.eval_data = None
         self.llm_eval_data = None
         self.quantitative_data = None
-        self.all_logs_data = []  # Store all individual log files for query analysis
-    
-    def load_data(self, eval_file, llm_eval_file, quantitative_file):
-        """Load evaluation data from uploaded files"""
-        try:
-            self.eval_data = json.loads(eval_file.read()) if eval_file else None
-            self.llm_eval_data = json.loads(llm_eval_file.read()) if llm_eval_file else None
-            self.quantitative_data = json.loads(quantitative_file.read()) if quantitative_file else None
-            return True
-        except Exception as e:
-            st.error(f"Error loading data: {str(e)}")
-            return False
-    
-    def load_all_logs(self, log_files):
-        """Load all individual log files for query analysis"""
         self.all_logs_data = []
-        if not log_files:
+        self.available_queries = []
+        self.query_to_file_mapping = {}
+    
+    def load_available_queries(self):
+        """Load all available queries from log files"""
+        if not self.logs_dir.exists():
+            st.error(f"Logs directory {self.logs_dir} does not exist")
             return
         
-        for log_file in log_files:
+        self.available_queries = []
+        self.query_to_file_mapping = {}
+        
+        for log_file in self.logs_dir.glob("eval_*.json"):
             try:
-                log_data = json.loads(log_file.read())
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    log_data = json.load(f)
+                
+                raw_query = log_data.get('raw_user_query', 'Unknown Query')
+                if raw_query and raw_query != 'Unknown Query':
+                    # Truncate long queries for display
+                    display_query = raw_query[:100] + "..." if len(raw_query) > 100 else raw_query
+                    self.available_queries.append(display_query)
+                    self.query_to_file_mapping[display_query] = str(log_file)
+                    
+            except Exception as e:
+                st.error(f"Error loading log file {log_file}: {e}")
+    
+    def get_log_file_for_query(self, selected_query):
+        """Get the log file path for a selected query"""
+        return self.query_to_file_mapping.get(selected_query)
+    
+    def load_eval_data(self, log_file_path):
+        """Load evaluation data from a log file"""
+        try:
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                self.eval_data = json.load(f)
+            return True
+        except Exception as e:
+            st.error(f"Error loading evaluation data: {e}")
+            return False
+    
+    def get_llm_eval_file_path(self, log_file_path):
+        """Get the corresponding LLM evaluation file path"""
+        log_filename = Path(log_file_path).stem
+        # Clean the filename to avoid any special characters that might cause issues
+        clean_filename = re.sub(r'[^\w\-_.]', '_', log_filename)
+        return self.llm_eval_dir / f"llm_eval_{clean_filename}.json"
+    
+    def run_llm_evaluation(self, log_file_path):
+        """Run LLM evaluation for a log file"""
+        try:
+            # Check if evaluation already exists
+            llm_eval_path = self.get_llm_eval_file_path(log_file_path)
+            
+            if llm_eval_path.exists():
+                # Load existing evaluation
+                with open(llm_eval_path, 'r', encoding='utf-8') as f:
+                    self.llm_eval_data = json.load(f)
+                return True
+            
+            # Run new evaluation
+            with st.spinner("Running LLM evaluation..."):
+                evaluation_result = evaluate_single_log(str(log_file_path), save_result=True, output_path=str(llm_eval_path))
+                
+                if evaluation_result.get("error"):
+                    st.error(f"LLM evaluation failed: {evaluation_result['error']}")
+                    return False
+                
+                # Load the saved evaluation
+                with open(llm_eval_path, 'r', encoding='utf-8') as f:
+                    self.llm_eval_data = json.load(f)
+                
+                st.success("LLM evaluation completed!")
+                return True
+                
+        except Exception as e:
+            st.error(f"Error running LLM evaluation: {e}")
+            return False
+    
+    def load_quantitative_data(self):
+        """Load or generate quantitative data"""
+        try:
+            # Check if recent quantitative report exists
+            quant_files = list(self.quantitative_dir.glob("quantitative_report_*.json"))
+            if quant_files:
+                # Load the most recent report
+                latest_file = max(quant_files, key=os.path.getctime)
+                with open(latest_file, 'r', encoding='utf-8') as f:
+                    self.quantitative_data = json.load(f)
+                return True
+            
+            # Generate new quantitative report
+            with st.spinner("Generating quantitative analysis..."):
+                report = generate_performance_report(str(self.logs_dir))
+                
+                # Save the report
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_file = self.quantitative_dir / f"quantitative_report_{timestamp}.json"
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    json.dump(report, f, indent=2, ensure_ascii=False)
+                
+                self.quantitative_data = report
+                st.success("Quantitative analysis completed!")
+                return True
+                
+        except Exception as e:
+            st.error(f"Error loading quantitative data: {e}")
+            return False
+    
+    def load_all_logs_for_analysis(self):
+        """Load all log files for query analysis"""
+        self.all_logs_data = []
+        
+        if not self.logs_dir.exists():
+            return
+        
+        for log_file in self.logs_dir.glob("eval_*.json"):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    log_data = json.load(f)
                 self.all_logs_data.append(log_data)
             except Exception as e:
-                st.error(f"Error loading log file {log_file.name}: {str(e)}")
-    
+                st.error(f"Error loading log file {log_file}: {e}")
+
     def analyze_query_types(self):
         """Analyze query types from all loaded logs"""
         if not self.all_logs_data:
@@ -544,36 +767,147 @@ class EvaluationDashboard:
         
         df = pd.DataFrame(products)
         
-        col1, col2, col3 = st.columns(3)
+        # Summary metrics at the top
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            # Price distribution
-            fig_price = px.histogram(df, x='price', nbins=10, title='Price Distribution',
-                                   color_discrete_sequence=['#667eea'])
-            fig_price.update_layout(showlegend=False, height=300)
+            avg_price = df['price'].mean()
+            st.markdown(f"""
+            <div class="health-metric-card">
+                <h3>💰 Average Price</h3>
+                <div class="metric-value">${avg_price:.2f}</div>
+                <div class="metric-description">Mean product price</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            avg_rating = df['rating'].mean()
+            st.markdown(f"""
+            <div class="health-metric-card">
+                <h3>⭐ Average Rating</h3>
+                <div class="metric-value">{avg_rating:.1f}/5</div>
+                <div class="metric-description">Mean product rating</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            unique_brands = df['brand'].nunique()
+            st.markdown(f"""
+            <div class="health-metric-card">
+                <h3>🏷️ Brand Diversity</h3>
+                <div class="metric-value">{unique_brands}</div>
+                <div class="metric-description">Unique brands</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            price_range = f"${df['price'].min():.0f} - ${df['price'].max():.0f}"
+            st.markdown(f"""
+            <div class="health-metric-card">
+                <h3>📊 Price Range</h3>
+                <div class="metric-value">{price_range}</div>
+                <div class="metric-description">Min - Max price</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Enhanced visualizations
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Enhanced price distribution with better styling
+            fig_price = px.histogram(
+                df, 
+                x='price', 
+                nbins=min(8, len(df)), 
+                title='Price Distribution',
+                color_discrete_sequence=['#667eea'],
+                opacity=0.8
+            )
+            fig_price.update_layout(
+                showlegend=False, 
+                height=400,
+                title_font_size=16,
+                title_font_color='#FFFFFF',
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#FFFFFF'),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    title_font_color='#FFFFFF'
+                ),
+                yaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    title_font_color='#FFFFFF'
+                )
+            )
             st.plotly_chart(fig_price, use_container_width=True)
         
         with col2:
-            # rating distribution
-            fig_rating = px.histogram(df, x='rating', nbins=10, title='Rating Distribution',
-                                   color_discrete_sequence=['#667eea'])
-            fig_rating.update_layout(showlegend=False, height=300)
+            # Enhanced rating distribution
+            fig_rating = px.histogram(
+                df, 
+                x='rating', 
+                nbins=min(6, len(df)), 
+                title='Rating Distribution',
+                color_discrete_sequence=['#f093fb'],
+                opacity=0.8
+            )
+            fig_rating.update_layout(
+                showlegend=False, 
+                height=400,
+                title_font_size=16,
+                title_font_color='#FFFFFF',
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#FFFFFF'),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    title_font_color='#FFFFFF'
+                ),
+                yaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    title_font_color='#FFFFFF'
+                )
+            )
             st.plotly_chart(fig_rating, use_container_width=True)
-
-        with col3:
-            # Brand distribution
-            brand_counts = df['brand'].value_counts()
-            fig_brand = px.pie(values=brand_counts.values, names=brand_counts.index,
-                             title='Brand Distribution', color_discrete_sequence=px.colors.qualitative.Set3)
-            fig_brand.update_layout(height=300)
-            st.plotly_chart(fig_brand, use_container_width=True)
         
-        # Product table
+        # Brand distribution with better styling
+        brand_counts = df['brand'].value_counts()
+        fig_brand = px.pie(
+            values=brand_counts.values, 
+            names=brand_counts.index,
+            title='Brand Distribution',
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        fig_brand.update_layout(
+            height=400,
+            title_font_size=16,
+            title_font_color='#FFFFFF',
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#FFFFFF'),
+            legend=dict(font=dict(color='#FFFFFF'))
+        )
+        st.plotly_chart(fig_brand, use_container_width=True)
+        
+        # Enhanced product table with better styling
         with st.expander("📋 Product Details", expanded=True):
+            # Create a styled dataframe
+            styled_df = df[['rank', 'title', 'brand', 'price', 'rating']].copy()
+            styled_df['price'] = [f"${x:.2f}" for x in styled_df['price']]
+            styled_df['rating'] = [f"{x:.1f} ⭐" for x in styled_df['rating']]
+            
             st.dataframe(
-                df[['rank', 'title', 'brand', 'price', 'rating']].round(2),
+                styled_df,
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
+                column_config={
+                    "rank": st.column_config.NumberColumn("Rank", format="%d"),
+                    "title": st.column_config.TextColumn("Product Name", width="large"),
+                    "brand": st.column_config.TextColumn("Brand", width="medium"),
+                    "price": st.column_config.TextColumn("Price", width="small"),
+                    "rating": st.column_config.TextColumn("Rating", width="small")
+                }
             )
     
     def render_article_analysis(self):
@@ -633,220 +967,356 @@ class EvaluationDashboard:
     def render_quantitative_analysis_tab(self):
         """Render the quantitative analysis tab with system health and query analysis"""
         if not self.quantitative_data and not self.all_logs_data:
-            st.info("Upload quantitative data or individual log files to see analysis")
+            st.info("No quantitative data available. Please ensure logs exist in logs/logs/ directory.")
             return
         
-        # Query Type Analysis
         if self.all_logs_data:
-            st.markdown('<div class="section-header">🔍 Query Type Analysis</div>', unsafe_allow_html=True)
-            
             query_analysis = self.analyze_query_types()
             
-            # Query distribution
+            # Sample queries by type with beautiful cards
+            st.markdown("### 🔍 Sample Queries by Type")
+            
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                product_count = len(query_analysis.get('product_queries', []))
-                total_queries = len(self.all_logs_data)
-                product_pct = (product_count / total_queries * 100) if total_queries > 0 else 0
-                st.metric("🛍️ Product Queries", f"{product_count} ({product_pct:.1f}%)")
+                st.markdown("**🛍️ Product Queries**")
+                product_queries = query_analysis.get('product_queries', [])
+                if product_queries:
+                    for i, query in enumerate(product_queries[:5], 1):
+                        st.markdown(f"""
+                        <div class="query-sample-card">
+                            <div class="query-item">
+                                <span class="query-number">#{i}</span>
+                                <span class="query-text">{query}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    if len(product_queries) > 5:
+                        st.markdown(f"""
+                        <div class="query-more">
+                            ... and {len(product_queries) - 5} more product queries
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="query-sample-card">
+                        <div class="query-item">
+                            <span class="query-text">No product queries found</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             with col2:
-                article_count = len(query_analysis.get('article_queries', []))
-                article_pct = (article_count / total_queries * 100) if total_queries > 0 else 0
-                st.metric("📰 Article Queries", f"{article_count} ({article_pct:.1f}%)")
+                st.markdown("**📰 Article Queries**")
+                article_queries = query_analysis.get('article_queries', [])
+                if article_queries:
+                    for i, query in enumerate(article_queries[:5], 1):
+                        st.markdown(f"""
+                        <div class="query-sample-card">
+                            <div class="query-item">
+                                <span class="query-number">#{i}</span>
+                                <span class="query-text">{query}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    if len(article_queries) > 5:
+                        st.markdown(f"""
+                        <div class="query-more">
+                            ... and {len(article_queries) - 5} more article queries
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="query-sample-card">
+                        <div class="query-item">
+                            <span class="query-text">No article queries found</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             with col3:
-                general_count = len(query_analysis.get('general_queries', []))
-                general_pct = (general_count / total_queries * 100) if total_queries > 0 else 0
-                st.metric("💬 General Queries", f"{general_count} ({general_pct:.1f}%)")
-            
-            # Query categories chart
-            categories = query_analysis.get('query_categories', {})
-            if categories:
-                st.markdown("#### Query Categories Distribution")
-                fig_categories = px.bar(
-                    x=list(categories.keys()),
-                    y=list(categories.values()),
-                    title="Query Categories",
-                    color_discrete_sequence=['#667eea']
-                )
-                fig_categories.update_layout(
-                    xaxis_title="Category",
-                    yaxis_title="Count",
-                    height=400,
-                    showlegend=False
-                )
-                st.plotly_chart(fig_categories, use_container_width=True)
-            
-            # Sample queries by type
-            with st.expander("📝 Sample Queries by Type", expanded=True):
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.markdown("**🛍️ Product Queries:**")
-                    product_queries = query_analysis.get('product_queries', [])
-                    for i, query in enumerate(product_queries[:5], 1):
-                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
-                    if len(product_queries) > 5:
-                        st.markdown(f"... and {len(product_queries) - 5} more")
-                
-                with col2:
-                    st.markdown("**📰 Article Queries:**")
-                    article_queries = query_analysis.get('article_queries', [])
-                    for i, query in enumerate(article_queries[:5], 1):
-                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
-                    if len(article_queries) > 5:
-                        st.markdown(f"... and {len(article_queries) - 5} more")
-                
-                with col3:
-                    st.markdown("**💬 General Queries:**")
-                    general_queries = query_analysis.get('general_queries', [])
+                st.markdown("**💬 General Queries**")
+                general_queries = query_analysis.get('general_queries', [])
+                if general_queries:
                     for i, query in enumerate(general_queries[:5], 1):
-                        st.markdown(f"{i}. {query[:50]}{'...' if len(query) > 50 else ''}")
+                        st.markdown(f"""
+                        <div class="query-sample-card">
+                            <div class="query-item">
+                                <span class="query-number">#{i}</span>
+                                <span class="query-text">{query}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     if len(general_queries) > 5:
-                        st.markdown(f"... and {len(general_queries) - 5} more")
+                        st.markdown(f"""
+                        <div class="query-more">
+                            ... and {len(general_queries) - 5} more general queries
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="query-sample-card">
+                        <div class="query-item">
+                            <span class="query-text">No general queries found</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
         
-        # System Health Metrics (existing functionality)
+        # System Health Metrics
         if self.quantitative_data:
             st.markdown('<div class="section-header">⚡ System Health Metrics</div>', unsafe_allow_html=True)
             
             metrics = self.quantitative_data.get('metrics', {})
             recommendations = self.quantitative_data.get('recommendations', [])
             
-            # Response type distribution
+            # Response Type Distribution with beautiful cards
             response_type_dist = metrics.get('response_type_distribution', {})
             if response_type_dist:
-                st.markdown("#### Response Type Distribution")
+                
+                st.markdown("### 📊 Response Type Distribution")
+                
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     direct_pct = response_type_dist.get('direct_response', 0)
-                    st.metric("💬 Direct Responses", f"{direct_pct:.1f}%")
+                    st.markdown(f"""
+                    <div class="response-type-card">
+                        <h3>💬 Direct Responses</h3>
+                        <div class="percentage">{direct_pct:.1f}%</div>
+                        <div class="metric-description">General conversation queries</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 with col2:
                     article_pct = response_type_dist.get('article_search', 0)
-                    st.metric("📰 Article Searches", f"{article_pct:.1f}%")
+                    st.markdown(f"""
+                    <div class="response-type-card">
+                        <h3>📰 Article Searches</h3>
+                        <div class="percentage">{article_pct:.1f}%</div>
+                        <div class="metric-description">Educational content queries</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 with col3:
                     product_pct = response_type_dist.get('product_search', 0)
-                    st.metric("🛍️ Product Searches", f"{product_pct:.1f}%")
+                    st.markdown(f"""
+                    <div class="response-type-card">
+                        <h3>🛍️ Product Searches</h3>
+                        <div class="percentage">{product_pct:.1f}%</div>
+                        <div class="metric-description">Product recommendation queries</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # KPI metrics
+            # Performance KPIs with beautiful cards
+            
+            st.markdown("### ⚡ Performance KPIs")
+            
             col1, col2, col3, col4, col5 = st.columns(5)
             
             with col1:
-                avg_time = metrics.get('avg_total_processing_time')
-                avg_time = avg_time if avg_time is not None else 0
-                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
-                st.metric(f"{color} Avg Response Time", f"{avg_time:.1f}s")
+                avg_time = metrics.get('avg_total_processing_time', 0)
+                status_class = "status-excellent" if avg_time <= 5 else "status-good" if avg_time <= 10 else "status-poor"
+                status_icon = "🟢" if avg_time <= 5 else "🟡" if avg_time <= 10 else "🔴"
+                st.markdown(f"""
+                <div class="health-metric-card">
+                    <h3>{status_icon} Response Time</h3>
+                    <div class="metric-value">{avg_time:.1f}s</div>
+                    <div class="metric-description">Average total processing</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                avg_time = metrics.get('avg_product_search_time')
-                avg_time = avg_time if avg_time is not None else 0
-                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
-                st.metric(f"{color} Avg Product Search", f"{avg_time:.1f}s")
+                avg_time = metrics.get('avg_product_search_time', 0)
+                status_class = "status-excellent" if avg_time <= 2 else "status-good" if avg_time <= 5 else "status-poor"
+                status_icon = "🟢" if avg_time <= 2 else "🟡" if avg_time <= 5 else "🔴"
+                st.markdown(f"""
+                <div class="health-metric-card">
+                    <h3>{status_icon} Product Search</h3>
+                    <div class="metric-value">{avg_time:.1f}s</div>
+                    <div class="metric-description">Average search time</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col3:
-                avg_time = metrics.get('avg_article_search_time')
-                avg_time = avg_time if avg_time is not None else 0
-                color = "🔴" if avg_time > 15 else "🟡" if avg_time > 10 else "🟢"
-                st.metric(f"{color} Avg Article Search", f"{avg_time:.1f}s")
+                avg_time = metrics.get('avg_article_search_time', 0)
+                status_class = "status-excellent" if avg_time <= 2 else "status-good" if avg_time <= 5 else "status-poor"
+                status_icon = "🟢" if avg_time <= 2 else "🟡" if avg_time <= 5 else "🔴"
+                st.markdown(f"""
+                <div class="health-metric-card">
+                    <h3>{status_icon} Article Search</h3>
+                    <div class="metric-value">{avg_time:.1f}s</div>
+                    <div class="metric-description">Average search time</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col4:
-                success_rate = metrics.get('success_rate')
-                success_rate = success_rate if success_rate is not None else 0
-                color = "🟢" if success_rate > 95 else "🟡" if success_rate > 90 else "🔴"
-                st.metric(f"{color} Success Rate", f"{success_rate:.1f}%")
+                success_rate = metrics.get('success_rate', 0)
+                status_class = "status-excellent" if success_rate >= 95 else "status-good" if success_rate >= 90 else "status-poor"
+                status_icon = "🟢" if success_rate >= 95 else "🟡" if success_rate >= 90 else "🔴"
+                st.markdown(f"""
+                <div class="health-metric-card">
+                    <h3>{status_icon} Success Rate</h3>
+                    <div class="metric-value">{success_rate:.1f}%</div>
+                    <div class="metric-description">Query success rate</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col5:
-                slow_queries = metrics.get('slow_queries_percentage')
-                slow_queries = slow_queries if slow_queries is not None else 0
-                color = "🔴" if slow_queries > 20 else "🟡" if slow_queries > 10 else "🟢"
-                st.metric(f"{color} Slow Queries", f"{slow_queries:.1f}%")
+                slow_queries = metrics.get('slow_queries_percentage', 0)
+                status_class = "status-excellent" if slow_queries <= 5 else "status-good" if slow_queries <= 10 else "status-poor"
+                status_icon = "🟢" if slow_queries <= 5 else "🟡" if slow_queries <= 10 else "🔴"
+                st.markdown(f"""
+                <div class="health-metric-card">
+                    <h3>{status_icon} Slow Queries</h3>
+                    <div class="metric-value">{slow_queries:.1f}%</div>
+                    <div class="metric-description">Queries > 10s</div>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # Product-specific metrics (only show if there are product searches)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Product Search Metrics (only show if there are product searches)
             if metrics.get('avg_products_returned', 0) > 0:
-                st.markdown("#### Product Search Metrics")
+                
+                st.markdown("### 🛍️ Product Search Metrics")
+                
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     avg_products = metrics.get('avg_products_returned', 0)
-                    st.metric("📦 Avg Products Returned", f"{avg_products:.1f}")
+                    st.markdown(f"""
+                    <div class="health-metric-card">
+                        <h3>📦 Products Returned</h3>
+                        <div class="metric-value">{avg_products:.1f}</div>
+                        <div class="metric-description">Average per query</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 with col2:
                     brand_diversity = metrics.get('brand_diversity', 0)
-                    color = "🟢" if brand_diversity > 0.8 else "🟡" if brand_diversity > 0.6 else "🔴"
-                    st.metric(f"{color} Brand Diversity", f"{brand_diversity:.2f}")
+                    status_class = "status-excellent" if brand_diversity > 0.8 else "status-good" if brand_diversity > 0.6 else "status-poor"
+                    status_icon = "🟢" if brand_diversity > 0.8 else "🟡" if brand_diversity > 0.6 else "🔴"
+                    st.markdown(f"""
+                    <div class="health-metric-card">
+                        <h3>{status_icon} Brand Diversity</h3>
+                        <div class="metric-value">{brand_diversity:.2f}</div>
+                        <div class="metric-description">Diversity score (0-1)</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 with col3:
                     price_range = metrics.get('price_range', {})
                     min_price = price_range.get('min', 0)
                     max_price = price_range.get('max', 0)
-                    st.metric("💰 Price Range", f"${min_price:.0f}-${max_price:.0f}")
+                    st.markdown(f"""
+                    <div class="health-metric-card">
+                        <h3>💰 Price Range</h3>
+                        <div class="metric-value">${min_price:.0f}-${max_price:.0f}</div>
+                        <div class="metric-description">Product price range</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Article-specific metrics (only show if there are article searches)
+            # Article Search Metrics (only show if there are article searches)
             if metrics.get('avg_articles_returned', 0) > 0:
-                st.markdown("#### Article Search Metrics")
+                
+                st.markdown("### 📰 Article Search Metrics")
+                
                 avg_articles = metrics.get('avg_articles_returned', 0)
-                st.metric("📰 Avg Articles Returned", f"{avg_articles:.1f}")
+                st.markdown(f"""
+                <div class="health-metric-card" style="max-width: 300px; margin: 0 auto;">
+                    <h3>📰 Articles Returned</h3>
+                    <div class="metric-value">{avg_articles:.1f}</div>
+                    <div class="metric-description">Average per query</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Recommendations
+            # Recommendations with better styling
             if recommendations:
-                st.markdown("#### Recommendations")
+                
+                st.markdown("### 💡 System Recommendations")
+                
                 for rec in recommendations:
                     if "Critical" in rec:
-                        st.error(rec)
+                        st.error(f"🚨 {rec}")
                     elif "Warning" in rec:
-                        st.warning(rec)
+                        st.warning(f"⚠️ {rec}")
                     else:
-                        st.info(rec)
+                        st.info(f"ℹ️ {rec}")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
     
     def run(self):
         """Run the dashboard"""
-        # Sidebar for file upload
-        st.sidebar.title("📁 Upload Evaluation Data")
+        # Load available queries and quantitative data on startup
+        self.load_available_queries()
+        self.load_quantitative_data()
+        self.load_all_logs_for_analysis()
         
-        # Individual session analysis files
-        st.sidebar.markdown("### Individual Session Analysis")
-        eval_file = st.sidebar.file_uploader("Pipeline Log (JSON)", type=['json'], key="eval", help='Contains session details, query processing steps, tool calls, and performance metrics')
-        llm_eval_file = st.sidebar.file_uploader("LLM Evaluation (JSON)", type=['json'], key="llm_eval", help='Contains qualitative scores (1-10) for different evaluation dimensions')
+        # Sidebar for query selection
+        st.sidebar.title("🔍 Query Selection")
         
-        # Quantitative analysis files
-        st.sidebar.markdown("### Quantitative Analysis")
-        quantitative_file = st.sidebar.file_uploader("Quantitative Report (JSON)", type=['json'], key="quant", help='Contains aggregated metrics and system recommendations')
-        log_files = st.sidebar.file_uploader("Individual Log Files (JSON)", type=['json'], key="logs", accept_multiple_files=True, help='Upload multiple individual log files for query type analysis')
+        # Show status information
+        st.sidebar.markdown(f"**📊 Total Queries:** {len(self.available_queries)}")
+        if self.quantitative_data:
+            st.sidebar.markdown(f"**✅ Quantitative Analysis:** Available")
+        else:
+            st.sidebar.markdown(f"**⏳ Quantitative Analysis:** Generating...")
         
-        # Load data
-        data_loaded = False
-        if eval_file or llm_eval_file or quantitative_file or log_files:
-            if self.load_data(eval_file, llm_eval_file, quantitative_file):
-                data_loaded = True
-            
-            if log_files:
-                self.load_all_logs(log_files)
-                data_loaded = True
-            
-            if data_loaded:
-                st.sidebar.success("✅ Data loaded successfully!")
-        
-        if not data_loaded:
-            st.info("Please upload evaluation data files to begin analysis")
+        if not self.available_queries:
+            st.sidebar.warning("No evaluation logs found in logs/logs/ directory")
+            st.info("Please run some queries first to see evaluation data")
             return
+        
+        # Refresh button
+        if st.sidebar.button("🔄 Refresh Data", help="Reload logs and regenerate analysis"):
+            st.rerun()
+        
+        # pre-pend empty string to available_queries
+        self.available_queries = [''] + self.available_queries
+        # Query selection dropdown
+        selected_query = st.sidebar.selectbox(
+            "Select a query to analyze:",
+            options=self.available_queries,
+            index=0 if self.available_queries else None,
+            help="Choose a query to see detailed analysis"
+        )
+        
+        if selected_query:
+            # Get the corresponding log file
+            log_file_path = self.get_log_file_for_query(selected_query)
+            
+            if log_file_path:
+                # Load evaluation data
+                if self.load_eval_data(log_file_path):
+                    # Run LLM evaluation if needed
+                    self.run_llm_evaluation(log_file_path)
+                    st.sidebar.success("✅ Data loaded successfully!")
+                else:
+                    st.sidebar.error("❌ Failed to load evaluation data")
+                    return
+            else:
+                st.sidebar.error("❌ Could not find log file for selected query")
+                return
         
         # Create tabs
         tab1, tab2 = st.tabs(["📊 Individual Session Analysis", "📈 Quantitative Analysis"])
         
         with tab1:
             # Individual session analysis
-            if eval_file or llm_eval_file:
+            if self.eval_data:
                 self.render_user_info()
                 self.render_pipeline_flow()
                 self.render_product_analysis()
                 self.render_article_analysis()
                 self.render_evaluation_scores()
             else:
-                st.info("Upload individual session files (Pipeline Log and/or LLM Evaluation) to see detailed analysis")
+                st.info("Select a query from the sidebar to see detailed analysis")
         
         with tab2:
             # Quantitative analysis
