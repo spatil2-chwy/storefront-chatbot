@@ -11,12 +11,25 @@ export const QuickResponseButtons: React.FC<QuickResponseButtonsProps> = ({
   tags,
   onTagClick,
 }) => {
+  console.log('QuickResponseButtons: Rendering with tags:', tags, 'onTagClick:', !!onTagClick);
+  
   if (!tags || tags.length === 0) {
+    console.log('QuickResponseButtons: No tags provided');
     return null;
   }
 
+  if (!onTagClick) {
+    console.log('QuickResponseButtons: No onTagClick provided');
+    return null;
+  }
+
+  const handleTagClick = (tag: string) => {
+    console.log('QuickResponseButtons: Tag clicked:', tag);
+    onTagClick(tag);
+  };
+
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-4 space-y-3 relative z-10">
       {/* Buttons - One per line */}
       <div className="space-y-2">
         {tags.map((tag, index) => (
@@ -24,8 +37,9 @@ export const QuickResponseButtons: React.FC<QuickResponseButtonsProps> = ({
             key={index}
             variant="outline"
             size="default"
-            onClick={() => onTagClick(tag)}
-            className="group relative bg-white hover:bg-blue-50 border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 px-4 py-2.5 text-sm font-medium rounded-md transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 w-full justify-between"
+            onClick={() => handleTagClick(tag)}
+            className="w-full justify-between group relative z-10 pointer-events-auto"
+            style={{ pointerEvents: 'auto' }}
           >
             <span className="truncate">{tag}</span>
             <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
