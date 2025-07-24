@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
+import { useGlobalChat } from '@/features/chat/context';
 import { Button } from '@/ui/Buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
@@ -27,15 +28,19 @@ import {
   ChevronRight,
   ArrowLeft,
   ShoppingBag,
-  Package
+  Package,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
 import { chatApi } from '@/lib/api/chat';
 import { ordersApi, OrderSummary } from '@/lib/api/orders';
+import { AddPetModal } from '@/components/AddPetModal';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { setGreetingNeedsRefresh } = useGlobalChat();
   const [pets, setPets] = useState<any[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
   const [editingPet, setEditingPet] = useState<number | null>(null);
@@ -43,6 +48,8 @@ export default function Profile() {
   const [savingPet, setSavingPet] = useState<number | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [isAddPetModalOpen, setIsAddPetModalOpen] = useState(false);
+  const [deletingPet, setDeletingPet] = useState<number | null>(null);
 
   // Allergy options for MultiSelect
   const allergiesOptions: MultiSelectOption[] = [
@@ -81,20 +88,25 @@ export default function Profile() {
 
   // Fetch user's pets and orders
   useEffect(() => {
+    console.log('Profile: useEffect triggered, user:', user);
     if (user) {
+      console.log('Profile: User found, customer_key:', user.customer_key);
       fetchUserPets();
       fetchUserOrders();
     }
   }, [user]);
 
   const fetchUserPets = async () => {
+    console.log('Profile: fetchUserPets called');
     try {
       if (user?.customer_key) {
+        console.log('Profile: Fetching pets for customer_key:', user.customer_key);
         const petsData = await usersApi.getUserPets(user.customer_key);
+        console.log('Profile: Received pets data:', petsData);
         setPets(petsData);
       }
     } catch (error) {
-      console.error('Error fetching pets:', error);
+      console.error('Profile: Error fetching pets:', error);
     } finally {
       setLoadingPets(false);
     }
@@ -278,6 +290,9 @@ export default function Profile() {
       // Refresh pets list
       await fetchUserPets();
       
+      // Refresh greeting in chat
+      setGreetingNeedsRefresh(true);
+      
       // Exit editing mode
       setEditingPet(null);
       setEditFormData(null);
@@ -285,6 +300,29 @@ export default function Profile() {
       console.error('Error updating pet:', error);
     } finally {
       setSavingPet(null);
+    }
+  };
+
+  const deletePet = async (petId: number) => {
+    if (!confirm('Are you sure you want to delete this pet? This action cannot be undone.')) {
+      return;
+    }
+    
+    console.log('deletePet: Starting deletion of pet', petId);
+    setDeletingPet(petId);
+    try {
+      await usersApi.deletePet(petId);
+      console.log('deletePet: Pet deleted successfully');
+      await fetchUserPets();
+      console.log('deletePet: User pets refreshed');
+      // Refresh greeting in chat
+      console.log('deletePet: Calling refreshChatGreeting');
+      setGreetingNeedsRefresh(true);
+      console.log('deletePet: refreshChatGreeting called');
+    } catch (error) {
+      console.error('Error deleting pet:', error);
+    } finally {
+      setDeletingPet(null);
     }
   };
 
@@ -531,10 +569,20 @@ export default function Profile() {
           <div className="xl:col-span-2">
             <Card className="bg-white border-chewy-blue/20 shadow-lg">
               <CardHeader className="bg-chewy-blue text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <PawPrint className="h-5 w-5" />
-                  My Pets ({pets.length})
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <PawPrint className="h-5 w-5" />
+                    My Pets ({pets.length})
+                  </CardTitle>
+                  <Button
+                    onClick={() => setIsAddPetModalOpen(true)}
+                    size="sm"
+                    className="bg-white text-chewy-blue hover:bg-gray-100 border-white"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Pet
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-6">
                 {loadingPets ? (
@@ -745,13 +793,26 @@ export default function Profile() {
                                   <Badge className={getLifeStageColor(pet.life_stage)}>
                                     {getLifeStageText(pet.life_stage)}
                                   </Badge>
-                                                                     <Button
-                                     size="sm"
-                                     variant="outline"
-                                     onClick={() => startEditingPet(pet)}
-                                     className="text-chewy-blue border-chewy-blue/20 hover:bg-chewy-blue/10"
-                                   >
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => startEditingPet(pet)}
+                                    className="text-chewy-blue border-chewy-blue/20 hover:bg-chewy-blue/10"
+                                  >
                                     <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => deletePet(pet.pet_profile_id)}
+                                    disabled={deletingPet === pet.pet_profile_id}
+                                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                  >
+                                    {deletingPet === pet.pet_profile_id ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
                                   </Button>
                                 </div>
                               </div>
@@ -802,6 +863,20 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Add Pet Modal */}
+      <AddPetModal
+        isOpen={isAddPetModalOpen}
+        onClose={() => setIsAddPetModalOpen(false)}
+        onPetAdded={() => {
+          console.log('Profile: onPetAdded callback called');
+          console.log('Profile: Calling fetchUserPets');
+          fetchUserPets();
+          console.log('Profile: Calling refreshChatGreeting');
+          setGreetingNeedsRefresh(true);
+          console.log('Profile: onPetAdded callback completed');
+        }}
+      />
     </div>
   );
 } 

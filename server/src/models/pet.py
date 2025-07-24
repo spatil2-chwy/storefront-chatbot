@@ -30,9 +30,19 @@ class SQLiteDateTime(TypeDecorator):
             return None
         if isinstance(value, str):
             try:
+                # Try ISO format first
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except ValueError:
+                pass
+            try:
                 return datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
             except ValueError:
-                return None
+                pass
+            try:
+                return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                pass
+            return None
         return value
 
 class PetProfile(Base):
@@ -53,8 +63,8 @@ class PetProfile(Base):
     adoption_date = Column(SQLiteDate, nullable=True)
     status = Column(String)
     status_reason = Column(String, nullable=True)
-    time_created = Column(SQLiteDateTime)
-    time_updated = Column(SQLiteDateTime)
+    time_created = Column(SQLiteDateTime, default=datetime.now)
+    time_updated = Column(SQLiteDateTime, nullable=True)
     weight = Column(Float)
     allergies = Column(String, nullable=True)  # Comma-separated allergy values
     # Note: allergy_count column still exists in database but is deprecated

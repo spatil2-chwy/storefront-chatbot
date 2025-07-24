@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from sqlalchemy.orm import Session, joinedload
 from src.models.pet import PetProfile
 from src.models.user import User
@@ -24,6 +25,9 @@ class PetService:
         return pet.owner if pet else None
 
     def create_pet(self, db: Session, profile: PetProfile) -> PetProfile:
+        # Ensure time_created is set if not provided
+        if not profile.time_created:
+            profile.time_created = datetime.utcnow()
         db.add(profile)
         db.commit()
         db.refresh(profile)

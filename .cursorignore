@@ -9,11 +9,19 @@ server/htmlcov/
 server/logs/
 
 # ─── Chroma vector database (large binary blobs) ──────────────
-data/databases/
-/data/
+# data/databases/
+# /data/
+# /data/core/
+# /data/databases/
+# /data/personas/
 
 # ─── Raw backend data (if you’re only querying the DB) ────────
 data/backend/*.json
 data/backend/*.tsv
 # data/backend/*.csv
 data/backend/reviews/results.jsonl
+
+/scripts/
+
+/src/evaluation/
+/src/utils/

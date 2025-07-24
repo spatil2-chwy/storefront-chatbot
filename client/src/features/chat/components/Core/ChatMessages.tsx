@@ -26,6 +26,9 @@ interface ChatMessagesProps {
   onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: any) => void;
   onPetEditSave?: (updatedPet: any) => void;
   onPetEditCancel?: () => void;
+  onAddNewPet?: () => void;
+  onPetAddedFromChat?: (petId: number) => void;
+  onRemoveMessage?: (messageId: string) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -48,6 +51,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   onPetProfileAction,
   onPetEditSave,
   onPetEditCancel,
+  onAddNewPet,
+  onPetAddedFromChat,
+  onRemoveMessage,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +83,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             onPetProfileAction={onPetProfileAction}
             onPetEditSave={onPetEditSave}
             onPetEditCancel={onPetEditCancel}
+            onAddNewPet={onAddNewPet}
+            onPetAddedFromChat={onPetAddedFromChat}
+            onRemoveMessage={onRemoveMessage}
           />
         ))
       )}

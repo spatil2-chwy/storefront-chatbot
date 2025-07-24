@@ -7,6 +7,7 @@ interface GlobalChatContextType {
   addMessage: (message: ChatMessage) => void;
   insertMessageAt: (message: ChatMessage, index: number) => void;
   updateMessage: (messageId: string, updater: (message: ChatMessage) => ChatMessage) => void;
+  removeMessage: (messageId: string) => void;
   clearMessages: () => void;
   addTransitionMessage: (fromContext: ChatContextType, toContext: ChatContextType) => void;
   currentContext: ChatContextType;
@@ -28,6 +29,9 @@ interface GlobalChatContextType {
   setShouldAutoOpen: (should: boolean) => void;
   isMainChatHidden: boolean;
   setIsMainChatHidden: (hidden: boolean) => void;
+  // Add greeting state
+  greetingNeedsRefresh: boolean;
+  setGreetingNeedsRefresh: (needsRefresh: boolean) => void;
 }
 
 const GlobalChatContext = createContext<GlobalChatContextType | undefined>(undefined);
@@ -61,6 +65,9 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
   const [shouldAutoOpen, setShouldAutoOpen] = useState<boolean>(false);
   const [isMainChatHidden, setIsMainChatHidden] = useState<boolean>(false);
   
+  // Greeting state management
+  const [greetingNeedsRefresh, setGreetingNeedsRefresh] = useState<boolean>(false);
+  
   // Track transition timing to prevent duplicates
   const [lastTransitionTime, setLastTransitionTime] = useState<number>(0);
 
@@ -85,6 +92,10 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
     setMessages(prev => 
       prev.map(msg => msg.id === messageId ? updater(msg) : msg)
     );
+  }, []);
+
+  const removeMessage = useCallback((messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -176,6 +187,7 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         addMessage,
         insertMessageAt,
         updateMessage,
+        removeMessage,
         clearMessages,
         addTransitionMessage,
         currentContext,
@@ -197,6 +209,8 @@ export const GlobalChatProvider: React.FC<GlobalChatProviderProps> = ({ children
         setShouldAutoOpen,
         isMainChatHidden,
         setIsMainChatHidden,
+        greetingNeedsRefresh,
+        setGreetingNeedsRefresh,
       }}
     >
       {children}

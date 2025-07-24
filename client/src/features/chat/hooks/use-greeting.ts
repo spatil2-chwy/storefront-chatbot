@@ -122,12 +122,27 @@ export const useGreeting = () => {
     setPreloadedGreeting(null);
   };
 
+  const refreshGreeting = async () => {
+    if (user?.customer_key) {
+      try {
+        const response = await chatApi.getPersonalizedGreeting(user.customer_key);
+        setPreloadedGreeting(response);
+        // Reset greeting shown flags so the new greeting will be displayed
+        setGreetingShown(false);
+        setSearchGreetingShown(false);
+      } catch (error) {
+        console.error('Failed to refresh personalized greeting:', error);
+      }
+    }
+  };
+
   return {
     greetingShown,
     searchGreetingShown,
     preloadedGreeting,
     showSearchGreeting,
     showInitialSearchGreeting,
-    resetGreeting
+    resetGreeting,
+    refreshGreeting
   };
 }; 

@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.schemas import PetProfile as PetSchema, User as UserSchema
 from src.services.pet_service import PetService
+from src.services.user_service import UserService
 from src.models.pet import PetProfile
 
 router = APIRouter(prefix="/pets", tags=["pets"])
 pet_svc = PetService()
+user_svc = UserService()
 
 @router.get("/", response_model=List[PetSchema])
 def list_pets(db: Session = Depends(get_db)):
@@ -33,8 +35,16 @@ def read_pet_owner(pet_profile_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=PetSchema)
 def create_pet(profile: PetSchema, db: Session = Depends(get_db)):
+    # Get the user to find the correct customer_id
+    user = user_svc.get_user(db, profile.customer_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    profile_dict = profile.dict()
+    profile_dict['customer_id'] = user.customer_id
+    
     # Create a new pet profile
-    return pet_svc.create_pet(db, PetProfile(**profile.dict()))
+    return pet_svc.create_pet(db, PetProfile(**profile_dict))
 
 @router.put("/{pet_profile_id}", response_model=PetSchema)
 def update_pet(pet_profile_id: int, profile: PetSchema, db: Session = Depends(get_db)):

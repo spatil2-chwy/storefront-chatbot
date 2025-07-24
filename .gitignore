@@ -9,6 +9,19 @@ __pycache__
 .vite
 .env
 
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/test-setup.ts
+**/vitest.config.ts
+**/jest.config.*
+**/coverage/
+**/.nyc_output/
+**/TESTING_*.md
+
 # Data files and databases
 data/
 data/backend/

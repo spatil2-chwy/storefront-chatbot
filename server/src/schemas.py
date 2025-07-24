@@ -57,6 +57,10 @@ class PetProfileBase(BaseModel):
             return None
         if isinstance(v, str):
             try:
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                pass
+            try:
                 return datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
             except ValueError:
                 pass

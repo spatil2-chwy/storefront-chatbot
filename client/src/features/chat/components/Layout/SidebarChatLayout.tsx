@@ -39,6 +39,9 @@ interface SidebarChatLayoutProps {
   onPetProfileAction?: (action: 'looks_good' | 'edit_info', petInfo?: PetProfileInfo) => void;
   onPetEditSave?: (updatedPet: PetProfileInfo) => void;
   onPetEditCancel?: () => void;
+  onAddNewPet?: () => void;
+  onPetAddedFromChat?: (petId: number) => void;
+  onRemoveMessage?: (messageId: string) => void;
 }
 
 export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
@@ -73,6 +76,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
   onPetProfileAction,
   onPetEditSave,
   onPetEditCancel,
+  onAddNewPet,
+  onPetAddedFromChat,
+  onRemoveMessage,
 }) => {
   // Handle body scroll and layout adjustment when sidebar is open
   useEffect(() => {
@@ -139,7 +145,10 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                 onPetProfileAction={onPetProfileAction}
                 onPetEditSave={onPetEditSave}
                 onPetEditCancel={onPetEditCancel}
-              />
+                onAddNewPet={onAddNewPet}
+                onPetAddedFromChat={onPetAddedFromChat}
+                onRemoveMessage={onRemoveMessage}
+                />
               <ChatInput
                 value={inputValue}
                 onChange={onInputChange}
@@ -221,6 +230,9 @@ export const SidebarChatLayout: React.FC<SidebarChatLayoutProps> = ({
                   onPetProfileAction={onPetProfileAction}
                   onPetEditSave={onPetEditSave}
                   onPetEditCancel={onPetEditCancel}
+                  onAddNewPet={onAddNewPet}
+                  onPetAddedFromChat={onPetAddedFromChat}
+                  onRemoveMessage={onRemoveMessage}
                 />
                 <ChatInput
                   value={inputValue}

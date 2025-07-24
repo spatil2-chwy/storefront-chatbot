@@ -35,9 +35,9 @@ class OrderService:
                 billing_city=order_data.billing_city,
                 billing_state=order_data.billing_state,
                 billing_zip_code=order_data.billing_zip_code,
-                order_date=datetime.utcnow(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                order_date=datetime.now(),
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
             
             db.add(db_order)
@@ -105,7 +105,7 @@ class OrderService:
                 return None
             
             db_order.status = new_status
-            db_order.updated_at = datetime.utcnow()
+            db_order.updated_at = datetime.now()
             
             db.commit()
             db.refresh(db_order)

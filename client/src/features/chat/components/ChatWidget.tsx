@@ -39,13 +39,16 @@ export default function ChatWidget({
     setCurrentContext,
     addTransitionMessage,
     updateMessage,
+    removeMessage,
     isOpen: isChatSidebarOpen,
     setIsOpen,
     shouldAutoOpen,
     clearMessages,
     clearComparison,
     isMainChatHidden,
-    isOpen
+    isOpen,
+    greetingNeedsRefresh,
+    setGreetingNeedsRefresh
   } = useGlobalChat();
   
   const { user } = useAuth();
@@ -69,7 +72,8 @@ export default function ChatWidget({
   const { 
     showSearchGreeting, 
     showInitialSearchGreeting, 
-    resetGreeting 
+    resetGreeting,
+    refreshGreeting
   } = useGreeting();
   const { 
     handleChatContextChange,
@@ -245,12 +249,126 @@ export default function ChatWidget({
     }
   };
 
+  // Handle adding new pet from chat
+  const handleAddNewPet = () => {
+    const addPetMessage: ChatMessage = {
+      id: `add-pet-${Date.now()}`,
+      content: "Let's add a new pet to your profile:",
+      sender: 'ai',
+      timestamp: new Date(),
+      isAddPet: true,
+    };
+    addMessage(addPetMessage);
+  };
+
+  // Handle pet added successfully (called from AddPetModal)
+  const handlePetAdded = async () => {
+    // Refresh the greeting to include the new pet
+    await refreshGreeting();
+  };
+
+  // Handle pet added from chat interface
+  const handlePetAddedFromChat = async (petId: number) => {
+    console.log('handlePetAddedFromChat called with petId:', petId);
+    
+    // Refresh the greeting to include the new pet
+    await refreshGreeting();
+    console.log('Greeting refreshed');
+    
+    // Show a success message
+    const successMessage: ChatMessage = {
+      id: `pet-added-success-${Date.now()}-${Math.random()}`,
+      content: "🎉 SUCCESS! Your new pet has been added to your profile. Now you can select them from the pet list.",
+      sender: 'ai',
+      timestamp: new Date(),
+    };
+    console.log('Adding success message:', successMessage);
+    addMessage(successMessage);
+    console.log('Success message added');
+    
+    // Add a new pet selection message with updated pet options
+    try {
+      const greetingResponse = await chatApi.getPersonalizedGreeting(user?.customer_key);
+      console.log('Greeting response after pet added:', greetingResponse);
+      if (greetingResponse.has_pets && greetingResponse.pet_options.length > 0) {
+        console.log('Pet options after adding pet:', greetingResponse.pet_options);
+        const petSelectionMessage: ChatMessage = {
+          id: `pet-selection-updated-${Date.now()}`,
+          content: "Here are your pets - you can select one to shop for:",
+          sender: 'ai',
+          timestamp: new Date(),
+          isPetSelection: true,
+          petOptions: greetingResponse.pet_options,
+        };
+        addMessage(petSelectionMessage);
+        console.log('Pet selection message added with updated options');
+      } else {
+        console.log('No pets found or no pet options returned');
+      }
+    } catch (error) {
+      console.error('Failed to add pet selection message:', error);
+    }
+  };
+
   useEffect(() => {
     if (shouldOpen || shouldAutoOpen) {
       setIsOpen(true);
       setShouldAutoOpen(false); // Reset auto-open trigger
     }
   }, [shouldOpen, shouldAutoOpen, setIsOpen, setShouldAutoOpen]);
+
+
+
+  // Handle greeting refresh when pets are added/deleted from profile
+  useEffect(() => {
+    if (greetingNeedsRefresh && user?.customer_key) {
+      console.log('ChatWidget: Greeting refresh needed, updating greeting');
+      const updateGreeting = async () => {
+        try {
+          const greetingResponse = await chatApi.getPersonalizedGreeting(user.customer_key);
+          console.log('Updated greeting response:', greetingResponse);
+          
+          // Find the existing greeting message and update it
+          const existingGreetingIndex = messages.findIndex(msg => 
+            msg.isPetSelection || msg.content.includes('Which pack member are you shopping for')
+          );
+          
+          if (existingGreetingIndex !== -1) {
+            // Update the existing greeting message
+            const updatedMessage: ChatMessage = {
+              ...messages[existingGreetingIndex],
+              content: greetingResponse.greeting,
+              petOptions: greetingResponse.has_pets ? greetingResponse.pet_options : undefined,
+              isPetSelection: greetingResponse.has_pets && greetingResponse.pet_options.length > 0,
+            };
+            
+            updateMessage(messages[existingGreetingIndex].id, () => updatedMessage);
+            console.log('Updated existing greeting message');
+          } else {
+            // If no existing greeting found, add a new one
+            const newGreetingMessage: ChatMessage = {
+              id: `greeting-updated-${Date.now()}`,
+              content: greetingResponse.greeting,
+              sender: 'ai',
+              timestamp: new Date(),
+              isPetSelection: greetingResponse.has_pets && greetingResponse.pet_options.length > 0,
+              petOptions: greetingResponse.has_pets ? greetingResponse.pet_options : undefined,
+            };
+            addMessage(newGreetingMessage);
+            console.log('Added new greeting message');
+          }
+          
+          // Reset the flag
+          setGreetingNeedsRefresh(false);
+        } catch (error) {
+          console.error('Failed to update greeting message:', error);
+          setGreetingNeedsRefresh(false);
+        }
+      };
+      
+      updateGreeting();
+    }
+  }, [greetingNeedsRefresh, user?.customer_key, messages, addMessage, updateMessage, setGreetingNeedsRefresh]);
 
   useEffect(() => {
     if (initialQuery && processedQueryRef.current !== initialQuery) {
@@ -662,6 +780,9 @@ export default function ChatWidget({
       onPetProfileAction={handlePetProfileAction}
       onPetEditSave={handlePetEditSave}
       onPetEditCancel={handlePetEditCancel}
+      onAddNewPet={handleAddNewPet}
+      onPetAddedFromChat={handlePetAddedFromChat}
+      onRemoveMessage={removeMessage}
     />
   );
 }

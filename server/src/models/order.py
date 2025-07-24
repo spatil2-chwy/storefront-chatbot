@@ -24,7 +24,7 @@ class Order(Base):
     # Order identification
     order_id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, nullable=False)
-    order_date = Column(SQLiteDateTime, nullable=False, default=datetime.utcnow)
+    order_date = Column(SQLiteDateTime, nullable=False, default=datetime.now)
     
     # Order status
     status = Column(String, nullable=False, default="processing")  # processing, shipped, delivered, cancelled
@@ -57,8 +57,8 @@ class Order(Base):
     billing_zip_code = Column(String)
     
     # Metadata
-    created_at = Column(SQLiteDateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(SQLiteDateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(SQLiteDateTime, nullable=False, default=datetime.now)
+    updated_at = Column(SQLiteDateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
     
     # Relationship to order items
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

@@ -169,6 +169,7 @@ export interface ChatMessage {
   isPetEdit?: boolean; // For pet editing messages
   petEditData?: PetProfileInfo; // Pet data for editing
   isEditing?: boolean; // For inline editing mode in pet profile messages
+  isAddPet?: boolean; // For add pet messages
 }
 
 // Chat context for different conversation modes

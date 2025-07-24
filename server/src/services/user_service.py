@@ -42,17 +42,13 @@ class UserService:
         return True
 
     def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
-        # First get the user to find their customer_id
-        user = db.query(User).filter(User.customer_key == customer_key).one_or_none()
+        # Get the user with their pets using the relationship
+        user = db.query(User).options(joinedload(User.pets)).filter(User.customer_key == customer_key).one_or_none()
         if not user:
             return []
         
-        # Then find pets using the customer_id
-        return (
-            db.query(PetProfile)
-              .filter(PetProfile.customer_id == user.customer_id)
-              .all()
-        )
+        # Return the pets from the relationship
+        return user.pets
     
     def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
         user = db.query(User).filter(User.email == email).one_or_none()
