@@ -54,6 +54,17 @@ export const BreedSelect: React.FC<BreedSelectProps> = ({
     label: breed.label
   }));
 
+  if (!species || species.trim() === '') {
+    return (
+      <div className={className}>
+        {label && <Label className="text-sm font-medium">{label}</Label>}
+        <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50">
+          <span className="text-sm text-gray-500">Please select a pet type first</span>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className={className}>

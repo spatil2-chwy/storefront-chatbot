@@ -432,6 +432,10 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             </div>
           ) : null}
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
+            <span className="font-semibold text-gray-700">Born:</span>
+            {renderField('Born', formatBirthday(petInfo.birthday), 'birthday')}
+          </div>
+          <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Life Stage:</span>
             {isEditing ? (
               <LifeStageDisplay
@@ -450,10 +454,6 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                 className="w-40"
               />
             )}
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-purple-100">
-            <span className="font-semibold text-gray-700">Born:</span>
-            {renderField('Born', formatBirthday(petInfo.birthday), 'birthday')}
           </div>
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Weight:</span>

@@ -270,7 +270,7 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
                   value={formData.pet_breed}
                   onChange={(value) => handleInputChange('pet_breed', value)}
                   label="Breed"
-                  placeholder="Select breed (optional)"
+                  placeholder={formData.pet_type ? "Select breed (optional)" : "Select pet type first"}
                   className="mt-1"
                 />
               </div>

@@ -670,7 +670,7 @@ export default function Profile() {
                                     value={editFormData?.breed || ''}
                                     onChange={(value) => handleEditFormChange('breed', value)}
                                     label="Breed"
-                                    placeholder="Select breed..."
+                                    placeholder={editFormData?.type ? "Select breed..." : "Select pet type first"}
                                     disabled={savingPet === pet.pet_profile_id}
                                   />
                                 </div>

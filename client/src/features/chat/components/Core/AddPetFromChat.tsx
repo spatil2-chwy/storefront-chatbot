@@ -188,103 +188,97 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
         </div>
 
         <div onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="pet_name" className="text-sm font-medium">
-                Pet Name *
-              </Label>
-              <Input
-                id="pet_name"
-                value={formData.pet_name}
-                onChange={(e) => handleInputChange('pet_name', e.target.value)}
-                placeholder="Enter pet name"
-                required
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="pet_type" className="text-sm font-medium">
-                Type *
-              </Label>
-              <Select
-                value={formData.pet_type}
-                onValueChange={(value) => handleInputChange('pet_type', value)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DOG">Dog</SelectItem>
-                  <SelectItem value="CAT">Cat</SelectItem>
-                  <SelectItem value="BIRD">Bird</SelectItem>
-                  <SelectItem value="FISH">Fish</SelectItem>
-                  <SelectItem value="RABBIT">Rabbit</SelectItem>
-                  <SelectItem value="HAMSTER">Hamster</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="pet_name" className="text-sm font-medium">
+              Pet Name *
+            </Label>
+            <Input
+              id="pet_name"
+              value={formData.pet_name}
+              onChange={(e) => handleInputChange('pet_name', e.target.value)}
+              placeholder="Enter pet name"
+              required
+              className="mt-1"
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <BreedSelect
+          <div>
+            <Label htmlFor="pet_type" className="text-sm font-medium">
+              Type *
+            </Label>
+            <Select
+              value={formData.pet_type}
+              onValueChange={(value) => handleInputChange('pet_type', value)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DOG">Dog</SelectItem>
+                <SelectItem value="CAT">Cat</SelectItem>
+                <SelectItem value="BIRD">Bird</SelectItem>
+                <SelectItem value="FISH">Fish</SelectItem>
+                <SelectItem value="RABBIT">Rabbit</SelectItem>
+                <SelectItem value="HAMSTER">Hamster</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+                          <BreedSelect
                 species={formData.pet_type}
                 value={formData.pet_breed}
                 onChange={(value) => handleInputChange('pet_breed', value)}
                 label="Breed"
-                placeholder="Select breed (optional)"
+                placeholder={formData.pet_type ? "Select breed (optional)" : "Select pet type first"}
                 className="mt-1"
               />
-            </div>
-
-            <div>
-              <Label htmlFor="gender" className="text-sm font-medium">
-                Gender
-              </Label>
-              <Select
-                value={formData.gender}
-                onValueChange={(value) => handleInputChange('gender', value)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="weight" className="text-sm font-medium">
-                Weight (lbs)
-              </Label>
-              <Input
-                id="weight"
-                type="number"
-                value={formData.weight}
-                onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                className="mt-1"
-              />
-            </div>
+          <div>
+            <Label htmlFor="gender" className="text-sm font-medium">
+              Gender
+            </Label>
+            <Select
+              value={formData.gender}
+              onValueChange={(value) => handleInputChange('gender', value)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MALE">Male</SelectItem>
+                <SelectItem value="FEMALE">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div>
-              <Label htmlFor="life_stage" className="text-sm font-medium">
-                Life Stage
-              </Label>
-              <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
-                <LifeStageDisplay
-                  petType={formData.pet_type}
-                  birthday={formData.birthday}
-                  legacyStage={formData.life_stage}
-                  showAge={true}
-                />
-              </div>
+          <div>
+            <Label htmlFor="weight" className="text-sm font-medium">
+              Weight (lbs)
+            </Label>
+            <Input
+              id="weight"
+              type="number"
+              value={formData.weight}
+              onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+              placeholder="0"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="life_stage" className="text-sm font-medium">
+              Life Stage
+            </Label>
+            <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
+              <LifeStageDisplay
+                petType={formData.pet_type}
+                birthday={formData.birthday}
+                legacyStage={formData.life_stage}
+                showAge={true}
+              />
             </div>
           </div>
 

@@ -207,7 +207,7 @@ export const PetEdit: React.FC<PetEditProps> = ({
             value={formData.breed}
             onChange={(value) => handleInputChange('breed', value)}
             label="Breed"
-            placeholder="Select breed..."
+            placeholder={formData.type ? "Select breed..." : "Select pet type first"}
           />
         </div>
 
