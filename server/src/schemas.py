@@ -256,3 +256,11 @@ class OrderSummary(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class InteractionRequest(BaseModel):
+    customer_key: int
+    event_type: str  # 'purchase', 'addToCart', 'productClick'
+    item_id: Optional[int] = None
+    event_value: Optional[float] = None
+    product_metadata: Optional[dict] = None

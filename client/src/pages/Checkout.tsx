@@ -13,6 +13,7 @@ import { useCart } from '@/features/cart/context';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { ordersApi, OrderCreate, OrderItem } from '@/lib/api/orders';
+import { useInteractions } from '@/hooks/use-interactions';
 
 interface CheckoutFormData {
   // Shipping Information
@@ -44,6 +45,7 @@ export default function Checkout() {
   const { cart, getTotalItems, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { logPurchase } = useInteractions();
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     firstName: user?.name?.split(' ')[0] || '',
@@ -199,6 +201,11 @@ export default function Checkout() {
 
       // Create the order
       const order = await ordersApi.createOrder(orderData);
+      
+      // Log purchase interactions for each item
+      for (const item of cart.items) {
+        await logPurchase(item.product, item.quantity, item.purchaseOption);
+      }
       
       // Clear cart and show success
       clearCart();
