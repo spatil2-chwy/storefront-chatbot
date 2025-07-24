@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Cart, CartItem, Product } from '../../types';
 import { useToast } from '../../hooks/use-toast';
+import { useInteractions } from '../../hooks/use-interactions';
 
 interface CartContextType {
   cart: Cart | null;
@@ -31,6 +32,7 @@ interface CartProviderProps {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<Cart | null>(null);
   const { toast } = useToast();
+  const { logAddToCart } = useInteractions();
 
   // Initialize cart on component mount
   useEffect(() => {
@@ -131,13 +133,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       };
     });
 
+    // Log the add to cart interaction
+    logAddToCart(product, quantity);
+
     // Show success toast
     toast({
       title: "Added to cart!",
       description: `${product.brand} ${product.title} has been added to your cart.`,
       duration: 3000,
     });
-  }, [updateCartTotals, toast]);
+  }, [updateCartTotals, toast, logAddToCart]);
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart(prevCart => {
