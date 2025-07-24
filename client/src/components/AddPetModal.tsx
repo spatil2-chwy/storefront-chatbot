@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Overlay/M
 import { Calendar, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth';
+import { BreedSelect } from './BreedSelect';
+import { LifeStageDisplay } from './LifeStageDisplay';
 
 interface AddPetModalProps {
   isOpen: boolean;
@@ -263,14 +265,12 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="pet_breed" className="text-sm font-medium">
-                  Breed
-                </Label>
-                <Input
-                  id="pet_breed"
+                <BreedSelect
+                  species={formData.pet_type}
                   value={formData.pet_breed}
-                  onChange={(e) => handleInputChange('pet_breed', e.target.value)}
-                  placeholder="Enter breed (optional)"
+                  onChange={(value) => handleInputChange('pet_breed', value)}
+                  label="Breed"
+                  placeholder="Select breed (optional)"
                   className="mt-1"
                 />
               </div>
@@ -313,19 +313,14 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
                 <Label htmlFor="life_stage" className="text-sm font-medium">
                   Life Stage
                 </Label>
-                <Select
-                  value={formData.life_stage}
-                  onValueChange={(value) => handleInputChange('life_stage', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select stage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="P">Puppy/Kitten</SelectItem>
-                    <SelectItem value="A">Adult</SelectItem>
-                    <SelectItem value="S">Senior</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
+                  <LifeStageDisplay
+                    petType={formData.pet_type}
+                    birthday={formData.birthday}
+                    legacyStage={formData.life_stage}
+                    showAge={true}
+                  />
+                </div>
               </div>
             </div>
 

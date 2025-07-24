@@ -36,6 +36,8 @@ import { usersApi } from '@/lib/api/users';
 import { chatApi } from '@/lib/api/chat';
 import { ordersApi, OrderSummary } from '@/lib/api/orders';
 import { AddPetModal } from '@/components/AddPetModal';
+import { BreedSelect } from '@/components/BreedSelect';
+import { LifeStageDisplay } from '@/components/LifeStageDisplay';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
@@ -663,11 +665,13 @@ export default function Profile() {
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label className="text-sm font-medium">Breed</Label>
-                                  <Input
+                                  <BreedSelect
+                                    species={editFormData?.type || ''}
                                     value={editFormData?.breed || ''}
-                                    onChange={(e) => handleEditFormChange('breed', e.target.value)}
-                                    className="mt-1"
+                                    onChange={(value) => handleEditFormChange('breed', value)}
+                                    label="Breed"
+                                    placeholder="Select breed..."
+                                    disabled={savingPet === pet.pet_profile_id}
                                   />
                                 </div>
                                 <div>
@@ -696,19 +700,14 @@ export default function Profile() {
                                 </div>
                                 <div>
                                   <Label className="text-sm font-medium">Life Stage</Label>
-                                  <Select
-                                    value={editFormData?.life_stage || ''}
-                                    onValueChange={(value) => handleEditFormChange('life_stage', value)}
-                                  >
-                                    <SelectTrigger className="mt-1">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="P">Puppy/Kitten</SelectItem>
-                                      <SelectItem value="A">Adult</SelectItem>
-                                      <SelectItem value="S">Senior</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                  <div className="mt-1">
+                                    <LifeStageDisplay
+                                      petType={editFormData?.type || ''}
+                                      birthday={editFormData?.birthday || null}
+                                      legacyStage={editFormData?.life_stage}
+                                      showAge={true}
+                                    />
+                                  </div>
                                 </div>
                               </div>
 
@@ -790,9 +789,12 @@ export default function Profile() {
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge className={getLifeStageColor(pet.life_stage)}>
-                                    {getLifeStageText(pet.life_stage)}
-                                  </Badge>
+                                  <LifeStageDisplay
+                                    petType={pet.pet_type}
+                                    birthday={pet.birthday}
+                                    legacyStage={pet.life_stage}
+                                    showAge={false}
+                                  />
                                   <Button
                                     size="sm"
                                     variant="outline"

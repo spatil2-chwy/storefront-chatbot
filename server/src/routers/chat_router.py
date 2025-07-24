@@ -244,6 +244,7 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
     # Update pet profile information
     try:
         from src.models.pet import PetProfile
+        from src.utils.life_stage_calculator import calculate_life_stage
         
         # Get existing pet
         existing_pet = pet_svc.get_pet_profile(db, pet_profile_id)
@@ -261,8 +262,6 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
             existing_pet.gender = pet_data["gender"]
         if "weight" in pet_data:
             existing_pet.weight = pet_data["weight"]
-        if "life_stage" in pet_data:
-            existing_pet.life_stage = pet_data["life_stage"]
         if "birthday" in pet_data:
             if pet_data["birthday"]:
                 from datetime import datetime
@@ -272,6 +271,13 @@ async def update_pet_profile(pet_profile_id: int, pet_data: Dict[str, Any], db: 
         if "allergies" in pet_data:
             # Store allergies as comma-separated string
             existing_pet.allergies = pet_data["allergies"]
+        
+        # Automatically calculate and update life stage based on birthday and pet type
+        existing_pet.life_stage = calculate_life_stage(
+            existing_pet.pet_type, 
+            existing_pet.birthday, 
+            existing_pet.life_stage
+        )
         
         # Save changes
         updated_pet = pet_svc.update_pet(db, pet_profile_id, existing_pet)

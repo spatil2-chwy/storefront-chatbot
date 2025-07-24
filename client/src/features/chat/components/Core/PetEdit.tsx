@@ -7,6 +7,8 @@ import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSele
 import { Switch } from '../../../../ui/Toggles/Switch';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
+import { BreedSelect } from '../../../../components/BreedSelect';
+import { LifeStageDisplay } from '../../../../components/LifeStageDisplay';
 
 interface PetEditProps {
   petInfo: PetProfileInfo;
@@ -200,12 +202,12 @@ export const PetEdit: React.FC<PetEditProps> = ({
 
         {/* Breed */}
         <div className="space-y-2">
-          <Label htmlFor="pet-breed">Breed</Label>
-          <Input
-            id="pet-breed"
+          <BreedSelect
+            species={formData.type}
             value={formData.breed}
-            onChange={(e) => handleInputChange('breed', e.target.value)}
-            placeholder="Enter breed"
+            onChange={(value) => handleInputChange('breed', value)}
+            label="Breed"
+            placeholder="Select breed..."
           />
         </div>
 
@@ -229,19 +231,14 @@ export const PetEdit: React.FC<PetEditProps> = ({
         {/* Life Stage */}
         <div className="space-y-2">
           <Label htmlFor="pet-life-stage">Life Stage</Label>
-          <Select
-            value={formData.life_stage}
-            onValueChange={(value) => handleInputChange('life_stage', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select life stage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="P">Puppy/Kitten</SelectItem>
-              <SelectItem value="A">Adult</SelectItem>
-              <SelectItem value="S">Senior</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="p-2 border border-gray-200 rounded-md bg-gray-50">
+            <LifeStageDisplay
+              petType={formData.type}
+              birthday={formData.birthday}
+              legacyStage={formData.life_stage}
+              showAge={true}
+            />
+          </div>
         </div>
 
         {/* Weight */}

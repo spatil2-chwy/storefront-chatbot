@@ -7,6 +7,8 @@ import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSele
 import { Switch } from '../../../../ui/Toggles/Switch';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
+import { BreedSelect } from '../../../../components/BreedSelect';
+import { LifeStageDisplay } from '../../../../components/LifeStageDisplay';
 
 interface PetProfileProps {
   petInfo: PetProfileInfo;
@@ -269,22 +271,6 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             </SelectContent>
           </Select>
         );
-      } else if (field === 'life_stage') {
-        return (
-          <Select
-            value={formData.life_stage}
-            onValueChange={(value) => handleInputChange('life_stage', value)}
-          >
-            <SelectTrigger className="w-28" aria-label="Life Stage">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="P">Puppy/Kitten</SelectItem>
-              <SelectItem value="A">Adult</SelectItem>
-              <SelectItem value="S">Senior</SelectItem>
-            </SelectContent>
-          </Select>
-        );
       } else if (field === 'weight') {
         return (
           <Input
@@ -297,11 +283,12 @@ export const PetProfile: React.FC<PetProfileProps> = ({
         );
       } else if (field === 'breed') {
         return (
-          <Input
+          <BreedSelect
+            species={formData.type}
             value={formData.breed}
-            onChange={(e) => handleInputChange('breed', e.target.value)}
+            onChange={(value) => handleInputChange('breed', value)}
+            placeholder="Select breed..."
             className="w-28"
-            placeholder="Enter breed"
           />
         );
       } else if (field === 'name') {
@@ -443,12 +430,26 @@ export const PetProfile: React.FC<PetProfileProps> = ({
               {renderField('Breed', petInfo.breed, 'breed')}
             </div>
           ) : null}
-          {(petInfo.life_stage && petInfo.life_stage.toLowerCase() !== 'unknown') || isEditing ? (
-            <div className="flex items-center justify-between py-2 border-b border-purple-100">
-              <span className="font-semibold text-gray-700">Life Stage:</span>
-              {renderField('Life Stage', formatLifeStage(petInfo.life_stage), 'life_stage')}
-            </div>
-          ) : null}
+          <div className="flex items-center justify-between py-2 border-b border-purple-100">
+            <span className="font-semibold text-gray-700">Life Stage:</span>
+            {isEditing ? (
+              <LifeStageDisplay
+                petType={formData.type}
+                birthday={formData.birthday}
+                legacyStage={formData.life_stage}
+                showAge={true}
+                className="w-28"
+              />
+            ) : (
+              <LifeStageDisplay
+                petType={petInfo.type}
+                birthday={petInfo.birthday}
+                legacyStage={petInfo.life_stage}
+                showAge={true}
+                className="w-28"
+              />
+            )}
+          </div>
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Born:</span>
             {renderField('Born', formatBirthday(petInfo.birthday), 'birthday')}
