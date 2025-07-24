@@ -276,8 +276,18 @@ export const PetProfile: React.FC<PetProfileProps> = ({
         return (
           <Input
             type="number"
-            value={formData.weight}
-            onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+            value={formData.weight || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                handleInputChange('weight', 0);
+              } else {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                  handleInputChange('weight', numValue);
+                }
+              }
+            }}
             className="w-20"
             placeholder="lbs"
           />
@@ -363,17 +373,17 @@ export const PetProfile: React.FC<PetProfileProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Confirmation Message */}
-      <div className="mb-6">
-        <div className="bg-gradient-to-r from-blue-50 to-chewy-light-blue rounded-lg px-6 py-4 border border-chewy-blue/20">
+      {/* Combined Message and Pet Information */}
+      <div className="bg-gradient-to-r from-blue-50 to-chewy-light-blue rounded-lg border border-chewy-blue/20">
+        {/* Confirmation Message */}
+        <div className="px-6 py-4 border-b border-chewy-blue/10">
           <p className="text-gray-800 text-base font-semibold leading-relaxed block w-full">
             This is <span className="text-purple-600 font-bold">{petInfo.name}</span>'s profile. Does this information look correct?
           </p>
         </div>
-      </div>
-      
-      {/* Pet Information Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-chewy-light-blue rounded-lg p-4 border border-chewy-blue/20">
+        
+        {/* Pet Information Header */}
+        <div className="p-4">
         <div className="flex items-center space-x-3 mb-4">
                                   <div className="w-12 h-12 bg-chewy-blue rounded-full flex items-center justify-center text-white text-xl font-medium">
               {getPetIcon(isEditing ? formData.type : petInfo.type)}
@@ -482,6 +492,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
               </span>
             )}
           </div>
+        </div>
         </div>
       </div>
 

@@ -179,7 +179,7 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
       <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg px-6 py-4 border border-green-200">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-            <Plus className="h-5 w-5 text-white" />
+            <Plus className="h-4 w-4 text-white" />
           </div>
           <div>
             <h4 className="font-bold text-gray-900 text-lg">Add New Pet</h4>
@@ -261,25 +261,21 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
             <Input
               id="weight"
               type="number"
-              value={formData.weight}
-              onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+              value={formData.weight || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  handleInputChange('weight', 0);
+                } else {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    handleInputChange('weight', numValue);
+                  }
+                }
+              }}
               placeholder="0"
               className="mt-1"
             />
-          </div>
-
-          <div>
-            <Label htmlFor="life_stage" className="text-sm font-medium">
-              Life Stage
-            </Label>
-            <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
-              <LifeStageDisplay
-                petType={formData.pet_type}
-                birthday={formData.birthday}
-                legacyStage={formData.life_stage}
-                showAge={true}
-              />
-            </div>
           </div>
 
           <div>
@@ -331,6 +327,20 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="life_stage" className="text-sm font-medium">
+              Life Stage
+            </Label>
+            <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
+              <LifeStageDisplay
+                petType={formData.pet_type}
+                birthday={formData.birthday}
+                legacyStage={formData.life_stage}
+                showAge={true}
+              />
             </div>
           </div>
 

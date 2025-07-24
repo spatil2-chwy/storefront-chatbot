@@ -302,8 +302,18 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
                 <Input
                   id="weight"
                   type="number"
-                  value={formData.weight}
-                  onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+                  value={formData.weight || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      handleInputChange('weight', 0);
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        handleInputChange('weight', numValue);
+                      }
+                    }
+                  }}
                   placeholder="0"
                   className="mt-1"
                 />

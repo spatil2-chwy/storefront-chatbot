@@ -247,8 +247,18 @@ export const PetEdit: React.FC<PetEditProps> = ({
           <Input
             id="pet-weight"
             type="number"
-            value={formData.weight}
-            onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+            value={formData.weight || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                handleInputChange('weight', 0);
+              } else {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                  handleInputChange('weight', numValue);
+                }
+              }
+            }}
             placeholder="Enter weight"
           />
         </div>

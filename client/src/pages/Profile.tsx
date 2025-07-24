@@ -694,7 +694,17 @@ export default function Profile() {
                                   <Input
                                     type="number"
                                     value={editFormData?.weight || ''}
-                                    onChange={(e) => handleEditFormChange('weight', parseFloat(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (value === '') {
+                                        handleEditFormChange('weight', 0);
+                                      } else {
+                                        const numValue = parseFloat(value);
+                                        if (!isNaN(numValue)) {
+                                          handleEditFormChange('weight', numValue);
+                                        }
+                                      }
+                                    }}
                                     className="mt-1"
                                   />
                                 </div>
