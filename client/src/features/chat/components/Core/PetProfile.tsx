@@ -288,7 +288,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             value={formData.breed}
             onChange={(value) => handleInputChange('breed', value)}
             placeholder="Select breed..."
-            className="w-28"
+            className="w-40"
           />
         );
       } else if (field === 'name') {
@@ -438,7 +438,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                 birthday={formData.birthday}
                 legacyStage={formData.life_stage}
                 showAge={true}
-                className="w-28"
+                className="w-40"
               />
             ) : (
               <LifeStageDisplay
@@ -446,7 +446,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                 birthday={petInfo.birthday}
                 legacyStage={petInfo.life_stage}
                 showAge={true}
-                className="w-28"
+                className="w-40"
               />
             )}
           </div>
