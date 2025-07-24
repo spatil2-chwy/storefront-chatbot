@@ -5,11 +5,13 @@ import { Label } from '../../../../ui/Input/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../ui/Selects/Select';
 import { MultiSelect, MultiSelectOption } from '../../../../ui/Selects/MultiSelect';
 import { Switch } from '../../../../ui/Toggles/Switch';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
 import { BreedSelect } from '../../../../components/BreedSelect';
 import { LifeStageDisplay } from '../../../../components/LifeStageDisplay';
 import { getPetIcon } from '../../../../lib/utils/pet-icons';
+import { calculateLifeStage, calculatePetAge, formatAgeDisplay, getLifeStageColor } from '../../../../lib/utils/life-stage-calculator';
+import { Badge } from '../../../../ui/Display/Badge';
 
 interface PetProfileProps {
   petInfo: PetProfileInfo;
@@ -302,6 +304,16 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             className="w-40"
           />
         );
+      } else if (field === 'life_stage') {
+        return (
+          <LifeStageDisplay
+            petType={formData.type}
+            birthday={formData.birthday}
+            legacyStage={formData.life_stage}
+            showAge={true}
+            className="w-40"
+          />
+        );
       } else if (field === 'name') {
         return (
           <Input
@@ -366,6 +378,30 @@ export const PetProfile: React.FC<PetProfileProps> = ({
     // For view mode, format the value appropriately
     if (field === 'type') {
       return <span className="text-gray-900">{formatType(value as string)}</span>;
+    } else if (field === 'life_stage') {
+      const lifeStage = calculateLifeStage(petInfo.type, petInfo.birthday, petInfo.life_stage);
+      const ageInfo = calculatePetAge(petInfo.birthday);
+      const colorClasses = getLifeStageColor(lifeStage.stage);
+      
+      if (!lifeStage || lifeStage.stage === 'unknown') {
+        return <span className="text-gray-900">Unknown</span>;
+      }
+      
+      return (
+        <div className="flex items-center justify-end space-x-2 w-40">
+          <Badge variant="secondary" className={`border ${colorClasses}`}>
+            {lifeStage.label}
+            {lifeStage.isEstimated && (
+              <Info className="h-3 w-3 ml-1" />
+            )}
+          </Badge>
+          {ageInfo && (
+            <span className="text-sm text-gray-600">
+              {formatAgeDisplay(ageInfo)}
+            </span>
+          )}
+        </div>
+      );
     }
     
     return <span className="text-gray-900">{value}</span>;
@@ -447,23 +483,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           </div>
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Life Stage:</span>
-            {isEditing ? (
-              <LifeStageDisplay
-                petType={formData.type}
-                birthday={formData.birthday}
-                legacyStage={formData.life_stage}
-                showAge={true}
-                className="w-40"
-              />
-            ) : (
-              <LifeStageDisplay
-                petType={petInfo.type}
-                birthday={petInfo.birthday}
-                legacyStage={petInfo.life_stage}
-                showAge={true}
-                className="w-40"
-              />
-            )}
+            {renderField('Life Stage', '', 'life_stage')}
           </div>
           <div className="flex items-center justify-between py-2 border-b border-purple-100">
             <span className="font-semibold text-gray-700">Weight:</span>
