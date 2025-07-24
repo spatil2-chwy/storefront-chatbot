@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/ui/Cards/Card';
 import { Badge } from '@/ui/Display/Badge';
 import { useGlobalChat } from '@/features/chat/context';
 import { useCart } from '@/features/cart/context';
+import { getPetIcon } from '@/lib/utils/pet-icons';
 
 export default function ProductComparison() {
   const [, setLocation] = useLocation();
@@ -400,7 +401,7 @@ export default function ProductComparison() {
           id: 'pet_type',
           title: 'Pet Type',
           subtitle: 'Dog, cat, or other',
-          icon: '🐕',
+          icon: getPetIcon('DOG'), // Default to dog icon for pet type comparison
           color: 'from-indigo-500 to-indigo-600',
           bgColor: 'bg-indigo-50',
           borderColor: 'border-indigo-200',

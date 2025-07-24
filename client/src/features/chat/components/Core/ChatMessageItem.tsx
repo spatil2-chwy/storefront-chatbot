@@ -118,7 +118,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   if (message.isPetSelection && message.petOptions) {
     return (
       <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="max-w-full bg-gray-100 rounded-lg p-4">
@@ -139,7 +139,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   if (message.isPetProfile && message.petProfileInfo) {
     return (
       <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="max-w-full bg-gray-100 rounded-lg p-4">
@@ -160,7 +160,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   if (message.isAddPet) {
     return (
       <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="max-w-full bg-gray-100 rounded-lg p-4">
@@ -180,7 +180,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   if (message.isPetEdit && message.petEditData) {
     return (
       <div className="flex justify-start items-start space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
         <div className="max-w-full bg-gray-100 rounded-lg p-4">
@@ -273,7 +273,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       return (
         <div className="flex justify-start items-start space-x-2">
           {/* Tylee Avatar */}
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
             <Bot className="w-4 h-4 text-white" />
           </div>
           
@@ -348,7 +348,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} items-start space-x-2`}>
       {/* Tylee Avatar - only for AI messages */}
       {!isUser && (
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-white" />
         </div>
       )}

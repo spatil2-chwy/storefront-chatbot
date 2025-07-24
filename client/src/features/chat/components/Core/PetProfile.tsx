@@ -9,6 +9,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PetProfileInfo } from '../../../../types';
 import { BreedSelect } from '../../../../components/BreedSelect';
 import { LifeStageDisplay } from '../../../../components/LifeStageDisplay';
+import { getPetIcon } from '../../../../lib/utils/pet-icons';
 
 interface PetProfileProps {
   petInfo: PetProfileInfo;
@@ -364,7 +365,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
     <div className="space-y-4">
       {/* Confirmation Message */}
       <div className="mb-6">
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg px-6 py-4 border border-purple-200">
+        <div className="bg-gradient-to-r from-blue-50 to-chewy-light-blue rounded-lg px-6 py-4 border border-chewy-blue/20">
           <p className="text-gray-800 text-base font-semibold leading-relaxed block w-full">
             This is <span className="text-purple-600 font-bold">{petInfo.name}</span>'s profile. Does this information look correct?
           </p>
@@ -372,11 +373,11 @@ export const PetProfile: React.FC<PetProfileProps> = ({
       </div>
       
       {/* Pet Information Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+      <div className="bg-gradient-to-r from-blue-50 to-chewy-light-blue rounded-lg p-4 border border-chewy-blue/20">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xl font-medium">
-            🐾
-          </div>
+                                  <div className="w-12 h-12 bg-chewy-blue rounded-full flex items-center justify-center text-white text-xl font-medium">
+              {getPetIcon(isEditing ? formData.type : petInfo.type)}
+            </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-gray-900 text-xl">
               {isEditing ? (
@@ -491,7 +492,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             <Button
               onClick={handleSave}
               disabled={isLoading}
-              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+              className="flex-1 bg-chewy-blue hover:bg-blue-700 text-white"
             >
               {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -508,7 +509,7 @@ export const PetProfile: React.FC<PetProfileProps> = ({
           <>
             <Button
               onClick={onLooksGood}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+              className="w-full bg-chewy-blue hover:bg-blue-700 text-white"
             >
               Looks good! Let's find something for {petInfo.name}
             </Button>

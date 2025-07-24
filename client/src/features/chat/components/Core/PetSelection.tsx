@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '../../../../ui/Buttons/Button';
 import { PetOption } from '../../../../types';
 import { Plus } from 'lucide-react';
+import { getPetIcon } from '../../../../lib/utils/pet-icons';
 
 interface PetSelectionProps {
   petOptions: PetOption[];
@@ -28,8 +29,8 @@ export const PetSelection: React.FC<PetSelectionProps> = ({
             onClick={() => onPetSelect(pet.id.toString())}
           >
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                {pet.type === 'browse' ? '🛍️' : '🐾'}
+              <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center text-white text-sm font-medium">
+                {getPetIcon(pet.type)}
               </div>
               <div className="flex-1">
                 <div className="font-medium text-gray-900">

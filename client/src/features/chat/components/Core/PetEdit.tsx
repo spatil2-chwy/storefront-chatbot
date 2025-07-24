@@ -322,7 +322,7 @@ export const PetEdit: React.FC<PetEditProps> = ({
         <Button
           onClick={handleSave}
           disabled={isLoading}
-          className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      className="flex-1 bg-chewy-blue hover:bg-blue-700 text-white"
         >
           {isLoading ? 'Saving...' : 'Save Changes'}
         </Button>

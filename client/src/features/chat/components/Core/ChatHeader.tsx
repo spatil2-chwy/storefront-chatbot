@@ -59,7 +59,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <div className={headerClasses}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-chewy-blue rounded-full flex items-center justify-center">
             <Bot className="w-4 h-4 text-white" />
           </div>
           <CardTitle className="text-gray-900 font-work-sans text-base">
