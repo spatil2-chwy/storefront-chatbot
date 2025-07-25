@@ -53,11 +53,10 @@ At the **end of your response**, generate 3-4 contextually relevant action butto
 **Button Placement**: Always place buttons at the very end of your response with no additional text after them.
 """
 
-def extract_buttons_from_response(assistant_response, context_info=None):
+def extract_buttons_from_response(assistant_response):
     """
     Extract button commands from the assistant's response.
     Looks for patterns like <Button Text> at the end of the response.
-    Optionally filters out redundant buttons based on context.
     """
     if not assistant_response:
         return []
@@ -82,53 +81,13 @@ def extract_buttons_from_response(assistant_response, context_info=None):
             button_text.lower().startswith('http') or  # URL
             any(char in button_text for char in ['/', '\\', '@', '#'])):  # Invalid chars
             continue
-        
-        # Check for redundant buttons based on context
-        if context_info and is_redundant_button(button_text, context_info):
-            continue
             
         buttons.append(f"<{button_text}>")
     
     return buttons[:6]  # Limit to 6 buttons max
 
 
-def is_redundant_button(button_text, context_info):
-    """
-    Check if a button is redundant based on available context information.
-    """
-    button_lower = button_text.lower()
-    
-    # Check for size-based redundancy
-    if context_info.get('known_pet_size'):
-        size_keywords = ['small breed', 'large breed', 'small dog', 'large dog']
-        if any(keyword in button_lower for keyword in size_keywords):
-            return True
-    
-    # Check for life stage redundancy
-    if context_info.get('known_life_stage'):
-        stage_keywords = ['puppy', 'senior', 'adult', 'kitten']
-        if any(keyword in button_lower for keyword in stage_keywords):
-            return True
-    
-    # Check for pet type redundancy
-    if context_info.get('known_pet_type'):
-        type_keywords = ['dog', 'cat', 'bird', 'fish']
-        if any(keyword in button_lower for keyword in type_keywords):
-            return True
-    
-    # Check for allergy redundancy
-    if context_info.get('known_allergies'):
-        for allergy in context_info['known_allergies']:
-            if allergy in button_lower and ('free' in button_lower or 'free' in button_lower):
-                return True
-    
-    # Check for applied filter redundancy
-    if context_info.get('applied_filters'):
-        for filter_name in context_info['applied_filters']:
-            if filter_name.replace('_', ' ') in button_lower:
-                return True
-    
-    return False
+
 
 
 def clean_response_text(assistant_response):
@@ -153,10 +112,9 @@ class ButtonAwareGenerator:
     """
     Wrapper class that yields chunks and stores extracted buttons
     """
-    def __init__(self, generator, on_complete_callback, context_info=None):
+    def __init__(self, generator, on_complete_callback):
         self.generator = generator
         self.on_complete_callback = on_complete_callback
-        self.context_info = context_info
         self.extracted_buttons = []
         self.clean_response = ""
         self.complete_response = ""
@@ -168,8 +126,8 @@ class ButtonAwareGenerator:
                 self.complete_response += chunk
                 yield chunk
         finally:
-            # Extract buttons and clean response with context awareness
-            self.extracted_buttons = extract_buttons_from_response(self.complete_response, self.context_info)
+            # Extract buttons and clean response
+            self.extracted_buttons = extract_buttons_from_response(self.complete_response)
             self.clean_response = clean_response_text(self.complete_response)
             
             response_time = time.time() - self.start_time
@@ -179,12 +137,12 @@ class ButtonAwareGenerator:
                 self.on_complete_callback(self.clean_response, response_time)
 
 
-def capture_streaming_response_with_buttons(generator, on_complete_callback, context_info=None):
+def capture_streaming_response_with_buttons(generator, on_complete_callback):
     """
     Modified version of capture_streaming_response that extracts buttons
     from the complete response and returns both clean text and buttons.
     """
-    return ButtonAwareGenerator(generator, on_complete_callback, context_info)
+    return ButtonAwareGenerator(generator, on_complete_callback)
 
 
 def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), pet_profile=None, user_context=None):
@@ -198,7 +156,38 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     Returns:
         list: A list of products
     """
-    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}")
+    # Add pet allergies to excluded ingredients
+    enhanced_excluded_ingredients = list(excluded_ingredients) if excluded_ingredients else []
+    
+    # Extract allergies from pet profile
+    if pet_profile and pet_profile.get('allergies'):
+        allergies = pet_profile['allergies']
+        if isinstance(allergies, str):
+            # Split by comma and clean up
+            allergy_list = [allergy.strip().lower() for allergy in allergies.split(',') if allergy.strip()]
+            enhanced_excluded_ingredients.extend(allergy_list)
+        elif isinstance(allergies, list):
+            enhanced_excluded_ingredients.extend([allergy.lower() for allergy in allergies if allergy])
+    
+    # Extract allergies from user context
+    if user_context and user_context.get('pet_allergies'):
+        allergies = user_context['pet_allergies']
+        if isinstance(allergies, str):
+            # Split by comma and clean up
+            allergy_list = [allergy.strip().lower() for allergy in allergies.split(',') if allergy.strip()]
+            enhanced_excluded_ingredients.extend(allergy_list)
+        elif isinstance(allergies, list):
+            enhanced_excluded_ingredients.extend([allergy.lower() for allergy in allergies if allergy])
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_excluded_ingredients = []
+    for ingredient in enhanced_excluded_ingredients:
+        if ingredient not in seen:
+            seen.add(ingredient)
+            unique_excluded_ingredients.append(ingredient)
+    
+    logger.info(f"Searching products with query: '{query}', required ingredients: {required_ingredients}, excluded ingredients: {unique_excluded_ingredients}, category level 1: {category_level_1}, category level 2: {category_level_2}")
     logger.info(f"Pet profile: {pet_profile}, User context: {user_context}")
     start = time.time()
     
@@ -209,7 +198,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
     # Use query_products for all searches (it handles empty filters fine)
     # This will automatically store the top 300 products in the buffer
     product_search_start = time.time()
-    results = query_products(query, tuple(required_ingredients), tuple(excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
+    results = query_products(query, tuple(required_ingredients), tuple(unique_excluded_ingredients), tuple(category_level_1), tuple(category_level_2))
     product_search_time = time.time() - product_search_start
     logger.info(f"Query executed in {product_search_time:.4f} seconds")
     
@@ -242,7 +231,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
                 if not filtered_user_context:
                     filtered_user_context = None
             
-            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context, excluded_ingredients)
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context, unique_excluded_ingredients)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
@@ -395,16 +384,9 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
         has_image=bool(image_base64)
     )
     
-    # Analyze conversation context to avoid redundant button options
-    context_info = analyze_conversation_context(history, pet_profile, user_context_data)
-    context_guidance = generate_context_aware_button_guidance(context_info)
-    
-    # Create system message with user context and context-aware button generation instructions
+    # Create system message with user context and button generation instructions
     system_msg = function_call_system_prompt.copy()
     system_msg["content"] += button_generation_prompt_addition
-    
-    # Add context-aware guidance to avoid redundant buttons
-    system_msg["content"] += f"\n\n**CONTEXT-AWARE BUTTON GUIDANCE:**\n{context_guidance}\n\nUse this information to avoid showing redundant button options based on what's already known about the pet or applied filters."
     
     if user_context:
         system_msg["content"] += f"\n\nCUSTOMER CONTEXT:\n{user_context}\n\nAbove are details about the customer based on their historical shopping behavior as well as their current pets. Enhance user query with brand preferences and dietary needs if applicable. Use this information if applicable to provide personalized recommendations and for any logical follow-ups."
@@ -494,7 +476,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
             evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
             evaluation_logger.save_log()
         
-        generator = capture_streaming_response_with_buttons(simple_generator(), on_simple_complete, context_info)
+        generator = capture_streaming_response_with_buttons(simple_generator(), on_simple_complete)
         return generator, products, generator.extracted_buttons
     else:
         function_start = time.time()
@@ -581,7 +563,7 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                         evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
                         evaluation_logger.save_log()
                     
-                    generator = capture_streaming_response_with_buttons(article_generator(), on_article_complete, context_info)
+                    generator = capture_streaming_response_with_buttons(article_generator(), on_article_complete)
                     # Extract buttons after streaming completes
                     return generator, products, generator.extracted_buttons
                     
@@ -672,7 +654,7 @@ You're not being chatty — you're being helpful, warm, and efficient."""
                         evaluation_logger.log_timing(llm_response_time=response_time, total_processing_time=total_time)
                         evaluation_logger.save_log()
                     
-                    generator = capture_streaming_response_with_buttons(product_generator(), on_product_complete, context_info)
+                    generator = capture_streaming_response_with_buttons(product_generator(), on_product_complete)
                     # Extract buttons after streaming completes
                     return generator, products, generator.extracted_buttons
     
@@ -683,89 +665,5 @@ You're not being chatty — you're being helpful, warm, and efficient."""
     return fallback_generator(), products, []
 
 
-def analyze_conversation_context(history, pet_profile, user_context_data):
-    """
-    Analyze conversation context to determine what information is already available
-    and what redundant button options should be avoided.
-    """
-    context_info = {
-        'known_pet_type': None,
-        'known_pet_size': None,
-        'known_life_stage': None,
-        'known_allergies': [],
-        'known_breed': None,
-        'applied_filters': set(),
-        'mentioned_topics': set()
-    }
-    
-    # Extract information from pet profile
-    if pet_profile:
-        if pet_profile.get('type'):
-            context_info['known_pet_type'] = pet_profile['type'].lower()
-        if pet_profile.get('size'):
-            context_info['known_pet_size'] = pet_profile['size'].lower()
-        if pet_profile.get('life_stage'):
-            context_info['known_life_stage'] = pet_profile['life_stage'].lower()
-        if pet_profile.get('allergies'):
-            context_info['known_allergies'] = [allergy.lower() for allergy in pet_profile['allergies']]
-        if pet_profile.get('breed'):
-            context_info['known_breed'] = pet_profile['breed'].lower()
-    
-    # Extract information from user context data
-    if user_context_data:
-        if user_context_data.get('pet_type'):
-            context_info['known_pet_type'] = user_context_data['pet_type'].lower()
-        if user_context_data.get('pet_size'):
-            context_info['known_pet_size'] = user_context_data['pet_size'].lower()
-        if user_context_data.get('pet_life_stage'):
-            context_info['known_life_stage'] = user_context_data['pet_life_stage'].lower()
-        if user_context_data.get('pet_allergies'):
-            context_info['known_allergies'] = [allergy.lower() for allergy in user_context_data['pet_allergies']]
-        if user_context_data.get('pet_breed'):
-            context_info['known_breed'] = user_context_data['pet_breed'].lower()
-    
-    # Analyze conversation history for applied filters and mentioned topics
-    for message in history:
-        if message.get('role') == 'user':
-            content = message.get('content', '').lower()
-            # Look for filter mentions
-            if 'small breed' in content or 'small dog' in content:
-                context_info['applied_filters'].add('small_breed')
-            if 'large breed' in content or 'large dog' in content:
-                context_info['applied_filters'].add('large_breed')
-            if 'senior' in content or 'older' in content:
-                context_info['applied_filters'].add('senior')
-            if 'puppy' in content or 'young' in content:
-                context_info['applied_filters'].add('puppy')
-            if 'chicken' in content and ('allergy' in content or 'sensitive' in content):
-                context_info['applied_filters'].add('chicken_free')
-            if 'grain' in content and 'free' in content:
-                context_info['applied_filters'].add('grain_free')
-    
-    return context_info
 
-def generate_context_aware_button_guidance(context_info):
-    """
-    Generate specific guidance for button generation based on available context.
-    """
-    guidance = []
-    
-    if context_info['known_pet_type']:
-        guidance.append(f"- **Pet type already known**: {context_info['known_pet_type']} - avoid showing pet type buttons")
-    
-    if context_info['known_pet_size']:
-        guidance.append(f"- **Pet size already known**: {context_info['known_pet_size']} - avoid showing size-based buttons")
-    
-    if context_info['known_life_stage']:
-        guidance.append(f"- **Life stage already known**: {context_info['known_life_stage']} - avoid showing life stage buttons")
-    
-    if context_info['known_allergies']:
-        guidance.append(f"- **Known allergies**: {', '.join(context_info['known_allergies'])} - avoid showing allergen-free buttons for these")
-    
-    if context_info['applied_filters']:
-        guidance.append(f"- **Applied filters**: {', '.join(context_info['applied_filters'])} - avoid showing buttons for these filters")
-    
-    if guidance:
-        return "\n".join(guidance)
-    else:
-        return "- No specific context restrictions - show relevant buttons based on response content"
+

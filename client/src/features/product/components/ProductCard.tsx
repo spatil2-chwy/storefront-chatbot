@@ -167,7 +167,19 @@ export default function ProductCard({ product }: ProductCardProps) {
         match.matched_terms.forEach(term => categories.add(term));
       }
     });
-    
+
+    // Remove plain 'X' if 'No X' is present
+    const toRemove = new Set<string>();
+    categories.forEach(cat => {
+      if (cat.startsWith('No ')) {
+        const plain = cat.replace(/^No /, '');
+        if (categories.has(plain)) {
+          toRemove.add(plain);
+        }
+      }
+    });
+    toRemove.forEach(cat => categories.delete(cat));
+
     return Array.from(categories);
   };
 

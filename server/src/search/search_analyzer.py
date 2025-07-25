@@ -281,8 +281,13 @@ class SearchAnalyzer:
             if not field_terms:
                 continue
             
+            # Use original query terms for most field matching to avoid irrelevant matches
+            # Only use enhanced terms for pet-specific fields
+            pet_specific_fields = {'Pet Types', 'Pet Types (Alt)', 'Life Stage', 'Life Stage (Alt)', 'Breed Size'}
+            matching_terms = unique_query_terms if field_name in pet_specific_fields else original_query_terms
+            
             # Calculate matches between query terms and field terms
-            phrase_matches = self.phrase_match_terms(unique_query_terms, field_terms)
+            phrase_matches = self.phrase_match_terms(matching_terms, field_terms)
             
             # Create SearchMatch for each match, but only keep high-confidence matches
             for query_match, product_term, confidence in phrase_matches:
