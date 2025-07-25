@@ -36,6 +36,7 @@ def read_pet_owner(pet_profile_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=PetSchema)
 def create_pet(profile: PetSchema, db: Session = Depends(get_db)):
     # Get the user to find the correct customer_id
+    # The client sends customer_key as customer_id, so we need to look up by customer_key
     user = user_svc.get_user(db, profile.customer_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

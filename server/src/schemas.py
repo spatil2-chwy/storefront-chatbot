@@ -5,7 +5,7 @@ from src.models.constants import SenderType
 from src.models.pet import PetProfile as PetProfileModel
 
 class PetProfileBase(BaseModel):
-    pet_profile_id: int
+    pet_profile_id: Optional[int] = None
     customer_id: int
     pet_name: Optional[str]
     pet_type: Optional[str]

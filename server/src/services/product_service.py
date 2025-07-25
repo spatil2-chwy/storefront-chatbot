@@ -296,7 +296,7 @@ class ProductService:
             semantic_similarity=semantic_similarity,
         )
     
-    def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None) -> Product:
+    def _ranked_result_to_product(self, ranked_result, query: str = None, pet_profile: dict = None, user_context: dict = None, excluded_ingredients: list = None, original_user_input: str = None) -> Product:
         """Convert a ranked result tuple (metadata, document, product_id, distance) to a Product object"""
         metadata, document, product_id, distance = ranked_result
         
@@ -329,7 +329,7 @@ class ProductService:
                 
                 # Analyze matches with pet profile and user context
                 match_start = time.time()
-                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context)
+                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context, excluded_ingredients, original_user_input)
                 match_time = time.time() - match_start
                 
                 logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")
