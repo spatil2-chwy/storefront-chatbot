@@ -23,22 +23,36 @@ __pycache__
 **/TESTING_*.md
 
 # Data files and databases
-data/
-data/backend/
-data/backend/reviews/
-data/backend/articles/
-data/backend/customers/
-data/backend/pets/
-data/backend/products/
-data/databases/
-data/personas/
-data/README.md
+# data/
+# data/backend/
+# data/backend/reviews/
+# data/backend/articles/
+# data/backend/customers/
+# data/backend/pets/
+# data/backend/products/
+# data/databases/
+# data/personas/
+# data/README.md
+
+# Data files prepped for github
+data/databases/chroma_db/
+data/backend/customers/old_customers_with_personas.tsv
+data/backend/customers/old_customers.tsv
+data/backend/pets/old_pet_profiles.tsv
+data/backend/products/product_df.csv
+data/backend/products/landing_products.json
+data/backend/articles/all_wp_posts.json
+data/backend/articles/all_wp_posts.json
+data/backend/products/item_df.csv
+data/backend/reviews/all_chewy_products_with_qanda.csv
+data/backend/reviews/results.jsonl
+
 
 # Legacy data file references
-results.jsonl
-all_chewy_products_with_qanda.csv
+# results.jsonl
+# all_chewy_products_with_qanda.csv
 chroma_db
-all_wp_posts.json
+# all_wp_posts.json
 metadata_filters_cache.json
 
 # Server cache and log files
@@ -52,9 +66,12 @@ server/logs/logs/
 *.sqlite3
 
 # Large data files (specific patterns)
-data/**/*.csv
-data/**/*.json
-data/**/*.jsonl
+# data/**/*.csv
+# data/**/*.json
+# data/**/*.jsonl
+# data/databases/chroma_db/
+
+
 scripts/*.csv
 scripts/*.json
 scripts/*.jsonl
