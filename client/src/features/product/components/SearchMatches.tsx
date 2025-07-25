@@ -27,10 +27,18 @@ export default function SearchMatches({
       const cleanCategory = category.trim();
       const cleanValue = value.trim();
       
+      // Handle excluded ingredients specially - show as "No X"
+      let displayValue = cleanValue;
+      let displayText = match.field;
+      if (cleanCategory === 'Excluded Ingredients') {
+        displayValue = `No ${cleanValue}`;
+        displayText = `No ${cleanValue}`;
+      }
+      
       return {
         category: cleanCategory,
-        value: cleanValue,
-        displayText: match.field
+        value: displayValue,
+        displayText: displayText
       };
     }
     

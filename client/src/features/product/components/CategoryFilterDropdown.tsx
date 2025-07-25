@@ -46,12 +46,24 @@ export default function CategoryFilterDropdown({
           if (match.field.includes(':')) {
             const [category, value] = match.field.split(':', 2);
             if (value && value.trim()) {
-              categories.add(value.trim());
+              const cleanValue = value.trim();
+              
+              // Handle excluded ingredients specially - show as "No X"
+              if (category.trim() === 'Excluded Ingredients') {
+                categories.add(`No ${cleanValue}`);
+              } else {
+                categories.add(cleanValue);
+              }
             }
           }
         });
       }
     });
+    
+    // Debug: Log what categories are being extracted
+    console.log('CategoryFilterDropdown - Available categories:', Array.from(categories).sort());
+    console.log('CategoryFilterDropdown - Products with search matches:', products.filter(p => p.search_matches).length);
+    console.log('CategoryFilterDropdown - Sample search matches:', products.find(p => p.search_matches)?.search_matches);
     
     return Array.from(categories).sort();
   }, [products]);

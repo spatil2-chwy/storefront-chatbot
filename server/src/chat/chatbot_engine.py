@@ -506,6 +506,17 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                 args = json.loads(tool_call.arguments)
                 logger.debug(f"Streaming tool call arguments: {args}")
                 
+                # Log the exact query being passed to search_products
+                if tool_call.name == "search_products":
+                    # Always use the original user input for the search query
+                    logger.info(f"🔍 ORIGINAL_USER_INPUT: '{user_input}'")
+                    logger.info(f"🔍 LLM_EXPANDED_QUERY: '{args.get('query', 'NO_QUERY_FOUND')}'")
+                    
+                    # Use the original user input instead of the LLM expanded query
+                    args['query'] = user_input
+                    query = user_input
+                    logger.info(f"🔍 USING_ORIGINAL_QUERY: '{query}'")
+                
                 tool_exec_start = time.time()
                 logger.info(f"Executing streaming {tool_call.name} after {tool_exec_start - start_time:.3f}s")
                 

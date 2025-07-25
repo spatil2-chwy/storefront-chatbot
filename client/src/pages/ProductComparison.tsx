@@ -128,7 +128,16 @@ export default function ProductComparison() {
     product.search_matches.forEach((match: any) => {
       if (match.field.includes(':')) {
         const [category, value] = match.field.split(':', 2);
-        categories.add(value.trim());
+        if (value && value.trim()) {
+          const cleanValue = value.trim();
+          
+          // Handle excluded ingredients specially - show as "No X"
+          if (category.trim() === 'Excluded Ingredients') {
+            categories.add(`No ${cleanValue}`);
+          } else {
+            categories.add(cleanValue);
+          }
+        }
       } else {
         match.matched_terms.forEach((term: string) => categories.add(term));
       }

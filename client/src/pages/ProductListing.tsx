@@ -232,13 +232,20 @@ export default function ProductListing() {
           if (match.field.includes(':')) {
             const [category, value] = match.field.split(':', 2);
             if (value && value.trim()) {
-              productValues.add(value.trim());
+              const cleanValue = value.trim();
+              
+              // Handle excluded ingredients specially - show as "No X"
+              if (category.trim() === 'Excluded Ingredients') {
+                productValues.add(`No ${cleanValue}`);
+              } else {
+                productValues.add(cleanValue);
+              }
             }
           }
         });
 
-        // Product must have at least one match for the selected values
-        return selectedCategories.some(selectedValue =>
+        // Product must have ALL of the selected values (not just some)
+        return selectedCategories.every(selectedValue =>
           productValues.has(selectedValue)
         );
       });

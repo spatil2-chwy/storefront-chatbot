@@ -218,45 +218,7 @@ class SearchAnalyzer:
         
         # Dynamically select relevant fields based on query terms
         product_fields = self._get_relevant_fields_dynamic(metadata, query_terms, original_query_terms=original_query_terms, excluded_ingredients=excluded_ingredients)
-        
-        # If pet profile is provided, enhance the query with pet-specific terms
-        enhanced_query_terms = query_terms.copy()
-        if pet_profile:
-            # Add pet type to search terms
-            if pet_profile.get('type'):
-                pet_type_terms = self.extract_query_terms(pet_profile['type'])
-                enhanced_query_terms.extend(pet_type_terms)
-            
-            # Add breed to search terms
-            if pet_profile.get('breed'):
-                breed_terms = self.extract_query_terms(pet_profile['breed'])
-                enhanced_query_terms.extend(breed_terms)
-            
-            # Add life stage to search terms
-            if pet_profile.get('life_stage'):
-                life_stage_terms = self.extract_query_terms(pet_profile['life_stage'])
-                enhanced_query_terms.extend(life_stage_terms)
-            
-            # Add size/weight to search terms
-            if pet_profile.get('size'):
-                size_terms = self.extract_query_terms(pet_profile['size'])
-                enhanced_query_terms.extend(size_terms)
-            
-            # Add allergy information to search terms
-            if pet_profile.get('allergies') and pet_profile.get('allergies').strip():
-                # Split allergies by comma and add each allergy to search terms
-                allergies = [allergy.strip() for allergy in pet_profile.get('allergies').split(',')]
-                enhanced_query_terms.extend(allergies)
-                enhanced_query_terms.extend(['allergy', 'hypoallergenic', 'sensitive'])
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_query_terms = []
-        for term in enhanced_query_terms:
-            if term not in seen:
-                seen.add(term)
-                unique_query_terms.append(term)
-        
+        unique_query_terms = original_query_terms
         # Match query terms against comprehensive product metadata fields
         for field_name, field_value in product_fields.items():
             if not field_value or not field_value.strip():
@@ -276,6 +238,38 @@ class SearchAnalyzer:
                     matches.append(match)
                 continue
             
+            # Special handling for Category Tags - only match against query terms, not other fields
+            if field_name == 'Category Tags':
+                # Category tags are already filtered to only include those that match query terms
+                # Just create matches for them without further phrase matching
+                category_tag_list = [tag.strip() for tag in field_value.split(',')]
+                logger.debug(f"🔍 Processing Category Tags: {category_tag_list}")
+                for category_tag in category_tag_list:
+                    if category_tag:
+                        # Only include category tags that are explicitly mentioned in the query
+                        category_tag_lower = category_tag.lower()
+                        category_tag_normalized = category_tag.replace('-', ' ').lower()
+                        
+                        # Check if any query term exactly matches the category tag
+                        query_match = None
+                        for term in original_query_terms:
+                            if term == category_tag_lower or term == category_tag_normalized:
+                                query_match = term
+                                break
+                        
+                        if query_match:
+                            logger.debug(f"🔍 Creating Category Tag match for: {category_tag} (matched query term: {query_match})")
+                            match = SearchMatch(
+                                field=f"{field_name}: {category_tag}",
+                                matched_terms=[query_match],  # Use the actual query term that matched
+                                confidence=1.0,
+                                field_value=category_tag
+                            )
+                            matches.append(match)
+                        else:
+                            logger.debug(f"🔍 SKIPPING Category Tag: {category_tag} (no query term match)")
+                continue
+            
             # Extract terms from field value, preserving multi-word entities for certain fields
             field_terms = self.extract_field_terms(field_value, field_name)
             
@@ -285,7 +279,8 @@ class SearchAnalyzer:
             # Use original query terms for most field matching to avoid irrelevant matches
             # Only use enhanced terms for pet-specific fields
             pet_specific_fields = {'Pet Types', 'Pet Types (Alt)', 'Life Stage', 'Life Stage (Alt)', 'Breed Size'}
-            matching_terms = unique_query_terms if field_name in pet_specific_fields else original_query_terms
+            # matching_terms = unique_query_terms if field_name in pet_specific_fields else original_query_terms
+            matching_terms = original_query_terms
             
             # Calculate matches between query terms and field terms
             phrase_matches = self.phrase_match_terms(matching_terms, field_terms)
@@ -358,7 +353,11 @@ class SearchAnalyzer:
         for key in metadata:
             if key.startswith('ingredienttag:'):
                 ingredient_tag = key.split(':', 1)[1]
-                if any(term in ingredient_tag.lower() for term in query_terms):
+                ingredient_tag_lower = ingredient_tag.lower()
+                ingredient_tag_normalized = ingredient_tag.replace('-', ' ').lower()
+                
+                # Check if any query term exactly matches the ingredient tag or its normalized form
+                if any(term == ingredient_tag_lower or term == ingredient_tag_normalized for term in query_terms):
                     ingredient_tags.append(capitalize_field_value(ingredient_tag))
         
         if ingredient_tags:
@@ -368,12 +367,27 @@ class SearchAnalyzer:
         if excluded_ingredients:
             relevant_fields['Excluded Ingredients'] = ', '.join(excluded_ingredients)
         
-        # Add category tags only if they contain ORIGINAL query terms (not enhanced)
+                # Add category tags only if they explicitly match query terms
         category_tags = []
         for key in metadata:
             if key.startswith('categorytag'):
                 category_tag = key.split(':', 1)[1]
-                if any(term in category_tag.lower() for term in category_matching_terms):
+                # Only include category tags that are explicitly mentioned in the query
+                # This prevents user preferences from appearing as matches unless specifically requested
+                category_tag_lower = category_tag.lower()
+                category_tag_normalized = category_tag.replace('-', ' ').lower()
+                
+                logger.debug(f"🔍 Checking category tag '{category_tag}' (lower: '{category_tag_lower}', normalized: '{category_tag_normalized}')")
+                
+                # Check if any query term exactly matches the category tag or its normalized form
+                matches = []
+                for term in category_matching_terms:
+                    if term == category_tag_lower or term == category_tag_normalized:
+                        matches.append(term)
+                        logger.debug(f"🔍 MATCH FOUND: '{term}' matches '{category_tag}'")
+                
+                if matches:
+                    logger.debug(f"🔍 Adding category tag '{category_tag}' to relevant fields (matched terms: {matches})")
                     category_tags.append(capitalize_field_value(category_tag))
         
         if category_tags:
