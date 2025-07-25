@@ -194,7 +194,7 @@ class SearchAnalyzer:
         
         return matches
         
-    def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None, excluded_ingredients: list = None) -> List[SearchMatch]:
+    def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None, excluded_ingredients: list = None, original_user_input: str = None) -> List[SearchMatch]:
         """
         Semantic matching using comprehensive product metadata including pet profile and user query information
         Note: user_context is ignored to prevent persona/shopping preferences from influencing search results
@@ -205,8 +205,13 @@ class SearchAnalyzer:
         # Debug: Log the excluded ingredients
         logger.debug(f"🔍 SearchAnalyzer received excluded_ingredients: {excluded_ingredients}")
         
-        # Extract meaningful terms from user's question
-        query_terms = self.extract_query_terms(query)
+        # Use original user input for query terms if provided, otherwise use the expanded query
+        if original_user_input:
+            query_terms = self.extract_query_terms(original_user_input)
+            logger.debug(f"🔍 Using original user input: '{original_user_input}' -> query terms: {query_terms}")
+        else:
+            query_terms = self.extract_query_terms(query)
+            logger.debug(f"🔍 Using expanded query: '{query}' -> query terms: {query_terms}")
         
         if not query_terms:
             return []
