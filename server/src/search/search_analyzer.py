@@ -56,7 +56,7 @@ class SearchAnalyzer:
 
         # Define fields that should preserve multi-word entities
         self.preserve_multiword_fields = {
-            'Product Name', 'Clean Name', 'Brand', 'Special Diet',
+            'Product Name', 'Clean Name', 'Brand',
             'What Customers Love', 'What to Watch Out For', 'Should You Buy It'
         }
 
@@ -197,6 +197,7 @@ class SearchAnalyzer:
     def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None, excluded_ingredients: list = None) -> List[SearchMatch]:
         """
         Semantic matching using comprehensive product metadata including pet profile and user query information
+        Note: user_context is ignored to prevent persona/shopping preferences from influencing search results
         """
         
         start_time = time.time()
@@ -332,10 +333,9 @@ class SearchAnalyzer:
         }
         relevant_fields.update(pet_fields)
         
-        # Only add other fields if they contain query terms
+        # Only add other fields if they contain query terms (excluding special diet)
         all_metadata_fields = {
             'Food Form': metadata.get('ATTR_FOOD_FORM', ''),
-            'Special Diet': metadata.get('ATTR_SPECIAL_DIET', ''),
             'Ingredients': metadata.get('INGREDIENTS', ''),
             'Brand': metadata.get('PURCHASE_BRAND', ''),
         }
@@ -351,16 +351,7 @@ class SearchAnalyzer:
             if any(term in field_lower for term in query_terms):
                 relevant_fields[field_name] = field_value
         
-        # Add diet tags only if they contain query terms
-        diet_tags = []
-        for key in metadata:
-            if key.startswith('specialdiettag:'):
-                diet_tag = key.split(':', 1)[1]
-                if any(term in diet_tag.lower() for term in query_terms):
-                    diet_tags.append(capitalize_field_value(diet_tag))
-        
-        if diet_tags:
-            relevant_fields['Diet Tags'] = ', '.join(diet_tags)
+
         
         # Add ingredient tags only if they contain query terms
         ingredient_tags = []
