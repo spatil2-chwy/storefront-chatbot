@@ -242,7 +242,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
                 if not filtered_user_context:
                     filtered_user_context = None
             
-            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context)
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context, excluded_ingredients)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
@@ -743,7 +743,6 @@ def analyze_conversation_context(history, pet_profile, user_context_data):
                 context_info['applied_filters'].add('grain_free')
     
     return context_info
-
 
 def generate_context_aware_button_guidance(context_info):
     """

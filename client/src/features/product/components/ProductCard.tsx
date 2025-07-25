@@ -154,7 +154,15 @@ export default function ProductCard({ product }: ProductCardProps) {
     product.search_matches.forEach(match => {
       if (match.field.includes(':')) {
         const [category, value] = match.field.split(':', 2);
-        categories.add(value.trim());
+        const cleanCategory = category.trim();
+        const cleanValue = value.trim();
+        
+        // Handle excluded ingredients specially
+        if (cleanCategory === 'Excluded Ingredients') {
+          categories.add(`No ${cleanValue}`);
+        } else {
+          categories.add(cleanValue);
+        }
       } else {
         match.matched_terms.forEach(term => categories.add(term));
       }
@@ -164,6 +172,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   const matchedCategories = getMatchedCategories();
+  
+  // Debug: Log the categories being extracted
+  console.log('Product:', product.title, 'Search matches:', product.search_matches, 'Matched categories:', matchedCategories);
 
   return (
     <>

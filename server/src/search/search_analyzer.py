@@ -194,12 +194,15 @@ class SearchAnalyzer:
         
         return matches
         
-    def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None) -> List[SearchMatch]:
+    def analyze_product_matches(self, metadata: dict, query: str, pet_profile: dict = None, user_context: dict = None, excluded_ingredients: list = None) -> List[SearchMatch]:
         """
         Semantic matching using comprehensive product metadata including pet profile and user query information
         """
         
         start_time = time.time()
+        
+        # Debug: Log the excluded ingredients
+        logger.debug(f"🔍 SearchAnalyzer received excluded_ingredients: {excluded_ingredients}")
         
         # Extract meaningful terms from user's question
         query_terms = self.extract_query_terms(query)
@@ -209,10 +212,11 @@ class SearchAnalyzer:
         
         matches = []
         
-        # Dynamically select relevant fields based on query terms
-        product_fields = self._get_relevant_fields_dynamic(metadata, query_terms)
+        # Store original query terms for category tag matching
+        original_query_terms = query_terms.copy()
         
-
+        # Dynamically select relevant fields based on query terms
+        product_fields = self._get_relevant_fields_dynamic(metadata, query_terms, original_query_terms=original_query_terms, excluded_ingredients=excluded_ingredients)
         
         # If pet profile is provided, enhance the query with pet-specific terms
         enhanced_query_terms = query_terms.copy()
@@ -257,6 +261,20 @@ class SearchAnalyzer:
             if not field_value or not field_value.strip():
                 continue
             
+            # Special handling for excluded ingredients - always include them if they exist
+            if field_name == 'Excluded Ingredients' and excluded_ingredients:
+                # Create a match for each excluded ingredient
+                for excluded_ingredient in excluded_ingredients:
+                    capitalized_ingredient = capitalize_field_value(excluded_ingredient)
+                    match = SearchMatch(
+                        field=f"{field_name}: {capitalized_ingredient}",
+                        matched_terms=[excluded_ingredient],
+                        confidence=1.0,
+                        field_value=capitalized_ingredient
+                    )
+                    matches.append(match)
+                continue
+            
             # Extract terms from field value, preserving multi-word entities for certain fields
             field_terms = self.extract_field_terms(field_value, field_name)
             
@@ -285,12 +303,13 @@ class SearchAnalyzer:
         
         return matches
     
-    def _get_relevant_fields_dynamic(self, metadata, query_terms):
+    def _get_relevant_fields_dynamic(self, metadata, query_terms, original_query_terms=None, excluded_ingredients=None):
         """Dynamically select relevant fields based on query terms"""
         
-        # Always include core product fields
+        # Use original query terms for category tag matching if provided, otherwise use regular query terms
+        category_matching_terms = original_query_terms if original_query_terms is not None else query_terms
+        
         relevant_fields = {
-            'Product Name': metadata.get('NAME', ''),
             'Clean Name': metadata.get('CLEAN_NAME', ''),
             'Category Level 1': metadata.get('CATEGORY_LEVEL1', ''),
             'Category Level 2': metadata.get('CATEGORY_LEVEL2', ''),
@@ -349,12 +368,16 @@ class SearchAnalyzer:
         if ingredient_tags:
             relevant_fields['Ingredient Tags'] = ', '.join(ingredient_tags)
         
-        # Add category tags only if they contain query terms
+        # Add excluded ingredients as a special field for matching
+        if excluded_ingredients:
+            relevant_fields['Excluded Ingredients'] = ', '.join(excluded_ingredients)
+        
+        # Add category tags only if they contain ORIGINAL query terms (not enhanced)
         category_tags = []
         for key in metadata:
             if key.startswith('categorytag'):
                 category_tag = key.split(':', 1)[1]
-                if any(term in category_tag.lower() for term in query_terms):
+                if any(term in category_tag.lower() for term in category_matching_terms):
                     category_tags.append(capitalize_field_value(category_tag))
         
         if category_tags:
