@@ -127,8 +127,8 @@ def main():
             print(f"  • {PETS_TSV}")
         
         # Load users
-        if "password_hash" not in users_df.columns:
-            users_df = users_df.drop(columns=["password_hash"])
+        # if "password_hash" not in users_df.columns:
+        #     users_df = users_df.drop(columns=["password_hash"])
             
         users_df.to_sql(
             name="customers_full",

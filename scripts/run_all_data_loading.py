@@ -29,7 +29,7 @@ def main():
         ("customer_persona_enhancer.py", "Enhancing customer data with personas", "."),
         ("../server/src/load_data.py", "Loading customer and pet data to SQLite", "../server"),
         ("articledbbuilder.py", "Building article database", "."),
-        ("review_synthesis_dbbuilder.py", "Building review synthesis database", "."),
+        ("item_review_synthesis_dbbuilder.py", "Building review synthesis database", "."),
     ]
     
     success_count = 0
