@@ -342,6 +342,13 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {message.content}
       </div>
     );
+    
+    // For other transition messages, show simple display
+    return (
+      <div className={`px-4 py-2 rounded-lg text-sm text-center ${getTransitionStyling(message)}`}>
+        {message.content}
+      </div>
+    );
   }
 
   return (
@@ -415,42 +422,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 <X className="w-3 h-3" />
               </Button>
             </div>
-            
-            {/* Product grid */}
-            <div className="grid grid-cols-1 gap-2">
-              {message.comparisonProducts.slice(0, 3).map((product, index) => (
-                <div key={index} className="bg-white rounded-lg p-2 border border-purple-100">
-                  <div className="flex items-center space-x-2">
-                    {renderProductImage(product)}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 line-clamp-1">
-                        {product?.title}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-semibold text-gray-900">
-                          ${product?.price?.toFixed(2)}
-                        </span>
-                        {product?.rating && (
-                          <div className="flex items-center space-x-1">
-                            <div className="flex">
-                              {renderStars(product.rating)}
-                            </div>
-                            <span className="text-xs text-gray-600">
-                              {product.rating.toFixed(1)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {message.comparisonProducts.length > 3 && (
-                <div className="text-xs text-purple-600 text-center py-1">
-                  +{message.comparisonProducts.length - 3} more products
-                </div>
-              )}
-            </div>
           </div>
         )}
         
@@ -475,8 +446,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   return (
                     <>
                       <div className="text-sm leading-relaxed">
-                        <SafeHtmlRenderer 
-                          html={formatMessageContent(cleanContent)} 
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: formatMessageContent(cleanContent) }}
                           className="prose prose-sm max-w-none"
                         />
                       </div>
