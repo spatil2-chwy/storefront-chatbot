@@ -1,7 +1,7 @@
 import React from 'react';
 import { SearchMatch } from '../../../types';
 import { Badge } from '@/ui/Display/Badge';
-import { Target, CheckCircle, Heart, Dog, Baby, Scale, Package, Shield, Pill, Utensils, Award, X } from 'lucide-react';
+import { Target, CheckCircle, Heart, Dog, Baby, Scale, Package, Shield, Pill, Utensils, Award } from 'lucide-react';
 
 interface SearchMatchesProps {
   matches?: SearchMatch[];
@@ -21,18 +21,6 @@ export default function SearchMatches({
   }
 
   const formatMatchDisplay = (match: SearchMatch) => {
-    if (match.field.includes('Excluded Ingredients:')) {
-      const [category, value] = match.field.split(':', 2);
-      const cleanValue = value.trim();
-      
-      return {
-        category: 'Excluded Ingredients',
-        value: cleanValue,
-        displayText: `${cleanValue}-Free`,
-        isExcluded: true
-      };
-    }
-    
     // If the field contains a category (e.g., "Pet Type: Dog"), extract both parts
     if (match.field.includes(':')) {
       const [category, value] = match.field.split(':', 2);
@@ -42,8 +30,7 @@ export default function SearchMatches({
       return {
         category: cleanCategory,
         value: cleanValue,
-        displayText: match.field,
-        isExcluded: false
+        displayText: match.field
       };
     }
     
@@ -51,8 +38,7 @@ export default function SearchMatches({
     return {
       category: match.field,
       value: match.matched_terms.join(', '),
-      displayText: match.matched_terms.join(', '),
-      isExcluded: false
+      displayText: match.matched_terms.join(', ')
     };
   };
 
@@ -62,7 +48,7 @@ export default function SearchMatches({
 
   // Group matches by category
   const groupedMatches = sortedMatches.reduce((acc, match) => {
-    const { category, value, displayText, isExcluded } = formatMatchDisplay(match);
+    const { category, value, displayText } = formatMatchDisplay(match);
     const categoryKey = category;
     
     if (!acc[categoryKey]) {
@@ -70,8 +56,7 @@ export default function SearchMatches({
         category: categoryKey,
         values: [],
         confidence: match.confidence,
-        field: match.field,
-        isExcluded: isExcluded
+        field: match.field
       };
     }
     
@@ -83,12 +68,9 @@ export default function SearchMatches({
     }
     
     return acc;
-  }, {} as Record<string, { category: string; values: string[]; confidence: number; field: string; isExcluded: boolean }>);
+  }, {} as Record<string, { category: string; values: string[]; confidence: number; field: string }>);
 
-  const getConfidenceColor = (confidence: number, isExcluded: boolean = false): string => {
-    if (isExcluded) {
-      return 'bg-red-100 text-red-800 border-red-200';
-    }
+  const getConfidenceColor = (confidence: number): string => {
     if (confidence >= 0.8) return 'bg-green-100 text-green-800 border-green-200';
     if (confidence >= 0.6) return 'bg-blue-100 text-blue-800 border-blue-200';
     return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -101,11 +83,7 @@ export default function SearchMatches({
     return <Target className="w-3 h-3" />;
   };
 
-  const getCategoryIcon = (field: string, isExcluded: boolean = false) => {
-    if (isExcluded) {
-      return <X className="w-3 h-3" />;
-    }
-    
+  const getCategoryIcon = (field: string) => {
     // New metadata-driven categories
     if (field.includes('Brands')) return <Award className="w-3 h-3" />;
     if (field.includes('Categories')) return <Package className="w-3 h-3" />;
@@ -140,19 +118,17 @@ export default function SearchMatches({
       
       <div className="space-y-1">
         {Object.values(groupedMatches).map((group, index) => {
-          const displayText = group.isExcluded 
-            ? group.values.map(value => `${value}-Free`).join(', ')
-            : `${group.category}: ${group.values.join(', ')}`;
+          const displayText = `${group.category}: ${group.values.join(', ')}`;
           
           return (
             <div key={index} className="flex items-center">
               <Badge
                 variant="outline"
-                className={`text-xs px-2 py-0.5 ${getConfidenceColor(group.confidence, group.isExcluded)} font-normal`}
+                className={`text-xs px-2 py-0.5 ${getConfidenceColor(group.confidence)} font-normal`}
                 title={`${displayText} (${Math.round(group.confidence * 100)}% confidence)`}
               >
                 <div className="flex items-center space-x-1">
-                  {getCategoryIcon(group.field, group.isExcluded)}
+                  {getCategoryIcon(group.field)}
                   <span className="text-xs">
                     {displayText}
                   </span>

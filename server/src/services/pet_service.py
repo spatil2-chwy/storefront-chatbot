@@ -28,27 +28,10 @@ class PetService:
         # Ensure time_created is set if not provided
         if not profile.time_created:
             profile.time_created = datetime.utcnow()
-        
-        try:
-            db.add(profile)
-            db.commit()
-            
-            # Query the database to get the created pet with its ID
-            created_pet = db.query(PetProfile).filter(
-                PetProfile.customer_id == profile.customer_id,
-                PetProfile.pet_name == profile.pet_name,
-                PetProfile.pet_type == profile.pet_type,
-                PetProfile.time_created == profile.time_created
-            ).order_by(PetProfile.pet_profile_id.desc()).first()
-            
-            if created_pet:
-                return created_pet
-            else:
-                raise Exception("Failed to retrieve created pet from database")
-                
-        except Exception as e:
-            db.rollback()
-            raise
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+        return profile
 
     def update_pet(self, db: Session, pet_profile_id: int, profile: PetProfile) -> PetProfile | None:
         pet = db.query(PetProfile).filter(PetProfile.pet_profile_id == pet_profile_id).one_or_none()

@@ -39,15 +39,20 @@ const LIFE_STAGE_THRESHOLDS = {
     adult: 60,    // 0.5-5 years
     senior: Infinity // 5+ years
   },
-  FARM_ANIMAL: {
+  RABBIT: {
     baby: 6,      // 0-6 months
     adult: 60,    // 0.5-5 years
     senior: Infinity // 5+ years
   },
-  SMALL_PET: {
+  HAMSTER: {
     baby: 2,      // 0-2 months
     adult: 18,    // 2-18 months
     senior: Infinity // 18+ months
+  },
+  OTHER: {
+    young: 12,    // 0-12 months
+    adult: 84,    // 1-7 years
+    senior: Infinity // 7+ years
   }
 };
 
@@ -78,13 +83,18 @@ const LIFE_STAGE_LABELS = {
     adult: 'Adult',
     senior: 'Senior'
   },
-  FARM_ANIMAL: {
+  RABBIT: {
     baby: 'Baby',
     adult: 'Adult',
     senior: 'Senior'
   },
-  SMALL_PET: {
+  HAMSTER: {
     baby: 'Baby',
+    adult: 'Adult',
+    senior: 'Senior'
+  },
+  OTHER: {
+    young: 'Young',
     adult: 'Adult',
     senior: 'Senior'
   }
@@ -136,7 +146,7 @@ export function calculateLifeStage(
   if (!birthday && legacyStage) {
     const stageKey = LEGACY_STAGE_CODES[legacyStage as keyof typeof LEGACY_STAGE_CODES];
     if (stageKey) {
-      const typeLabels = LIFE_STAGE_LABELS[petType as keyof typeof LIFE_STAGE_LABELS] || LIFE_STAGE_LABELS.DOG;
+      const typeLabels = LIFE_STAGE_LABELS[petType as keyof typeof LIFE_STAGE_LABELS] || LIFE_STAGE_LABELS.OTHER;
       return {
         stage: stageKey,
         label: typeLabels[stageKey as keyof typeof typeLabels] || 'Unknown',
@@ -158,8 +168,8 @@ export function calculateLifeStage(
     };
   }
 
-  const thresholds = LIFE_STAGE_THRESHOLDS[petType as keyof typeof LIFE_STAGE_THRESHOLDS] || LIFE_STAGE_THRESHOLDS.DOG;
-  const labels = LIFE_STAGE_LABELS[petType as keyof typeof LIFE_STAGE_LABELS] || LIFE_STAGE_LABELS.DOG;
+  const thresholds = LIFE_STAGE_THRESHOLDS[petType as keyof typeof LIFE_STAGE_THRESHOLDS] || LIFE_STAGE_THRESHOLDS.OTHER;
+  const labels = LIFE_STAGE_LABELS[petType as keyof typeof LIFE_STAGE_LABELS] || LIFE_STAGE_LABELS.OTHER;
 
   let stage: string;
   let label: string;

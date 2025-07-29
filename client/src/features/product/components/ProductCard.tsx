@@ -18,10 +18,10 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [showAISynthesisFull, setShowAISynthesisFull] = useState(false);
-  const {
-    comparingProducts,
-    addToComparison,
-    removeFromComparison,
+  const { 
+    comparingProducts, 
+    addToComparison, 
+    removeFromComparison, 
     setCurrentContext,
     setIsOpen: setGlobalChatOpen,
     currentContext,
@@ -41,20 +41,20 @@ export default function ProductCard({ product }: ProductCardProps) {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
-
+    
     for (let i = 0; i < fullStars; i++) {
       stars.push(<span key={i} className="text-yellow-400">★</span>);
     }
-
+    
     if (hasHalfStar) {
       stars.push(<span key="half" className="text-yellow-400">☆</span>);
     }
-
+    
     const remainingStars = 5 - Math.ceil(rating);
     for (let i = 0; i < remainingStars; i++) {
       stars.push(<span key={`empty-${i}`} className="text-gray-300">☆</span>);
     }
-
+    
     return stars;
   };
 
@@ -72,8 +72,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     return (
       <div className="w-full h-48 bg-gray-50 flex items-center justify-center relative">
-        <img
-          src={product.image}
+        <img 
+          src={product.image} 
           alt={product.title}
           className="max-w-full max-h-full object-contain"
           onError={(e) => {
@@ -107,15 +107,15 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleChatClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
+    
     // Set product context and open side chat instead of modal
     const newContext = { type: 'product' as const, product: product };
-
+    
     // Add transition message to show "Now Discussing" if context is changing
     if (currentContext.type !== 'product' || currentContext.product?.id !== product.id) {
       addTransitionMessage(currentContext, newContext);
     }
-
+    
     setCurrentContext(newContext);
     setGlobalChatOpen(true);
   };
@@ -125,7 +125,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
+    
     if (!product.id) {
       console.error('Cannot add product to cart: product ID is missing');
       return;
@@ -133,10 +133,10 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     // Determine purchase option based on autoship availability
     const purchaseOption = (product.autoshipPrice && product.autoshipPrice > 0) ? 'autoship' : 'buyonce';
-
+    
     // Add to cart with quantity 1
     addToCart(product, 1, purchaseOption);
-
+    
     // Show success toast
     toast({
       title: "Added to Cart!",
@@ -149,25 +149,17 @@ export default function ProductCard({ product }: ProductCardProps) {
     if (!product.search_matches) {
       return [];
     }
-
+    
     const categories = new Set<string>();
     product.search_matches.forEach(match => {
       if (match.field.includes(':')) {
         const [category, value] = match.field.split(':', 2);
-        const cleanCategory = category.trim();
-        const cleanValue = value.trim();
-
-        // Special handling for excluded ingredients - show as "no X" format
-        if (cleanCategory === 'Excluded Ingredients') {
-          categories.add(`${cleanValue}-Free`);
-        } else {
-          categories.add(cleanValue);
-        }
+        categories.add(value.trim());
       } else {
         match.matched_terms.forEach(term => categories.add(term));
       }
     });
-
+    
     return Array.from(categories);
   };
 
@@ -181,7 +173,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="relative w-full h-48 bg-gray-50">
             {renderImage()}
           </div>
-
+          
           <CardContent className="p-4 flex-1 flex flex-col">
             {/* Original Product Information */}
             <div className="mb-2 flex-shrink-0">
@@ -190,7 +182,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <span className="text-[13px] align-middle">{product.title}</span>
               </h4>
             </div>
-
+            
             <div className="flex items-center mb-2 flex-shrink-0 h-5">
               <div className="flex items-center">
                 <div className="flex text-sm">
@@ -202,7 +194,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </span>
               </div>
             </div>
-
+            
             <div className="space-y-1 mb-2 flex-shrink-0 min-h-[2.5rem]">
               <div className="flex items-center space-x-2">
                 <span className="text-lg font-semibold text-gray-900">${product.price?.toFixed(2)}</span>
@@ -265,7 +257,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             >
                               Show More
                             </span>
-
+                            
                             {/* Hover tooltip with full review */}
                             {showAISynthesisFull && (
                               <div className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 z-50">
@@ -290,7 +282,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </div>
               </div>
             )}
-
+            
             {/* Spacer to push bottom content down */}
             <div className="flex-1"></div>
           </CardContent>
@@ -300,15 +292,16 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="px-4 pb-3">
           <Button
             onClick={handleAddToCart}
-            className={`w-full rounded-lg h-10 flex items-center justify-center space-x-2 ${inCart
-                ? 'bg-green-600 hover:bg-green-700 text-white'
+            className={`w-full rounded-lg h-10 flex items-center justify-center space-x-2 ${
+              inCart 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
                 : 'bg-chewy-blue hover:bg-blue-700 text-white'
-              }`}
+            }`}
           >
             <ShoppingCart className="w-4 h-4" />
             <span>
-              {inCart
-                ? `In Cart${cartCount > 1 ? ` (${cartCount})` : ''}`
+              {inCart 
+                ? `In Cart${cartCount > 1 ? ` (${cartCount})` : ''}` 
                 : 'Add to Cart'
               }
             </span>

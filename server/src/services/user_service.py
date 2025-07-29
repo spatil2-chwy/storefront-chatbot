@@ -2,7 +2,6 @@ from typing import List
 from sqlalchemy.orm import Session, joinedload
 from src.models.user import User
 from src.models.pet import PetProfile
-from sqlalchemy import text
 
 class UserService:
     def get_users(self, db: Session) -> List[User]:
@@ -43,16 +42,13 @@ class UserService:
         return True
 
     def get_pets_by_user(self, db: Session, customer_key: int) -> List[PetProfile]:
-        # Use a single JOIN query to get pets directly
-        pets = (
-            db.query(PetProfile)
-            .join(User, PetProfile.customer_id == User.customer_id)
-            .filter(User.customer_key == customer_key)
-            .filter(PetProfile.pet_profile_id.isnot(None))  # Filter out NULL pets
-            .all()
-        )
+        # Get the user with their pets using the relationship
+        user = db.query(User).options(joinedload(User.pets)).filter(User.customer_key == customer_key).one_or_none()
+        if not user:
+            return []
         
-        return pets
+        # Return the pets from the relationship
+        return user.pets
     
     def authenticate_user(self, db: Session, email: str, password: str) -> User | None:
         user = db.query(User).filter(User.email == email).one_or_none()

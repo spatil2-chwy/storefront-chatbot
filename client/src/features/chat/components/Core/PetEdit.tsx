@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../../../../ui/Buttons/Button';
 import { Input } from '../../../../ui/Input/Input';
 import { Label } from '../../../../ui/Input/Label';
@@ -25,16 +25,6 @@ export const PetEdit: React.FC<PetEditProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [manualDateInput, setManualDateInput] = useState('');
-  const [errors, setErrors] = useState<{
-    weight?: string;
-    birthday?: string;
-  }>({});
-
-  // Initialize manual date input when component loads
-  useEffect(() => {
-    setManualDateInput(petInfo.birthday ? formatDateForDisplay(petInfo.birthday) : '');
-  }, [petInfo.birthday]);
 
   // Allergy options for MultiSelect
   const allergiesOptions: MultiSelectOption[] = [
@@ -64,75 +54,17 @@ export const PetEdit: React.FC<PetEditProps> = ({
     return allergies.join(', ');
   };
 
-  const validateWeight = (weight: number): string | undefined => {
-    if (weight < 0) return 'Weight cannot be negative';
-    if (weight > 1000) return 'Weight seems too high. Please check the value.';
-    if (!Number.isFinite(weight)) return 'Please enter a valid number';
-    return undefined;
-  };
-
-  const validateBirthday = (birthday: string | null): string | undefined => {
-    if (!birthday) return undefined;
-    
-    try {
-      const date = new Date(birthday);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // End of today
-      
-      if (isNaN(date.getTime())) {
-        return 'Please enter a valid date';
-      }
-      
-      if (date > today) {
-        return 'Birthday cannot be in the future';
-      }
-      
-      // Check if date is reasonable (not too far in the past)
-      const minDate = new Date();
-      minDate.setFullYear(minDate.getFullYear() - 50); // 50 years ago
-      
-      if (date < minDate) {
-        return 'Birthday seems too far in the past';
-      }
-      
-      return undefined;
-    } catch (error) {
-      return 'Please enter a valid date';
-    }
-  };
-
   const handleInputChange = (field: keyof PetProfileInfo, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
-    // Clear errors when user starts typing
-    if (errors[field as keyof typeof errors]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
   };
 
   const handleSave = async () => {
-    // Validate form data
-    const weightError = validateWeight(formData.weight);
-    const birthdayError = validateBirthday(formData.birthday);
-    
-    if (weightError || birthdayError) {
-      setErrors({
-        weight: weightError,
-        birthday: birthdayError
-      });
-      return;
-    }
-    
     setIsLoading(true);
     try {
       await onSave(formData);
-      setErrors({});
     } finally {
       setIsLoading(false);
     }
@@ -164,39 +96,7 @@ export const PetEdit: React.FC<PetEditProps> = ({
   const handleDateSelect = (day: number) => {
     const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     handleInputChange('birthday', selectedDate.toISOString());
-    setManualDateInput(formatDateForDisplay(selectedDate.toISOString()));
     setIsCalendarOpen(false);
-  };
-
-  const handleManualDateInput = (value: string) => {
-    // Remove all non-numeric characters
-    const numericValue = value.replace(/\D/g, '');
-    
-    // Format with slashes - add slash immediately when section is complete
-    let formattedValue = '';
-    for (let i = 0; i < numericValue.length && i < 8; i++) {
-      formattedValue += numericValue[i];
-      // Add slash after month (2 digits) or day (2 digits)
-      if ((i === 1 || i === 3) && i < numericValue.length - 1) {
-        formattedValue += '/';
-      }
-    }
-    
-    setManualDateInput(formattedValue);
-    
-    // Parse MM/DD/YYYY format when complete
-    if (formattedValue.length === 10) {
-      try {
-        const [month, day, year] = formattedValue.split('/');
-        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        
-        if (!isNaN(date.getTime())) {
-          handleInputChange('birthday', date.toISOString());
-        }
-      } catch (error) {
-        // Invalid date format, ignore
-      }
-    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -291,11 +191,11 @@ export const PetEdit: React.FC<PetEditProps> = ({
             <SelectContent>
               <SelectItem value="DOG">Dog</SelectItem>
               <SelectItem value="CAT">Cat</SelectItem>
-              <SelectItem value="HORSE">Horse</SelectItem>
               <SelectItem value="BIRD">Bird</SelectItem>
               <SelectItem value="FISH">Fish</SelectItem>
-              <SelectItem value="FARM_ANIMAL">Farm Animal</SelectItem>
-              <SelectItem value="SMALL_PET">Small Pet</SelectItem>
+              <SelectItem value="RABBIT">Rabbit</SelectItem>
+              <SelectItem value="HAMSTER">Hamster</SelectItem>
+              <SelectItem value="OTHER">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -328,15 +228,25 @@ export const PetEdit: React.FC<PetEditProps> = ({
           </Select>
         </div>
 
+        {/* Life Stage */}
+        <div className="space-y-2">
+          <Label htmlFor="pet-life-stage">Life Stage</Label>
+          <div className="p-2 border border-gray-200 rounded-md bg-gray-50">
+            <LifeStageDisplay
+              petType={formData.type}
+              birthday={formData.birthday}
+              legacyStage={formData.life_stage}
+              showAge={true}
+            />
+          </div>
+        </div>
+
         {/* Weight */}
         <div className="space-y-2">
           <Label htmlFor="pet-weight">Weight (lbs)</Label>
           <Input
             id="pet-weight"
             type="number"
-            step="0.1"
-            min="0"
-            max="1000"
             value={formData.weight || ''}
             onChange={(e) => {
               const value = e.target.value;
@@ -349,36 +259,24 @@ export const PetEdit: React.FC<PetEditProps> = ({
                 }
               }
             }}
-            placeholder="0.0"
-            className={errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
+            placeholder="Enter weight"
           />
-          {errors.weight && (
-            <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
-          )}
         </div>
 
         {/* Birthday */}
         <div className="space-y-2">
           <Label htmlFor="pet-birthday">Birthday</Label>
           <div className="relative calendar-container">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="MM/DD/YYYY"
-                value={manualDateInput}
-                onChange={(e) => handleManualDateInput(e.target.value)}
-                className={`flex-1 ${errors.birthday ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                maxLength={10}
-                inputMode="numeric"
-              />
-              <button
-                type="button"
-                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="px-3 py-2 border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors rounded-md"
-              >
-                <Calendar className="h-4 w-4 text-purple-400" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+              className="w-full text-sm border border-purple-200 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-purple-50 transition-colors pr-8 py-2 px-3 rounded-md text-left flex items-center justify-between"
+            >
+              <span className={formData.birthday ? 'text-gray-900' : 'text-gray-500'}>
+                {formData.birthday ? formatDateForDisplay(formData.birthday) : 'Select birthday'}
+              </span>
+              <Calendar className="h-4 w-4 text-purple-400" />
+            </button>
             
             {isCalendarOpen && (
               <div className="absolute top-full right-0 mt-1 bg-white border border-purple-200 rounded-lg shadow-lg z-50 p-4 min-w-64 calendar-container">
@@ -413,22 +311,6 @@ export const PetEdit: React.FC<PetEditProps> = ({
                 </div>
               </div>
             )}
-            {errors.birthday && (
-              <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Life Stage */}
-        <div className="space-y-2">
-          <Label htmlFor="pet-life-stage">Life Stage</Label>
-          <div className="p-2 border border-gray-200 rounded-md bg-gray-50">
-            <LifeStageDisplay
-              petType={formData.type}
-              birthday={formData.birthday}
-              legacyStage={formData.life_stage}
-              showAge={true}
-            />
           </div>
         </div>
 

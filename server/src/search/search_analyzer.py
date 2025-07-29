@@ -104,21 +104,11 @@ class SearchAnalyzer:
                     field_terms.append(phrase_lower)
                     complete_phrases_added.append(phrase_lower)
             
-            # For Brand and Clean Name fields, add individual words for partial matching
-            # This allows "purina" to match "purina pro plan" and "orthopedic" to match "orthopedic pillow cat"
-            if field_name in ['Brand', 'Clean Name']:
-                # Add individual words for brand and product name partial matching
-                tokens = word_tokenize(field_value.lower())
-                for token in tokens:
-                    cleaned_token = re.sub(r'[^\w\s]', '', token)
-                    if (cleaned_token and cleaned_token not in self.stop_words and 
-                        len(cleaned_token) > 2):
-                        root_word = self.lemmatizer.lemmatize(cleaned_token)
-                        # Only add individual words if they're not already part of a complete phrase
-                        # This prevents "Blue Buffalo" from adding both "blue buffalo" and "blue", "buffalo"
-                        if not any(root_word in phrase for phrase in complete_phrases_added):
-                            if root_word not in field_terms:
-                                field_terms.append(root_word)
+            # For Brand field, only add individual words if they're not part of a complete phrase
+            # This prevents "purina" "pro" "plan" when "purina pro plan" exists
+            if field_name == 'Brand':
+                # Don't add individual words for brands - keep only complete brand names
+                pass
             else:
                 # For other preserve_multiword_fields, add individual words for partial matching
                 tokens = word_tokenize(field_value.lower())
@@ -185,11 +175,10 @@ class SearchAnalyzer:
                 if matching_count > 0:
                     confidence = matching_count / len(product_roots)
                     if confidence >= 0.5:  # At least half of the brand words match
-                        boosted_confidence = min(confidence * 1.2, 1.0)  # Boost confidence for phrase matches
                         matches.append((
                             ' '.join([term for term in query_terms if term in product_roots]),
                             product_term,  # Keep original formatting
-                            boosted_confidence
+                            min(confidence * 1.2, 1.0)  # Boost confidence for phrase matches
                         ))
                         continue
             
@@ -197,11 +186,10 @@ class SearchAnalyzer:
             product_root = self.lemmatizer.lemmatize(product_term_lower)
             for query_term in query_terms:
                 if query_term == product_root:
-                    confidence = 1.0 if len(product_term.split()) == 1 else 0.8  # Lower confidence for single word matches from multi-word terms
                     matches.append((
                         query_term,
                         product_term,  # Keep original formatting
-                        confidence
+                        1.0 if len(product_term.split()) == 1 else 0.8  # Lower confidence for single word matches from multi-word terms
                     ))
         
         return matches
@@ -287,61 +275,6 @@ class SearchAnalyzer:
                             logger.debug(f"🔍 SKIPPING Category Tag: {category_tag} (no query term match)")
                 continue
             
-            # Special handling for Category Levels - display full category name, not just matched term
-            if field_name.startswith('Category Level'):
-                # Extract terms from field value for matching
-                field_terms = self.extract_field_terms(field_value, field_name)
-                
-                if not field_terms:
-                    continue
-                
-                # Calculate matches between query terms and field terms
-                phrase_matches = self.phrase_match_terms(original_query_terms, field_terms)
-                
-                # Create SearchMatch for each match, but display the full category name
-                for query_match, product_term, confidence in phrase_matches:
-                    if confidence >= 0.8:
-                        # Use the full category name for display, not just the matched term
-                        match = SearchMatch(
-                            field=f"{field_name}: {field_value}",
-                            matched_terms=[query_match] if isinstance(query_match, str) else query_match.split(),
-                            confidence=float(confidence),
-                            field_value=field_value  # Use the full category name
-                        )
-                        matches.append(match)
-                continue
-            
-            # Special handling for Pet Types - filter based on pet being shopped for
-            if field_name in ['Pet Types', 'Pet Types (Alt)']:
-                # Extract terms from field value for matching
-                field_terms = self.extract_field_terms(field_value, field_name)
-                
-                if not field_terms:
-                    continue
-                
-                # Filter pet types based on the pet being shopped for
-                if pet_profile and pet_profile.get('type'):
-                    pet_type = pet_profile['type'].lower()
-                    # Only include pet types that match the pet being shopped for
-                    if pet_type not in field_value.lower():
-                        continue
-                
-                # Calculate matches between query terms and field terms
-                phrase_matches = self.phrase_match_terms(original_query_terms, field_terms)
-                
-                # Create SearchMatch for each match
-                for query_match, product_term, confidence in phrase_matches:
-                    if confidence >= 0.8:
-                        capitalized_product_term = capitalize_field_value(product_term)
-                        match = SearchMatch(
-                            field=f"{field_name}: {capitalized_product_term}",
-                            matched_terms=[query_match] if isinstance(query_match, str) else query_match.split(),
-                            confidence=float(confidence),
-                            field_value=capitalized_product_term
-                        )
-                        matches.append(match)
-                continue
-            
             # Extract terms from field value, preserving multi-word entities for certain fields
             field_terms = self.extract_field_terms(field_value, field_name)
             
@@ -360,7 +293,7 @@ class SearchAnalyzer:
             # Create SearchMatch for each match, but only keep high-confidence matches
             for query_match, product_term, confidence in phrase_matches:
                 # Only include matches with confidence >= 0.8
-                if confidence >= 0.8:
+                if confidence == 1:
                     # Capitalize the product term for better display
                     capitalized_product_term = capitalize_field_value(product_term)
                     match = SearchMatch(
@@ -400,61 +333,46 @@ class SearchAnalyzer:
         }
         relevant_fields.update(pet_fields)
         
-        # Check if this is a food product to determine whether to include ingredient fields
-        is_food = metadata.get('IS_FOOD_FLAG', '').lower() in ['true', '1', 'yes', 'y']
+        # Only add other fields if they contain query terms (excluding special diet)
+        all_metadata_fields = {
+            'Food Form': metadata.get('ATTR_FOOD_FORM', ''),
+            'Ingredients': metadata.get('INGREDIENTS', ''),
+            'Brand': metadata.get('PURCHASE_BRAND', ''),
+        }
         
-        # Only add food-related fields if this is a food product
-        if is_food:
-            all_metadata_fields = {
-                'Food Form': metadata.get('ATTR_FOOD_FORM', ''),
-                'Ingredients': metadata.get('INGREDIENTS', ''),
-                'Brand': metadata.get('PURCHASE_BRAND', ''),
-            }
-            
-            # Check each field for query term presence
-            for field_name, field_value in all_metadata_fields.items():
-                if not field_value:
-                    continue
+        # Check each field for query term presence
+        for field_name, field_value in all_metadata_fields.items():
+            if not field_value:
+                continue
                 
-                if field_name == 'Brand':
-                    # Special handling for brand - check if any brand term matches any query term
-                    brand_terms = [term.strip().lower() for term in field_value.split()]
-                    if any(brand_term in query_terms or any(query_term in brand_term for query_term in query_terms) for brand_term in brand_terms):
-                        relevant_fields[field_name] = field_value
-                else:
-                    # For other fields, check if any query term is contained in the field
-                    field_lower = field_value.lower()
-                    if any(term in field_lower for term in query_terms):
-                        relevant_fields[field_name] = field_value
+            field_lower = field_value.lower()
             
-            # Add ingredient tags only if they contain query terms (for food products only)
-            ingredient_tags = []
-            for key in metadata:
-                if key.startswith('ingredienttag:'):
-                    ingredient_tag = key.split(':', 1)[1]
-                    ingredient_tag_lower = ingredient_tag.lower()
-                    ingredient_tag_normalized = ingredient_tag.replace('-', ' ').lower()
-                    
-                    # Check if any query term exactly matches the ingredient tag or its normalized form
-                    if any(term == ingredient_tag_lower or term == ingredient_tag_normalized for term in query_terms):
-                        ingredient_tags.append(capitalize_field_value(ingredient_tag))
-            
-            if ingredient_tags:
-                relevant_fields['Ingredient Tags'] = ', '.join(ingredient_tags)
-            
-            # Add excluded ingredients as a special field for matching (for food products only)
-            if excluded_ingredients:
-                relevant_fields['Excluded Ingredients'] = ', '.join(excluded_ingredients)
-        else:
-            # For non-food products, only include brand if it contains query terms
-            brand = metadata.get('PURCHASE_BRAND', '')
-            if brand:
-                # Check if any brand term matches any query term
-                brand_terms = [term.strip().lower() for term in brand.split()]
-                if any(brand_term in query_terms or any(query_term in brand_term for query_term in query_terms) for brand_term in brand_terms):
-                    relevant_fields['Brand'] = brand
+            # Only include fields that contain query terms
+            if any(term in field_lower for term in query_terms):
+                relevant_fields[field_name] = field_value
         
-        # Add category tags only if they explicitly match query terms
+
+        
+        # Add ingredient tags only if they contain query terms
+        ingredient_tags = []
+        for key in metadata:
+            if key.startswith('ingredienttag:'):
+                ingredient_tag = key.split(':', 1)[1]
+                ingredient_tag_lower = ingredient_tag.lower()
+                ingredient_tag_normalized = ingredient_tag.replace('-', ' ').lower()
+                
+                # Check if any query term exactly matches the ingredient tag or its normalized form
+                if any(term == ingredient_tag_lower or term == ingredient_tag_normalized for term in query_terms):
+                    ingredient_tags.append(capitalize_field_value(ingredient_tag))
+        
+        if ingredient_tags:
+            relevant_fields['Ingredient Tags'] = ', '.join(ingredient_tags)
+        
+        # Add excluded ingredients as a special field for matching
+        if excluded_ingredients:
+            relevant_fields['Excluded Ingredients'] = ', '.join(excluded_ingredients)
+        
+                # Add category tags only if they explicitly match query terms
         category_tags = []
         for key in metadata:
             if key.startswith('categorytag'):

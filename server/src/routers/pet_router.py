@@ -46,10 +46,6 @@ def create_pet(profile: PetSchema, db: Session = Depends(get_db)):
     profile_dict = profile.dict()
     profile_dict['customer_id'] = user.customer_id
     
-    # Remove pet_profile_id to let database auto-generate it
-    if 'pet_profile_id' in profile_dict:
-        del profile_dict['pet_profile_id']
-    
     # Automatically calculate life stage based on birthday and pet type
     if profile_dict.get('birthday') and profile_dict.get('pet_type'):
         profile_dict['life_stage'] = calculate_life_stage(
@@ -58,13 +54,8 @@ def create_pet(profile: PetSchema, db: Session = Depends(get_db)):
             profile_dict.get('life_stage')
         )
     
-    try:
-        # Create a new pet profile
-        pet_profile = PetProfile(**profile_dict)
-        result = pet_svc.create_pet(db, pet_profile)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error creating pet: {str(e)}")
+    # Create a new pet profile
+    return pet_svc.create_pet(db, PetProfile(**profile_dict))
 
 @router.put("/{pet_profile_id}", response_model=PetSchema)
 def update_pet(pet_profile_id: int, profile: PetSchema, db: Session = Depends(get_db)):

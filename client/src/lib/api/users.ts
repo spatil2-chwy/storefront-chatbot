@@ -13,43 +13,50 @@ export const usersApi = {
   },
 
   // Create a new pet
-  createPet: async (customerKey: number, petData: any): Promise<any> => {
-    try {
-      // Ensure weight is always included in the payload
-      const weight = petData.weight && petData.weight > 0 ? Math.round(petData.weight) : null;
-      
-      const payload = {
-        customer_id: customerKey,
-        pet_name: petData.pet_name || null,
-        pet_type: petData.pet_type || null,
-        pet_breed: petData.pet_breed || null,
-        pet_breed_size_type: petData.pet_breed_size_type || null,
-        gender: petData.gender || null,
-        weight_type: petData.weight_type || null,
-        size_type: petData.size_type || null,
-        birthday: petData.birthday || null,
-        life_stage: petData.life_stage || null,
-        adopted: petData.adopted || null,
-        adoption_date: petData.adoption_date || null,
-        status: "active",
-        status_reason: null,
-        time_created: new Date().toISOString(),
-        time_updated: null,
-        weight: weight,
-        allergies: petData.allergies || null,
-        photo_count: null,
-        pet_breed_id: null,
-        pet_type_id: null,
-        pet_new: null,
-        first_birthday: null
-      };
-
-      const result = await apiPost("/pets", payload);
-      return result;
-    } catch (error) {
-      console.error("Error creating pet:", error);
-      throw error;
-    }
+  async createPet(customerKey: number, petData: {
+    pet_name: string;
+    pet_type: string;
+    pet_breed?: string;
+    gender?: string;
+    weight?: number;
+    life_stage?: string;
+    birthday?: string;
+    allergies?: string;
+  }): Promise<Pet> {
+    console.log('usersApi.createPet: Called with customerKey:', customerKey, 'petData:', petData);
+    
+    // Create payload with minimal temporary ID to let database auto-generate
+    const payload = {
+      pet_profile_id: 1, // Minimal temporary ID
+      customer_id: customerKey,
+      pet_name: petData.pet_name,
+      pet_type: petData.pet_type,
+      pet_breed: petData.pet_breed || null,
+      pet_breed_size_type: null,
+      gender: petData.gender || null,
+      weight_type: null,
+      size_type: null,
+      birthday: petData.birthday || null,
+      life_stage: petData.life_stage || null,
+      adopted: null,
+      adoption_date: null,
+      status: "active",
+      status_reason: null,
+      time_created: new Date().toISOString(),
+      time_updated: null,
+      weight: petData.weight ? Math.round(petData.weight) : null,
+      allergies: petData.allergies || null,
+      photo_count: null,
+      pet_breed_id: null,
+      pet_type_id: null,
+      pet_new: null,
+      first_birthday: null
+    };
+    
+    console.log('usersApi.createPet: Sending payload:', payload);
+    const result = await apiPost<Pet>(`/pets`, payload);
+    console.log('usersApi.createPet: Received result:', result);
+    return result;
   },
 
   // Delete a pet

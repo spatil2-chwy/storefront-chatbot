@@ -14,8 +14,9 @@ export const LifeStageTest: React.FC = () => {
     { value: 'HORSE', label: 'Horse' },
     { value: 'BIRD', label: 'Bird' },
     { value: 'FISH', label: 'Fish' },
-    { value: 'FARM_ANIMAL', label: 'Farm Animal' },
-    { value: 'SMALL_PET', label: 'Small Pet' }
+    { value: 'RABBIT', label: 'Rabbit' },
+    { value: 'HAMSTER', label: 'Hamster' },
+    { value: 'OTHER', label: 'Other' }
   ];
 
   // Sample birthdays for testing different life stages
