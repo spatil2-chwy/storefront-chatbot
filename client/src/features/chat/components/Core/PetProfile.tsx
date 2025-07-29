@@ -207,11 +207,11 @@ export const PetProfile: React.FC<PetProfileProps> = ({
   const formatType = (type: string) => {
     if (type === 'DOG') return 'Dog';
     if (type === 'CAT') return 'Cat';
+    if (type === 'HORSE') return 'Horse';
     if (type === 'BIRD') return 'Bird';
     if (type === 'FISH') return 'Fish';
-    if (type === 'RABBIT') return 'Rabbit';
-    if (type === 'HAMSTER') return 'Hamster';
-    if (type === 'OTHER') return 'Other';
+    if (type === 'FARM_ANIMAL') return 'Farm Animal';
+    if (type === 'SMALL_PET') return 'Small Pet';
     return type;
   };
 
@@ -266,11 +266,11 @@ export const PetProfile: React.FC<PetProfileProps> = ({
             <SelectContent>
               <SelectItem value="DOG">Dog</SelectItem>
               <SelectItem value="CAT">Cat</SelectItem>
+              <SelectItem value="HORSE">Horse</SelectItem>
               <SelectItem value="BIRD">Bird</SelectItem>
               <SelectItem value="FISH">Fish</SelectItem>
-              <SelectItem value="RABBIT">Rabbit</SelectItem>
-              <SelectItem value="HAMSTER">Hamster</SelectItem>
-              <SelectItem value="OTHER">Other</SelectItem>
+              <SelectItem value="FARM_ANIMAL">Farm Animal</SelectItem>
+              <SelectItem value="SMALL_PET">Small Pet</SelectItem>
             </SelectContent>
           </Select>
         );
@@ -460,11 +460,11 @@ export const PetProfile: React.FC<PetProfileProps> = ({
                 <SelectContent>
                   <SelectItem value="DOG">Dog</SelectItem>
                   <SelectItem value="CAT">Cat</SelectItem>
+                  <SelectItem value="HORSE">Horse</SelectItem>
                   <SelectItem value="BIRD">Bird</SelectItem>
                   <SelectItem value="FISH">Fish</SelectItem>
-                  <SelectItem value="RABBIT">Rabbit</SelectItem>
-                  <SelectItem value="HAMSTER">Hamster</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="FARM_ANIMAL">Farm Animal</SelectItem>
+                  <SelectItem value="SMALL_PET">Small Pet</SelectItem>
                 </SelectContent>
               </Select>
             ) : (

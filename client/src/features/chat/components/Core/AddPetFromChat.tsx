@@ -216,11 +216,11 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
               <SelectContent>
                 <SelectItem value="DOG">Dog</SelectItem>
                 <SelectItem value="CAT">Cat</SelectItem>
+                <SelectItem value="HORSE">Horse</SelectItem>
                 <SelectItem value="BIRD">Bird</SelectItem>
                 <SelectItem value="FISH">Fish</SelectItem>
-                <SelectItem value="RABBIT">Rabbit</SelectItem>
-                <SelectItem value="HAMSTER">Hamster</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
+                <SelectItem value="FARM_ANIMAL">Farm Animal</SelectItem>
+                <SelectItem value="SMALL_PET">Small Pet</SelectItem>
               </SelectContent>
             </Select>
           </div>
