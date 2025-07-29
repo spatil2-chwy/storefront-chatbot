@@ -114,9 +114,11 @@ class SearchAnalyzer:
                     if (cleaned_token and cleaned_token not in self.stop_words and 
                         len(cleaned_token) > 2):
                         root_word = self.lemmatizer.lemmatize(cleaned_token)
-                        # Always add individual words for brand and product name matching
-                        if root_word not in field_terms:
-                            field_terms.append(root_word)
+                        # Only add individual words if they're not already part of a complete phrase
+                        # This prevents "Blue Buffalo" from adding both "blue buffalo" and "blue", "buffalo"
+                        if not any(root_word in phrase for phrase in complete_phrases_added):
+                            if root_word not in field_terms:
+                                field_terms.append(root_word)
             else:
                 # For other preserve_multiword_fields, add individual words for partial matching
                 tokens = word_tokenize(field_value.lower())
