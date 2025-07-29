@@ -23,6 +23,7 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [manualDateInput, setManualDateInput] = useState('');
   const [formData, setFormData] = useState({
     pet_name: '',
     pet_type: '',
@@ -33,6 +34,10 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
     birthday: '',
     allergies: [] as string[]
   });
+  const [errors, setErrors] = useState<{
+    weight?: string;
+    birthday?: string;
+  }>({});
 
   // Allergy options for MultiSelect
   const allergiesOptions: MultiSelectOption[] = [
@@ -85,7 +90,42 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
       ...prev,
       birthday: selectedDate.toISOString()
     }));
+    setManualDateInput(formatDateForDisplay(selectedDate.toISOString()));
     setIsCalendarOpen(false);
+  };
+
+  const handleManualDateInput = (value: string) => {
+    // Remove all non-numeric characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    // Format with slashes - add slash immediately when section is complete
+    let formattedValue = '';
+    for (let i = 0; i < numericValue.length && i < 8; i++) {
+      formattedValue += numericValue[i];
+      // Add slash after month (2 digits) or day (2 digits)
+      if ((i === 1 || i === 3) && i < numericValue.length - 1) {
+        formattedValue += '/';
+      }
+    }
+    
+    setManualDateInput(formattedValue);
+    
+    // Parse MM/DD/YYYY format when complete
+    if (formattedValue.length === 10) {
+      try {
+        const [month, day, year] = formattedValue.split('/');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        if (!isNaN(date.getTime())) {
+          setFormData(prev => ({
+            ...prev,
+            birthday: date.toISOString()
+          }));
+        }
+      } catch (error) {
+        // Invalid date format, ignore
+      }
+    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -135,16 +175,73 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
     return days;
   };
 
+  const validateWeight = (weight: number): string | undefined => {
+    if (weight < 0) return 'Weight cannot be negative';
+    if (weight > 1000) return 'Weight seems too high. Please check the value.';
+    if (!Number.isFinite(weight)) return 'Please enter a valid number';
+    return undefined;
+  };
+
+  const validateBirthday = (birthday: string): string | undefined => {
+    if (!birthday) return undefined;
+    
+    try {
+      const date = new Date(birthday);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      
+      if (isNaN(date.getTime())) {
+        return 'Please enter a valid date';
+      }
+      
+      if (date > today) {
+        return 'Birthday cannot be in the future';
+      }
+      
+      // Check if date is reasonable (not too far in the past)
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 50); // 50 years ago
+      
+      if (date < minDate) {
+        return 'Birthday seems too far in the past';
+      }
+      
+      return undefined;
+    } catch (error) {
+      return 'Please enter a valid date';
+    }
+  };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Clear errors when user starts typing
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
+    }
+    
+    // Validate form data
+    const weightError = validateWeight(formData.weight);
+    const birthdayError = validateBirthday(formData.birthday);
+    
+    if (weightError || birthdayError) {
+      setErrors({
+        weight: weightError,
+        birthday: birthdayError
+      });
+      return;
     }
     
     if (!user?.customer_key || !formData.pet_name || !formData.pet_type) {
@@ -160,7 +257,7 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
         gender: formData.gender,
         weight: formData.weight,
         life_stage: formData.life_stage,
-        birthday: formData.birthday,
+        birthday: formData.birthday ? new Date(formData.birthday).toISOString().split('T')[0] : undefined,
         allergies: formatAllergies(formData.allergies)
       };
 
@@ -261,6 +358,9 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
             <Input
               id="weight"
               type="number"
+              step="0.1"
+              min="0"
+              max="1000"
               value={formData.weight || ''}
               onChange={(e) => {
                 const value = e.target.value;
@@ -273,24 +373,38 @@ export const AddPetFromChat: React.FC<AddPetFromChatProps> = ({
                   }
                 }
               }}
-              placeholder="0"
-              className="mt-1"
+              placeholder="0.0"
+              className={`mt-1 ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
             />
+            {errors.weight && (
+              <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
+            )}
           </div>
 
           <div>
             <Label className="text-sm font-medium">Birthday</Label>
             <div className="relative mt-1">
-              <button
-                type="button"
-                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="w-full text-sm border border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-gray-50 transition-colors pr-8 py-2 px-3 rounded-md text-left flex items-center justify-between"
-              >
-                <span className={formData.birthday ? 'text-gray-900' : 'text-gray-500'}>
-                  {formData.birthday ? formatDateForDisplay(formData.birthday) : 'Select birthday'}
-                </span>
-                <Calendar className="h-4 w-4 text-gray-400" />
-              </button>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="MM/DD/YYYY"
+                  value={manualDateInput}
+                  onChange={(e) => handleManualDateInput(e.target.value)}
+                  className={`flex-1 ${errors.birthday ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                  className="px-3 py-2 border border-gray-300 focus:border-purple-500 focus:ring-purple-500 bg-white hover:bg-gray-50 transition-colors rounded-md"
+                >
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                </button>
+              </div>
+              {errors.birthday && (
+                <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
+              )}
               
               {isCalendarOpen && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 min-w-64">

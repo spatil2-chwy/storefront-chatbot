@@ -162,6 +162,11 @@ export default function Profile() {
   // Calendar helper functions for birthday editing
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [manualDateInput, setManualDateInput] = useState('');
+  const [errors, setErrors] = useState<{
+    weight?: string;
+    birthday?: string;
+  }>({});
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -191,7 +196,79 @@ export default function Profile() {
       ...prev,
       birthday: selectedDate.toISOString()
     }));
+    setManualDateInput(formatDateForDisplay(selectedDate.toISOString()));
     setIsCalendarOpen(false);
+  };
+
+  const validateWeight = (weight: number): string | undefined => {
+    if (weight < 0) return 'Weight cannot be negative';
+    if (weight > 1000) return 'Weight seems too high. Please check the value.';
+    if (!Number.isFinite(weight)) return 'Please enter a valid number';
+    return undefined;
+  };
+
+  const validateBirthday = (birthday: string): string | undefined => {
+    if (!birthday) return undefined;
+    
+    try {
+      const date = new Date(birthday);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      
+      if (isNaN(date.getTime())) {
+        return 'Please enter a valid date';
+      }
+      
+      if (date > today) {
+        return 'Birthday cannot be in the future';
+      }
+      
+      // Check if date is reasonable (not too far in the past)
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 50); // 50 years ago
+      
+      if (date < minDate) {
+        return 'Birthday seems too far in the past';
+      }
+      
+      return undefined;
+    } catch (error) {
+      return 'Please enter a valid date';
+    }
+  };
+
+  const handleManualDateInput = (value: string) => {
+    // Remove all non-numeric characters
+    const numericValue = value.replace(/\D/g, '');
+    
+    // Format with slashes - add slash immediately when section is complete
+    let formattedValue = '';
+    for (let i = 0; i < numericValue.length && i < 8; i++) {
+      formattedValue += numericValue[i];
+      // Add slash after month (2 digits) or day (2 digits)
+      if ((i === 1 || i === 3) && i < numericValue.length - 1) {
+        formattedValue += '/';
+      }
+    }
+    
+    setManualDateInput(formattedValue);
+    
+    // Parse MM/DD/YYYY format when complete
+    if (formattedValue.length === 10) {
+      try {
+        const [month, day, year] = formattedValue.split('/');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        if (!isNaN(date.getTime())) {
+          setEditFormData((prev: any) => ({
+            ...prev,
+            birthday: date.toISOString()
+          }));
+        }
+      } catch (error) {
+        // Invalid date format, ignore
+      }
+    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -254,12 +331,14 @@ export default function Profile() {
       birthday: pet.birthday || '',
       allergies: parseAllergies(pet.allergies || '')
     });
+    setManualDateInput(pet.birthday ? formatDateForDisplay(pet.birthday) : '');
   };
 
   const cancelEditing = () => {
     setEditingPet(null);
     setEditFormData(null);
     setIsCalendarOpen(false);
+    setManualDateInput('');
   };
 
   const handleEditFormChange = (field: string, value: any) => {
@@ -267,10 +346,30 @@ export default function Profile() {
       ...prev,
       [field]: field === 'allergies' ? value : value
     }));
+    
+    // Clear errors when user starts typing
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
   };
 
   const savePetChanges = async (petId: number) => {
     if (!editFormData) return;
+    
+    // Validate form data
+    const weightError = validateWeight(editFormData.weight);
+    const birthdayError = validateBirthday(editFormData.birthday);
+    
+    if (weightError || birthdayError) {
+      setErrors({
+        weight: weightError,
+        birthday: birthdayError
+      });
+      return;
+    }
     
     setSavingPet(petId);
     try {
@@ -298,6 +397,7 @@ export default function Profile() {
       // Exit editing mode
       setEditingPet(null);
       setEditFormData(null);
+      setErrors({});
     } catch (error) {
       console.error('Error updating pet:', error);
     } finally {
@@ -693,6 +793,9 @@ export default function Profile() {
                                   <Label className="text-sm font-medium">Weight (lbs)</Label>
                                   <Input
                                     type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="1000"
                                     value={editFormData?.weight || ''}
                                     onChange={(e) => {
                                       const value = e.target.value;
@@ -705,8 +808,12 @@ export default function Profile() {
                                         }
                                       }
                                     }}
-                                    className="mt-1"
+                                    placeholder="0.0"
+                                    className={`mt-1 ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                                   />
+                                  {errors.weight && (
+                                    <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
+                                  )}
                                 </div>
                                 <div>
                                   <Label className="text-sm font-medium">Life Stage</Label>
@@ -724,16 +831,24 @@ export default function Profile() {
                               <div>
                                 <Label className="text-sm font-medium">Birthday</Label>
                                 <div className="relative mt-1">
-                                                                     <button
-                                     type="button"
-                                     onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                                     className="w-full text-sm border border-chewy-blue/20 focus:border-chewy-blue focus:ring-chewy-blue bg-white hover:bg-gray-50 transition-colors pr-8 py-2 px-3 rounded-md text-left flex items-center justify-between"
-                                   >
-                                     <span className={editFormData?.birthday ? 'text-gray-900' : 'text-gray-500'}>
-                                       {editFormData?.birthday ? formatDateForDisplay(editFormData.birthday) : 'Select birthday'}
-                                     </span>
-                                     <Calendar className="h-4 w-4 text-chewy-blue" />
-                                   </button>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      type="text"
+                                      placeholder="MM/DD/YYYY"
+                                      value={manualDateInput}
+                                      onChange={(e) => handleManualDateInput(e.target.value)}
+                                      className={`flex-1 ${errors.birthday ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                                      maxLength={10}
+                                      inputMode="numeric"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                      className="px-3 py-2 border border-chewy-blue/20 focus:border-chewy-blue focus:ring-chewy-blue bg-white hover:bg-gray-50 transition-colors rounded-md"
+                                    >
+                                      <Calendar className="h-4 w-4 text-chewy-blue" />
+                                    </button>
+                                  </div>
                                    
                                    {isCalendarOpen && (
                                      <div className="absolute top-full left-0 mt-1 bg-white border border-chewy-blue/20 rounded-lg shadow-lg z-50 p-4 min-w-64">
@@ -768,6 +883,9 @@ export default function Profile() {
                                        </div>
                                      </div>
                                    )}
+                                  {errors.birthday && (
+                                    <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
+                                  )}
                                 </div>
                               </div>
 
