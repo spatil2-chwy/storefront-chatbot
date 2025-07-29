@@ -411,6 +411,7 @@ export default function Profile() {
       await usersApi.deletePet(petId);
       await fetchUserPets();
       // Refresh greeting in chat
+      console.log('Profile: Setting greetingNeedsRefresh to true after pet deletion');
       setGreetingNeedsRefresh(true);
     } catch (error) {
       console.error('Error deleting pet:', error);
