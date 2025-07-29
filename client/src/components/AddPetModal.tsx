@@ -354,79 +354,61 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <BreedSelect
-                  species={formData.pet_type}
-                  value={formData.pet_breed}
-                  onChange={(value) => handleInputChange('pet_breed', value)}
-                  label="Breed"
-                  placeholder={formData.pet_type ? "Select breed (optional)" : "Select pet type first"}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="gender" className="text-sm font-medium">
-                  Gender
-                </Label>
-                <Select
-                  value={formData.gender}
-                  onValueChange={(value) => handleInputChange('gender', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MALE">Male</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <BreedSelect
+                species={formData.pet_type}
+                value={formData.pet_breed}
+                onChange={(value) => handleInputChange('pet_breed', value)}
+                label="Breed"
+                placeholder={formData.pet_type ? "Select breed (optional)" : "Select pet type first"}
+                className="mt-1"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="weight" className="text-sm font-medium">
-                  Weight (lbs)
-                </Label>
-                <Input
-                  id="weight"
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.weight === 0 ? '' : formData.weight || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || value === '.') {
-                      handleInputChange('weight', 0);
-                    } else {
-                      const numValue = parseFloat(value);
-                      if (!isNaN(numValue)) {
-                        handleInputChange('weight', numValue);
-                      }
-                    }
-                  }}
-                  placeholder="0.0"
-                  className={`mt-1 ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                />
-                {errors.weight && (
-                  <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="gender" className="text-sm font-medium">
+                Gender
+              </Label>
+              <Select
+                value={formData.gender}
+                onValueChange={(value) => handleInputChange('gender', value)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MALE">Male</SelectItem>
+                  <SelectItem value="FEMALE">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div>
-                <Label htmlFor="life_stage" className="text-sm font-medium">
-                  Life Stage
-                </Label>
-                <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
-                  <LifeStageDisplay
-                    petType={formData.pet_type}
-                    birthday={formData.birthday}
-                    legacyStage={formData.life_stage}
-                    showAge={true}
-                  />
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="weight" className="text-sm font-medium">
+                Weight (lbs)
+              </Label>
+              <Input
+                id="weight"
+                type="text"
+                inputMode="decimal"
+                value={formData.weight === 0 ? '' : formData.weight || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || value === '.') {
+                    handleInputChange('weight', 0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      handleInputChange('weight', numValue);
+                    }
+                  }
+                }}
+                placeholder="0.0"
+                className={`mt-1 ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+              />
+              {errors.weight && (
+                <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
+              )}
             </div>
 
             <div>
@@ -489,6 +471,20 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="life_stage" className="text-sm font-medium">
+                Life Stage
+              </Label>
+              <div className="mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
+                <LifeStageDisplay
+                  petType={formData.pet_type}
+                  birthday={formData.birthday}
+                  legacyStage={formData.life_stage}
+                  showAge={true}
+                />
               </div>
             </div>
 

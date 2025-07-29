@@ -328,19 +328,6 @@ export const PetEdit: React.FC<PetEditProps> = ({
           </Select>
         </div>
 
-        {/* Life Stage */}
-        <div className="space-y-2">
-          <Label htmlFor="pet-life-stage">Life Stage</Label>
-          <div className="p-2 border border-gray-200 rounded-md bg-gray-50">
-            <LifeStageDisplay
-              petType={formData.type}
-              birthday={formData.birthday}
-              legacyStage={formData.life_stage}
-              showAge={true}
-            />
-          </div>
-        </div>
-
         {/* Weight */}
         <div className="space-y-2">
           <Label htmlFor="pet-weight">Weight (lbs)</Label>
@@ -429,6 +416,19 @@ export const PetEdit: React.FC<PetEditProps> = ({
             {errors.birthday && (
               <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
             )}
+          </div>
+        </div>
+
+        {/* Life Stage */}
+        <div className="space-y-2">
+          <Label htmlFor="pet-life-stage">Life Stage</Label>
+          <div className="p-2 border border-gray-200 rounded-md bg-gray-50">
+            <LifeStageDisplay
+              petType={formData.type}
+              birthday={formData.birthday}
+              legacyStage={formData.life_stage}
+              showAge={true}
+            />
           </div>
         </div>
 

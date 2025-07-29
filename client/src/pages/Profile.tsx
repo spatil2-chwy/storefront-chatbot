@@ -727,7 +727,7 @@ export default function Profile() {
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-4">
                                 <div>
                                   <Label className="text-sm font-medium">Name</Label>
                                   <Input
@@ -736,6 +736,7 @@ export default function Profile() {
                                     className="mt-1"
                                   />
                                 </div>
+                                
                                 <div>
                                   <Label className="text-sm font-medium">Type</Label>
                                   <Select
@@ -756,6 +757,7 @@ export default function Profile() {
                                     </SelectContent>
                                   </Select>
                                 </div>
+                                
                                 <div>
                                   <BreedSelect
                                     species={editFormData?.type || ''}
@@ -766,6 +768,7 @@ export default function Profile() {
                                     disabled={savingPet === pet.pet_profile_id}
                                   />
                                 </div>
+                                
                                 <div>
                                   <Label className="text-sm font-medium">Gender</Label>
                                   <Select
@@ -781,6 +784,7 @@ export default function Profile() {
                                     </SelectContent>
                                   </Select>
                                 </div>
+                                
                                 <div>
                                   <Label className="text-sm font-medium">Weight (lbs)</Label>
                                   <Input
@@ -807,6 +811,68 @@ export default function Profile() {
                                     <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
                                   )}
                                 </div>
+                                
+                                <div>
+                                  <Label className="text-sm font-medium">Birthday</Label>
+                                  <div className="relative mt-1">
+                                    <div className="flex gap-2">
+                                      <Input
+                                        type="text"
+                                        placeholder="MM/DD/YYYY"
+                                        value={manualDateInput}
+                                        onChange={(e) => handleManualDateInput(e.target.value)}
+                                        className={`flex-1 ${errors.birthday ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                                        maxLength={10}
+                                        inputMode="numeric"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                        className="px-3 py-2 border border-chewy-blue/20 focus:border-chewy-blue focus:ring-chewy-blue bg-white hover:bg-gray-50 transition-colors rounded-md"
+                                      >
+                                        <Calendar className="h-4 w-4 text-chewy-blue" />
+                                      </button>
+                                    </div>
+                                     
+                                     {isCalendarOpen && (
+                                       <div className="absolute top-full left-0 mt-1 bg-white border border-chewy-blue/20 rounded-lg shadow-lg z-50 p-4 min-w-64">
+                                         <div className="flex items-center justify-between mb-4">
+                                           <button
+                                             onClick={() => navigateMonth('prev')}
+                                             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                           >
+                                             <ChevronLeft className="h-4 w-4 text-chewy-blue" />
+                                           </button>
+                                           <h3 className="text-sm font-semibold text-gray-900">
+                                             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                           </h3>
+                                           <button
+                                             onClick={() => navigateMonth('next')}
+                                             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                           >
+                                             <ChevronRight className="h-4 w-4 text-chewy-blue" />
+                                           </button>
+                                         </div>
+                                         
+                                         <div className="grid grid-cols-7 gap-1 mb-2">
+                                           {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                                             <div key={day} className="h-8 w-8 flex items-center justify-center text-xs font-medium text-gray-500">
+                                               {day}
+                                             </div>
+                                           ))}
+                                         </div>
+                                         
+                                         <div className="grid grid-cols-7 gap-1">
+                                           {renderCalendar()}
+                                         </div>
+                                       </div>
+                                     )}
+                                    {errors.birthday && (
+                                      <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                
                                 <div>
                                   <Label className="text-sm font-medium">Life Stage</Label>
                                   <div className="mt-1">
@@ -818,79 +884,18 @@ export default function Profile() {
                                     />
                                   </div>
                                 </div>
-                              </div>
-
-                              <div>
-                                <Label className="text-sm font-medium">Birthday</Label>
-                                <div className="relative mt-1">
-                                  <div className="flex gap-2">
-                                    <Input
-                                      type="text"
-                                      placeholder="MM/DD/YYYY"
-                                      value={manualDateInput}
-                                      onChange={(e) => handleManualDateInput(e.target.value)}
-                                      className={`flex-1 ${errors.birthday ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                                      maxLength={10}
-                                      inputMode="numeric"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                                      className="px-3 py-2 border border-chewy-blue/20 focus:border-chewy-blue focus:ring-chewy-blue bg-white hover:bg-gray-50 transition-colors rounded-md"
-                                    >
-                                      <Calendar className="h-4 w-4 text-chewy-blue" />
-                                    </button>
-                                  </div>
-                                   
-                                   {isCalendarOpen && (
-                                     <div className="absolute top-full left-0 mt-1 bg-white border border-chewy-blue/20 rounded-lg shadow-lg z-50 p-4 min-w-64">
-                                       <div className="flex items-center justify-between mb-4">
-                                         <button
-                                           onClick={() => navigateMonth('prev')}
-                                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                                         >
-                                           <ChevronLeft className="h-4 w-4 text-chewy-blue" />
-                                         </button>
-                                         <h3 className="text-sm font-semibold text-gray-900">
-                                           {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                         </h3>
-                                         <button
-                                           onClick={() => navigateMonth('next')}
-                                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                                         >
-                                           <ChevronRight className="h-4 w-4 text-chewy-blue" />
-                                         </button>
-                                       </div>
-                                       
-                                       <div className="grid grid-cols-7 gap-1 mb-2">
-                                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                                           <div key={day} className="h-8 w-8 flex items-center justify-center text-xs font-medium text-gray-500">
-                                             {day}
-                                           </div>
-                                         ))}
-                                       </div>
-                                       
-                                       <div className="grid grid-cols-7 gap-1">
-                                         {renderCalendar()}
-                                       </div>
-                                     </div>
-                                   )}
-                                  {errors.birthday && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.birthday}</p>
-                                  )}
+                                
+                                <div>
+                                  <Label className="text-sm font-medium">Allergies</Label>
+                                  <MultiSelect
+                                    options={allergiesOptions}
+                                    selectedValues={Array.isArray(editFormData?.allergies) ? editFormData.allergies : parseAllergies(editFormData?.allergies || '')}
+                                    onSelectionChange={(selectedValues) => handleEditFormChange('allergies', selectedValues)}
+                                    placeholder="Select allergies..."
+                                    searchPlaceholder="Search allergies..."
+                                    className="mt-1"
+                                  />
                                 </div>
-                              </div>
-
-                              <div>
-                                <Label className="text-sm font-medium">Allergies</Label>
-                                <MultiSelect
-                                  options={allergiesOptions}
-                                  selectedValues={Array.isArray(editFormData?.allergies) ? editFormData.allergies : parseAllergies(editFormData?.allergies || '')}
-                                  onSelectionChange={(selectedValues) => handleEditFormChange('allergies', selectedValues)}
-                                  placeholder="Select allergies..."
-                                  searchPlaceholder="Search allergies..."
-                                  className="mt-1"
-                                />
                               </div>
                             </div>
                           ) : (
