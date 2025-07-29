@@ -19,9 +19,8 @@ class BreedService {
       'HORSE': 'horse',
       'BIRD': 'bird',
       'FISH': 'fish',
-      'RABBIT': 'small_pet', // Rabbits are in small_pet.csv
-      'HAMSTER': 'small_pet', // Hamsters are in small_pet.csv
-      'OTHER': 'small_pet' // Other pets are in small_pet.csv
+      'FARM_ANIMAL': 'farm_animal', 
+      'SMALL_PET': 'small_pet' 
     };
 
     const csvFileName = speciesMap[species.toUpperCase()];
@@ -37,7 +36,7 @@ class BreedService {
 
     try {
       // Load breed data from CSV file
-      const response = await fetch(`/data/backend/pets/${csvFileName}.csv`);
+      const response = await fetch(`/pets/${csvFileName}.csv`);
       if (!response.ok) {
         throw new Error(`Failed to load breed data for ${species}`);
       }
@@ -66,9 +65,16 @@ class BreedService {
       if (line) {
         // Handle CSV format - some files use "PET_BREED_NM" header, others use "Fish Species"
         const breedName = line.replace(/^["']|["']$/g, ''); // Remove quotes if present
+        
+        // Capitalize breed names properly
+        const capitalizedBreedName = breedName
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join('-');
+        
         breeds.push({
-          value: breedName,
-          label: breedName
+          value: capitalizedBreedName,
+          label: capitalizedBreedName
         });
       }
     }
@@ -84,9 +90,8 @@ class BreedService {
       'HORSE': 'horse',
       'BIRD': 'bird',
       'FISH': 'fish',
-      'RABBIT': 'small_pet',
-      'HAMSTER': 'small_pet',
-      'OTHER': 'small_pet'
+      'FARM_ANIMAL': 'farm_animal',
+      'SMALL_PET': 'small_pet'
     };
 
     const csvFileName = speciesMap[species.toUpperCase()];

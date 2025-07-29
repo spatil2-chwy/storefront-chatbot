@@ -28,7 +28,7 @@ class InteractionService:
     def get_interaction_history(self, db: Session, customer_key: int, 
                                hours_back: int = 24) -> List[Dict[str, Any]]:
         """Get interaction history for a customer within the specified time window"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now() - timedelta(hours=hours_back)
         
         interactions = db.query(Interaction).filter(
             Interaction.customer_key == customer_key,
@@ -51,7 +51,7 @@ class InteractionService:
     def get_purchase_count(self, db: Session, customer_key: int, 
                           hours_back: int = 24) -> int:
         """Get the count of purchase events for a customer within the specified time window"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now() - timedelta(hours=hours_back)
         
         return db.query(Interaction).filter(
             Interaction.customer_key == customer_key,

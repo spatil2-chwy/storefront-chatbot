@@ -15,6 +15,7 @@ import Checkout from "@/pages/Checkout";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 import TestBirthdayPopup from "@/pages/TestBirthdayPopup";
+import { BreedSelectTest } from "@/components/BreedSelectTest";
 
 // Route wrapper that checks authentication
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,11 @@ function Router() {
       <Route path="/birthday-test">
         <ProtectedRoute>
           <TestBirthdayPopup />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/breed-test">
+        <ProtectedRoute>
+          <BreedSelectTest />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

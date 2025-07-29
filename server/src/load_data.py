@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 import random
 from sqlalchemy.exc import SQLAlchemyError
-from database import engine, Base
+from src.database import engine, Base
 
 def generate_sample_pet_data():
     """Generate sample pet data"""

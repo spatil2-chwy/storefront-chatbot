@@ -28,12 +28,12 @@ LIFE_STAGE_THRESHOLDS = {
         'adult': 60,    # 0.5-5 years
         'senior': float('inf')  # 5+ years
     },
-    'RABBIT': {
+    'FARM_ANIMAL': {
         'baby': 6,      # 0-6 months
         'adult': 60,    # 0.5-5 years
         'senior': float('inf')  # 5+ years
     },
-    'HAMSTER': {
+    'SMALL_PET': {
         'baby': 2,      # 0-2 months
         'adult': 18,    # 2-18 months
         'senior': float('inf')  # 18+ months
