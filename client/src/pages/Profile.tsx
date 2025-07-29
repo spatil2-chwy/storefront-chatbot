@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
 import { useGlobalChat } from '@/features/chat/context';
@@ -90,29 +90,25 @@ export default function Profile() {
 
   // Fetch user's pets and orders
   useEffect(() => {
-    console.log('Profile: useEffect triggered, user:', user);
     if (user) {
-      console.log('Profile: User found, customer_key:', user.customer_key);
       fetchUserPets();
       fetchUserOrders();
     }
   }, [user]);
 
-  const fetchUserPets = async () => {
-    console.log('Profile: fetchUserPets called');
+  const fetchUserPets = useCallback(async () => {
+    if (!user?.customer_key) return;
+    
+    setLoadingPets(true);
     try {
-      if (user?.customer_key) {
-        console.log('Profile: Fetching pets for customer_key:', user.customer_key);
-        const petsData = await usersApi.getUserPets(user.customer_key);
-        console.log('Profile: Received pets data:', petsData);
-        setPets(petsData);
-      }
+      const pets = await usersApi.getUserPets(user.customer_key);
+      setPets(pets);
     } catch (error) {
-      console.error('Profile: Error fetching pets:', error);
+      console.error('Error fetching user pets:', error);
     } finally {
       setLoadingPets(false);
     }
-  };
+  }, [user?.customer_key]);
 
   const fetchUserOrders = async () => {
     try {
@@ -410,17 +406,12 @@ export default function Profile() {
       return;
     }
     
-    console.log('deletePet: Starting deletion of pet', petId);
     setDeletingPet(petId);
     try {
       await usersApi.deletePet(petId);
-      console.log('deletePet: Pet deleted successfully');
       await fetchUserPets();
-      console.log('deletePet: User pets refreshed');
       // Refresh greeting in chat
-      console.log('deletePet: Calling refreshChatGreeting');
       setGreetingNeedsRefresh(true);
-      console.log('deletePet: refreshChatGreeting called');
     } catch (error) {
       console.error('Error deleting pet:', error);
     } finally {
@@ -999,12 +990,8 @@ export default function Profile() {
         isOpen={isAddPetModalOpen}
         onClose={() => setIsAddPetModalOpen(false)}
         onPetAdded={() => {
-          console.log('Profile: onPetAdded callback called');
-          console.log('Profile: Calling fetchUserPets');
           fetchUserPets();
-          console.log('Profile: Calling refreshChatGreeting');
           setGreetingNeedsRefresh(true);
-          console.log('Profile: onPetAdded callback completed');
         }}
       />
     </div>

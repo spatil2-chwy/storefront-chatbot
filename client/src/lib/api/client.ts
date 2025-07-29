@@ -45,13 +45,22 @@ export async function apiRequest(
   };
 
   // Create the request promise
-  const requestPromise = fetch(url, defaultOptions).then(response => {
+  const requestPromise = fetch(url, defaultOptions).then(async response => {
     // Clean up when request completes
     pendingRequests.delete(requestKey);
     
     // Throw error for non-2xx responses
     if (!response.ok) {
-      throw new ApiError(response.status, `API request failed: ${response.statusText}`);
+      // Try to get the error response body for better debugging
+      let errorMessage = `API request failed: ${response.statusText}`;
+      try {
+        const errorBody = await response.text();
+        console.error('API Error Response Body:', errorBody);
+        errorMessage = `API request failed: ${response.statusText} - ${errorBody}`;
+      } catch (e) {
+        console.error('Could not read error response body:', e);
+      }
+      throw new ApiError(response.status, errorMessage);
     }
     
     return response;
@@ -74,12 +83,28 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
 }
 
 // Helper for POST requests
-export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
-  const response = await apiRequest(endpoint, {
-    method: 'POST',
-    body: data ? JSON.stringify(data) : undefined,
-  });
-  return response.json();
+export async function apiPost<T = any>(endpoint: string, data: any): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(response.status, `API request failed: ${response.statusText} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, `API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 // Helper for PUT requests

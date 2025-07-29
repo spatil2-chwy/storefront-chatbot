@@ -233,29 +233,14 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-    
-    console.log('AddPetModal: handleSubmit called');
-    console.log('AddPetModal: user?.customer_key:', user?.customer_key);
-    console.log('AddPetModal: formData:', formData);
-    
-    // Validate form data
-    const weightError = validateWeight(formData.weight);
-    const birthdayError = validateBirthday(formData.birthday);
-    
-    if (weightError || birthdayError) {
-      setErrors({
-        weight: weightError,
-        birthday: birthdayError
-      });
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
     if (!user?.customer_key || !formData.pet_name || !formData.pet_type) {
-      console.log('AddPetModal: Validation failed - missing required fields');
+      setErrors({
+        weight: validateWeight(formData.weight),
+        birthday: validateBirthday(formData.birthday)
+      });
       return;
     }
 
@@ -272,10 +257,7 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
         allergies: formatAllergies(formData.allergies)
       };
 
-      console.log('AddPetModal: Calling usersApi.createPet with:', petData);
-      await usersApi.createPet(user.customer_key, petData);
-      
-      console.log('AddPetModal: Pet created successfully');
+      const result = await usersApi.createPet(user.customer_key, petData);
       
       // Reset form
       setFormData({
@@ -290,12 +272,22 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
       });
       setManualDateInput('');
       
-      console.log('AddPetModal: Calling onPetAdded');
       onPetAdded();
-      console.log('AddPetModal: Calling onClose');
       onClose();
     } catch (error) {
-      console.error('AddPetModal: Error creating pet:', error);
+      console.error('=== AddPetModal: Error creating pet ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Log the specific error response if available
+      if (error && typeof error === 'object' && 'response' in error) {
+        console.error('Response error:', (error as any).response);
+      }
+      setErrors({
+        weight: validateWeight(formData.weight),
+        birthday: validateBirthday(formData.birthday)
+      });
     } finally {
       setIsLoading(false);
     }
@@ -400,14 +392,12 @@ export const AddPetModal: React.FC<AddPetModalProps> = ({
                 </Label>
                 <Input
                   id="weight"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="1000"
-                  value={formData.weight || ''}
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.weight === 0 ? '' : formData.weight || ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '') {
+                    if (value === '' || value === '.') {
                       handleInputChange('weight', 0);
                     } else {
                       const numValue = parseFloat(value);
