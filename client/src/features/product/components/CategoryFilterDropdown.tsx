@@ -46,7 +46,12 @@ export default function CategoryFilterDropdown({
           if (match.field.includes(':')) {
             const [category, value] = match.field.split(':', 2);
             if (value && value.trim()) {
-              categories.add(value.trim());
+              // Special handling for excluded ingredients - show as "no X" format
+              if (category.trim() === 'Excluded Ingredients') {
+                categories.add(`${value.trim()}-Free`);
+              } else {
+                categories.add(value.trim());
+              }
             }
           }
         });
@@ -106,7 +111,7 @@ export default function CategoryFilterDropdown({
                 checked={allSelected}
                 ref={(el) => {
                   if (el) {
-                    el.indeterminate = someSelected;
+                    (el as HTMLInputElement).indeterminate = someSelected;
                   }
                 }}
                 onCheckedChange={handleToggleAll}
