@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Navigate to project root
-cd storefront-chatbot
+# cd storefront-chatbot
 
 # Create and activate virtual environment
 python3 -m venv venv
@@ -20,12 +20,12 @@ unzip data/backend/reviews/results.jsonl.zip -d data/backend/reviews
 
 # Load data
 cd server
-python src/load_data.py
+venv/bin/python src/load_data.py
 
 # Run custom scripts
 cd ../scripts
-python run_all_data_loading.py
-python generate_landing_products.py
+venv/bin/python run_all_data_loading.py
+venv/bin/python generate_landing_products.py
 
 # Build frontend
 cd ../client
