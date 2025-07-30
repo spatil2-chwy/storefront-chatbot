@@ -3,7 +3,7 @@ import pandas as pd
 import random
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
-from src.database import engine, Base, get_db
+from database import engine, Base, get_db
 
 def generate_sample_pet_data():
     """Generate sample pet data"""
