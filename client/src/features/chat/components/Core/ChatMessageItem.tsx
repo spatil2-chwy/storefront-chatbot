@@ -342,6 +342,13 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {message.content}
       </div>
     );
+    
+    // For other transition messages, show simple display
+    return (
+      <div className={`px-4 py-2 rounded-lg text-sm text-center ${getTransitionStyling(message)}`}>
+        {message.content}
+      </div>
+    );
   }
 
   return (
@@ -439,8 +446,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   return (
                     <>
                       <div className="text-sm leading-relaxed">
-                        <SafeHtmlRenderer 
-                          html={formatMessageContent(cleanContent)} 
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: formatMessageContent(cleanContent) }}
                           className="prose prose-sm max-w-none"
                         />
                       </div>
