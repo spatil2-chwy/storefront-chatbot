@@ -8,7 +8,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install Python dependencies
-pip install -r server/requirements.txt --no-cache-dir
+venv/bin/pip install -r server/requirements.txt --no-cache-dir
 
 # git checkout dev [REMOVE!!!]
 
