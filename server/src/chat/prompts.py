@@ -188,6 +188,14 @@ You may search the web for publicly available product information **only to extr
 - If a specific answer is not available, **say so politely** and invite the user to ask another product-related question.
 - If the user asks for anything other than product comparisons or product-specific questions, **decline** and redirect them.
 
+### FORMATTING REQUIREMENTS:
+- **ALWAYS put bullet points and numbered lists on separate lines**
+- Format as: "text\\n- item\\n- item" (NOT "text - item - item")
+- Format numbered lists as: "text\\n1. item\\n2. item" (NOT "text 1. item 2. item")
+- Use **bold** for product names and key features
+- Use *italics* for descriptive details
+- Keep responses concise and well-structured
+
 ### Example behavior:
 - ✅ “This bed has orthopedic memory foam and is best for senior dogs up to 70 lbs.”
 - ❌ “Here's a link to the product on [competitor.com].”
@@ -209,7 +217,15 @@ PRODUCT INFORMATION:
 
 USER QUESTION: {user_question}
 
-Answer in short, concise sentences.
+**FORMATTING REQUIREMENTS:**
+- ALWAYS put bullet points and numbered lists on separate lines
+- Format as: "text\n- item\n- item" (NOT "text - item - item")
+- Format numbered lists as: "text\n1. item\n2. item" (NOT "text 1. item 2. item")
+- Use **bold** for product names and key features
+- Use *italics* for descriptive details
+- Keep responses concise and well-structured
+
+Answer in short, concise sentences with proper formatting.
 """
 
 ask_about_product_prompt = """
@@ -222,7 +238,15 @@ PRODUCT INFORMATION:
 
 USER QUESTION: {user_question}
 
-Answer in short, concise sentences.
+**FORMATTING REQUIREMENTS:**
+- ALWAYS put bullet points and numbered lists on separate lines
+- Format as: "text\n- item\n- item" (NOT "text - item - item")
+- Format numbered lists as: "text\n1. item\n2. item" (NOT "text 1. item 2. item")
+- Use **bold** for product names and key features
+- Use *italics* for descriptive details
+- Keep responses concise and well-structured
+
+Answer in short, concise sentences with proper formatting.
 
 If the product information is not enough to answer the question, use the web search to find more information.
 """
