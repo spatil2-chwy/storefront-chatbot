@@ -66,13 +66,7 @@ def generate_sample_user_data():
             'PERSONA_SUMMARY': f'Customer {i} is a pet owner who loves their pets.',
             'PREFERRED_BRANDS': '["Chewy", "Royal Canin", "Purina"]',
             'SPECIAL_DIET': '["Grain-free", "High-protein"]',
-            'POSSIBLE_NEXT_BUYS': 'Pet food, treats, toys',
-            'PRICE_RANGE_FOOD': '{"min": 20, "max": 100}',
-            'PRICE_RANGE_TREATS': '{"min": 5, "max": 30}',
-            'PRICE_RANGE_WASTE_MANAGEMENT': '{"min": 10, "max": 50}',
-            'PRICE_RANGE_BEDS': '{"min": 15, "max": 80}',
-            'PRICE_RANGE_FEEDERS': '{"min": 20, "max": 150}',
-            'PRICE_RANGE_LEASHES_AND_COLLARS': '{"min": 10, "max": 60}'
+            'POSSIBLE_NEXT_BUYS': 'Pet food, treats, toys'
         }
         users_data.append(user_data)
     
@@ -261,8 +255,8 @@ def main():
     # Updated paths to new structure
     BASE = Path(__file__).resolve().parent.parent.parent 
     DATA = BASE / "data" / "backend"
-    USERS_TSV = DATA / "customers" / "customers_with_personas.tsv"  
-    PETS_TSV = DATA / "pets" / "pet_profiles.tsv"
+    USERS_TSV = DATA / "customers" / "customers.tsv"  
+    PETS_TSV  = DATA / "pets" / "pet_profiles.tsv"
 
     try:
         # Check if data files exist, if not generate sample data
@@ -303,10 +297,11 @@ def main():
             print(f"  • {USERS_TSV}")
             print(f"  • {PETS_TSV}")
         
-        # Load users
-        # if "password_hash" not in users_df.columns:
-        #     users_df = users_df.drop(columns=["password_hash"])
-            
+        # Load users - handle existing data structure and column name mapping
+        if "password_hash" in users_df.columns and "password" in users_df.columns:
+            # Use the password column, not password_hash
+            users_df = users_df.drop(columns=["password_hash"])
+        
         users_df.to_sql(
             name="customers_full",
             con=engine,
@@ -315,14 +310,14 @@ def main():
         )
         print(f"  • Loaded {len(users_df)} users with persona data")
 
-        # Create pet_profiles table with proper schema
-        create_pet_profiles_table()
-        
-        # Load pets using custom function
-        load_pet_data(pets_df)
-        
-        # Test the data loading
-        test_pet_data_loading()
+        # Load pets
+        pets_df.to_sql(
+            name="pet_profiles",
+            con=engine,
+            if_exists="replace",
+            index=False
+        )
+        print(f"Loaded {len(pets_df)} pets")
 
     except SQLAlchemyError as e:
         print("Error loading data:", e)

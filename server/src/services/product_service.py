@@ -329,7 +329,7 @@ class ProductService:
                 
                 # Analyze matches with pet profile and user context
                 match_start = time.time()
-                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context, excluded_ingredients, original_user_input)
+                search_matches = self.search_analyzer.analyze_product_matches(metadata, query, pet_profile, user_context, excluded_ingredients)
                 match_time = time.time() - match_start
                 
                 logger.debug(f"🔍 Search match analysis: criteria={criteria_time:.3f}s, matches={match_time:.3f}s")

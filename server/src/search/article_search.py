@@ -53,7 +53,7 @@ class ArticleService:
                     
                     articles.append({
                         'title': meta.get('title', 'Untitled'),
-                        'link': meta.get('link', ''),
+                        'link': "https://www.chewy.com" + str(meta.get('link', '')),
                         'summary': summary,
                         'full_content': doc
                     })

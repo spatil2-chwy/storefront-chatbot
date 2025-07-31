@@ -21,7 +21,7 @@ user_svc = UserService()
 pet_svc = PetService()
 
 # Message counter for persona updates - tracks messages per customer
-PERSONA_UPDATE_INTERVAL = 5  # Update persona every N messages (default: 5)
+PERSONA_UPDATE_INTERVAL = 4  # Update persona every N messages (default: 5)
 
 def update_persona_background_task(customer_key: int, history: List[Dict[str, Any]]):
     """Background task to update user persona based on chat history"""

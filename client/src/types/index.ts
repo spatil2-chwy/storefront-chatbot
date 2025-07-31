@@ -19,12 +19,6 @@ export interface User {
   preferred_brands?: string[];
   special_diet?: string[];
   possible_next_buys?: string;
-  price_range_food?: { min: number; max: number };
-  price_range_treats?: { min: number; max: number };
-  price_range_waste_management?: { min: number; max: number };
-  price_range_beds?: { min: number; max: number };
-  price_range_feeders?: { min: number; max: number };
-  price_range_leashes_and_collars?: { min: number; max: number };
 }
 
 // Pet profile data

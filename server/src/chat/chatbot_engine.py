@@ -145,7 +145,7 @@ def capture_streaming_response_with_buttons(generator, on_complete_callback):
     return ButtonAwareGenerator(generator, on_complete_callback)
 
 
-def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), pet_profile=None, user_context=None, original_user_input=None):
+def search_products(query: str, required_ingredients=(), excluded_ingredients=(), category_level_1=(), category_level_2=(), pet_profile=None, user_context=None):
     """Searches for pet products based on user query and filters.
     Parameters:
         query (str): User intent in natural language, e.g. 'puppy food' or 'grain-free dog treats'
@@ -231,7 +231,7 @@ def search_products(query: str, required_ingredients=(), excluded_ingredients=()
                 if not filtered_user_context:
                     filtered_user_context = None
             
-            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context, unique_excluded_ingredients, original_user_input)
+            product = product_service._ranked_result_to_product(ranked_result, query, pet_profile, filtered_user_context, unique_excluded_ingredients)
             products.append(product)
         except Exception as e:
             logger.error(f"⚠️ Error converting ranked result to product: {e}")
@@ -506,12 +506,6 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                 args = json.loads(tool_call.arguments)
                 logger.debug(f"Streaming tool call arguments: {args}")
                 
-                # Log the exact query being passed to search_products
-                if tool_call.name == "search_products":
-                    query = args.get('query', 'NO_QUERY_FOUND')
-                    logger.info(f"🔍 SEARCH_QUERY: '{query}'")
-                    logger.info(f"🔍 SEARCH_ARGS: {args}")
-                
                 tool_exec_start = time.time()
                 logger.info(f"Executing streaming {tool_call.name} after {tool_exec_start - start_time:.3f}s")
                 
@@ -578,7 +572,6 @@ def chat_stream_with_products(user_input: str, history: list, user_context: str 
                     if tool_call.name == "search_products":
                         args["pet_profile"] = pet_profile
                         args["user_context"] = user_context_data
-                        args["original_user_input"] = user_input
                     
                     products = call_function(tool_call.name, args)
                     tool_exec_time = time.time() - tool_exec_start
@@ -670,3 +663,6 @@ You're not being chatty — you're being helpful, warm, and efficient."""
         yield "Sorry, I couldn't process your request."
     
     return fallback_generator(), products, []
+
+
+
