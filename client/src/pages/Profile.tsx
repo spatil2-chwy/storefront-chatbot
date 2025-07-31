@@ -30,7 +30,8 @@ import {
   ShoppingBag,
   Package,
   Plus,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
 import { chatApi } from '@/lib/api/chat';
@@ -38,10 +39,11 @@ import { ordersApi, OrderSummary } from '@/lib/api/orders';
 import { AddPetModal } from '@/components/AddPetModal';
 import { BreedSelect } from '@/components/BreedSelect';
 import { LifeStageDisplay } from '@/components/LifeStageDisplay';
+import { useToast } from '@/components/ui/toast';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout, isAuthenticated, isLoading, refreshUser } = useAuth();
   const { setGreetingNeedsRefresh } = useGlobalChat();
   const [pets, setPets] = useState<any[]>([]);
   const [loadingPets, setLoadingPets] = useState(true);
@@ -52,6 +54,9 @@ export default function Profile() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [isAddPetModalOpen, setIsAddPetModalOpen] = useState(false);
   const [deletingPet, setDeletingPet] = useState<number | null>(null);
+  const [lastPersonaUpdate, setLastPersonaUpdate] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { showToast } = useToast();
 
   // Allergy options for MultiSelect
   const allergiesOptions: MultiSelectOption[] = [
@@ -420,6 +425,20 @@ export default function Profile() {
     }
   };
 
+  const handlePersonaRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshUser();
+      setLastPersonaUpdate(new Date().toLocaleString());
+      showToast('Persona updated!', 'success');
+    } catch (error) {
+      console.error('Error refreshing persona:', error);
+      showToast('Failed to refresh persona. Please try again.', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Persona parsing helpers
   const parseArray = (val: any) => {
     if (!val) return [];
@@ -497,14 +516,25 @@ export default function Profile() {
                 {/* Persona Summary Section */}
                 {personaSummary && (
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-chewy-blue/30 rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-chewy-blue rounded-full flex items-center justify-center">
-                        <Heart className="h-5 w-5 text-white" />
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-chewy-blue rounded-full flex items-center justify-center">
+                          <Heart className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-chewy-blue text-lg">Persona Insight</h4>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-chewy-blue text-lg">Persona Insight</h4>
-                        <p className="text-gray-500 text-xs">Your shopping behavior analysis</p>
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePersonaRefresh}
+                        disabled={isRefreshing}
+                        className="flex items-center gap-2"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
                     </div>
                     
                     <div className="space-y-4">
@@ -519,13 +549,13 @@ export default function Profile() {
                               <div className="w-2 h-2 bg-chewy-blue rounded-full"></div>
                               <span className="font-semibold text-gray-800 text-sm">Preferred Brands</span>
                             </div>
-                                                         <div className="flex flex-wrap gap-1">
-                               {preferredBrands.map((brand: string, index: number) => (
-                                 <span key={index} className="px-2 py-1 bg-chewy-blue/10 text-chewy-blue text-xs rounded-full font-medium">
-                                   {brand}
-                                 </span>
-                               ))}
-                             </div>
+                            <div className="flex flex-wrap gap-1">
+                              {preferredBrands.map((brand: string, index: number) => (
+                                <span key={index} className="px-2 py-1 bg-chewy-blue/10 text-chewy-blue text-xs rounded-full font-medium">
+                                  {brand}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                         
@@ -535,13 +565,13 @@ export default function Profile() {
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                               <span className="font-semibold text-gray-800 text-sm">Special Diet</span>
                             </div>
-                                                         <div className="flex flex-wrap gap-1">
-                               {specialDiet.map((diet: string, index: number) => (
-                                 <span key={index} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                                   {diet}
-                                 </span>
-                               ))}
-                             </div>
+                            <div className="flex flex-wrap gap-1">
+                              {specialDiet.map((diet: string, index: number) => (
+                                <span key={index} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                  {diet}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                         
@@ -557,6 +587,13 @@ export default function Profile() {
                           </div>
                         )}
                       </div>
+                      
+                      {lastPersonaUpdate && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Calendar className="h-3 w-3" />
+                          Last updated: {lastPersonaUpdate}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

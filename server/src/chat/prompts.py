@@ -259,7 +259,7 @@ Your task is to examine each new user message and decide whether the `persona_su
 **Output only:**
 
 * `"no_update"` if no changes are needed,
-* or the **revised persona\_summary** string if an update is made.
+* or the **revised persona_summary** string if an update is made.
 
 The final output will be used to directly overwrite the existing `persona_summary`.
 """

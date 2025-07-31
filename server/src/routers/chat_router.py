@@ -21,7 +21,7 @@ user_svc = UserService()
 pet_svc = PetService()
 
 # Message counter for persona updates - tracks messages per customer
-PERSONA_UPDATE_INTERVAL = 4  # Update persona every N messages (default: 5)
+PERSONA_UPDATE_INTERVAL = 2  # Update persona every N messages (default: 5)
 
 def update_persona_background_task(customer_key: int, history: List[Dict[str, Any]]):
     """Background task to update user persona based on chat history"""
@@ -47,7 +47,12 @@ def should_update_persona(history: List[Dict[str, Any]]) -> bool:
     user_message_count = len([msg for msg in history if msg.get("role") == "user"])
     
     # Trigger update if user message count is a multiple of the interval and > 0
-    return user_message_count > 0 and user_message_count % PERSONA_UPDATE_INTERVAL == 0 or user_message_count % (1 + PERSONA_UPDATE_INTERVAL) == 0
+    should_update = user_message_count > 0 and user_message_count % PERSONA_UPDATE_INTERVAL == 0
+    
+    # Add detailed logging
+    print(f"Persona update check: user_message_count={user_message_count}, PERSONA_UPDATE_INTERVAL={PERSONA_UPDATE_INTERVAL}, should_update={should_update}")
+    
+    return should_update
 
 @router.get("/{chat_id}", response_model=ChatSchema)
 def get_chat_message(chat_id: str, db: Session = Depends(get_db)):

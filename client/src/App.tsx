@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/ui/Tooltips/Tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { GlobalChatProvider } from "@/features/chat/context";
 import { CartProvider } from "@/features/cart/context";
+import { ToastProvider } from "@/components/ui/toast";
 import Login from "@/pages/Login";
 import ProductListing from "@/pages/ProductListing";
 import ProductDetail from "@/pages/ProductDetail";
@@ -88,8 +89,10 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <GlobalChatProvider>
-            <Toaster />
-            <Router />
+            <ToastProvider>
+              <Toaster />
+              <Router />
+            </ToastProvider>
           </GlobalChatProvider>
         </CartProvider>
       </AuthProvider>

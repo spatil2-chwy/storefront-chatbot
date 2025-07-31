@@ -56,3 +56,11 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return user
+
+@router.get("/refresh/{customer_key}", response_model=UserSchema)
+def refresh_user_data(customer_key: int, db: Session = Depends(get_db)):
+    """Refresh user data including persona updates"""
+    user = user_svc.get_user(db, customer_key)
+    if not user:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return user
