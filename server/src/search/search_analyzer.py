@@ -21,6 +21,11 @@ def capitalize_field_value(value: str) -> str:
     if not value:
         return value
     
+    # Handle words ending in "free" - convert to "-Free" format
+    if value.lower().endswith('free'):
+        base = value[:-4]  # Remove "free"
+        return f"{base.capitalize()}-Free"
+    
     return ' '.join(word.capitalize() for word in value.split())
 
 # Set up logging
@@ -67,23 +72,24 @@ class SearchAnalyzer:
         Extract meaningful terms from user query and lemmatize them to root words
         """
         
-        # First, look for compound terms (words with hyphens or common compound phrases)
-        compound_terms = []
-        
-        # Common compound terms in pet food context
-        common_compounds = [
-            'grain-free', 'grain free', 'salmon-free', 'salmon free', 'chicken-free', 'chicken free',
-            'beef-free', 'beef free', 'dairy-free', 'dairy free', 'soy-free', 'soy free',
-            'corn-free', 'corn free', 'wheat-free', 'wheat free', 'limited ingredient',
-            'single protein', 'multi-protein', 'multi protein', 'raw food', 'raw-food',
-            'wet food', 'wet-food', 'dry food', 'dry-food', 'puppy food', 'puppy-food',
-            'senior food', 'senior-food', 'adult food', 'adult-food'
-        ]
-        
-        query_lower = query.lower()
-        for compound in common_compounds:
-            if compound in query_lower:
-                compound_terms.append(compound)
+        # COMMENTED OUT: Common compound terms handling to reduce duplicate matches
+        # # First, look for compound terms (words with hyphens or common compound phrases)
+        # compound_terms = []
+        # 
+        # # Common compound terms in pet food context
+        # common_compounds = [
+        #     'grain-free', 'grain free', 'salmon-free', 'salmon free', 'chicken-free', 'chicken free',
+        #     'beef-free', 'beef free', 'dairy-free', 'dairy free', 'soy-free', 'soy free',
+        #     'corn-free', 'corn free', 'wheat-free', 'wheat free', 'limited ingredient',
+        #     'single protein', 'multi-protein', 'multi protein', 'raw food', 'raw-food',
+        #     'wet food', 'wet-food', 'dry food', 'dry-food', 'puppy food', 'puppy-food',
+        #     'senior food', 'senior-food', 'adult food', 'adult-food'
+        # ]
+        # 
+        # query_lower = query.lower()
+        # for compound in common_compounds:
+        #     if compound in query_lower:
+        #         compound_terms.append(compound)
         
         # Tokenize the query
         tokens = word_tokenize(query.lower())
@@ -91,8 +97,8 @@ class SearchAnalyzer:
         # Remove stop words and lemmatize
         meaningful_terms = []
         
-        # Add compound terms first
-        meaningful_terms.extend(compound_terms)
+        # COMMENTED OUT: Add compound terms first
+        # meaningful_terms.extend(compound_terms)
         
         for token in tokens:
             # Remove punctuation and clean
@@ -100,9 +106,9 @@ class SearchAnalyzer:
             if cleaned_token and cleaned_token not in self.stop_words and len(cleaned_token) > 2:
                 # Lemmatize to root word
                 root_word = self.lemmatizer.lemmatize(cleaned_token)
-                # Only add if not already covered by a compound term
-                if not any(root_word in compound for compound in compound_terms):
-                    meaningful_terms.append(root_word)
+                # COMMENTED OUT: Only add if not already covered by a compound term
+                # if not any(root_word in compound for compound in compound_terms):
+                meaningful_terms.append(root_word)
 
         return meaningful_terms
     
@@ -147,26 +153,33 @@ class SearchAnalyzer:
                                 field_terms.append(root_word)
         
         else:
-            # For other fields, preserve compound terms while still allowing individual word matching
+            # COMMENTED OUT: Compound term handling to reduce duplicate matches
+            # # For other fields, preserve compound terms while still allowing individual word matching
+            # for term in re.split(r'[,;|&]', field_value):
+            #     term = term.strip().lower()
+            #     if term:
+            #         # First, add the complete term for exact phrase matching
+            #         field_terms.append(term)
+            #         
+            #         # Then, split by spaces only (not hyphens) to preserve compound terms like "grain-free"
+            #         space_split_terms = re.split(r'\s+', term)
+            #         for space_term in space_split_terms:
+            #             space_term = space_term.strip()
+            #             if space_term and len(space_term) > 2:
+            #                 # For compound terms like "grain-free", keep them as-is
+            #                 if '-' in space_term or '_' in space_term:
+            #                 field_terms.append(space_term)
+            #             else:
+            #                 # For single words, lemmatize for consistent matching
+            #                 root_word = self.lemmatizer.lemmatize(space_term)
+            #                 if root_word not in field_terms:
+            #                     field_terms.append(root_word)
+            
+            # SIMPLIFIED: Just add the complete terms without splitting
             for term in re.split(r'[,;|&]', field_value):
                 term = term.strip().lower()
-                if term:
-                    # First, add the complete term for exact phrase matching
+                if term and len(term) > 2:
                     field_terms.append(term)
-                    
-                    # Then, split by spaces only (not hyphens) to preserve compound terms like "grain-free"
-                    space_split_terms = re.split(r'\s+', term)
-                    for space_term in space_split_terms:
-                        space_term = space_term.strip()
-                        if space_term and len(space_term) > 2:
-                            # For compound terms like "grain-free", keep them as-is
-                            if '-' in space_term or '_' in space_term:
-                                field_terms.append(space_term)
-                            else:
-                                # For single words, lemmatize for consistent matching
-                                root_word = self.lemmatizer.lemmatize(space_term)
-                                if root_word not in field_terms:
-                                    field_terms.append(root_word)
         
         return field_terms    
 

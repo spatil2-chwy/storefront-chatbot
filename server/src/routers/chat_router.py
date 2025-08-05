@@ -21,7 +21,7 @@ user_svc = UserService()
 pet_svc = PetService()
 
 # Message counter for persona updates - tracks messages per customer
-PERSONA_UPDATE_INTERVAL = 2  # Update persona every N messages (default: 5)
+PERSONA_UPDATE_INTERVAL = 8  # Update persona every N messages (default: 5)
 
 def update_persona_background_task(customer_key: int, history: List[Dict[str, Any]]):
     """Background task to update user persona based on chat history"""
@@ -104,6 +104,8 @@ async def compare_products_endpoint(request: ComparisonRequest, background_tasks
         
         # Trigger persona update background task if conditions are met
         updated_history = request.history + [{"role": "user", "content": request.message}]
+
+        print(f"Number of messages in updated history: {len(updated_history)}")
         if request.customer_key and should_update_persona(updated_history):
             print(f"Triggering persona update background task for customer {request.customer_key} (compare endpoint)")
             background_tasks.add_task(
