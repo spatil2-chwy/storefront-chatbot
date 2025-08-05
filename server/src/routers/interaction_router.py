@@ -13,6 +13,9 @@ from src.services.interaction_processor import interaction_processor
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 
+# Session-based purchase tracking - resets on server restart
+session_purchase_counts = {}  # {customer_key: purchase_count}
+
 def update_interaction_based_persona_background_task(customer_key: int, interaction_history: List[Dict[str, Any]]):
     """Background task to update user persona based on interaction history"""
     # Get a new database session for the background task
@@ -31,12 +34,29 @@ def update_interaction_based_persona_background_task(customer_key: int, interact
     finally:
         db.close()
 
-def should_update_interaction_based_persona(interaction_history: List[Dict[str, Any]]) -> bool:
-    """Check if we should trigger a persona update based on message count"""
-    # count if 3 purchases have been made in the last 30 minutes
-    purchase_count = sum(1 for interaction in interaction_history if interaction.get("event_type") == "purchase")
-    return purchase_count >= 3
+def should_update_interaction_based_persona(customer_key: int) -> bool:
+    """Check if we should trigger a persona update based on session purchase count"""
+    # Get current session purchase count for this customer
+    current_purchase_count = session_purchase_counts.get(customer_key, 0)
+    
+    # Trigger update if 3 or more purchases in this session
+    should_update = current_purchase_count >= 3
+    
+    print(f"Session purchase check for customer {customer_key}: count={current_purchase_count}, should_update={should_update}")
+    
+    return should_update
 
+def increment_session_purchase_count(customer_key: int):
+    """Increment the session purchase count for a customer"""
+    if customer_key not in session_purchase_counts:
+        session_purchase_counts[customer_key] = 0
+    session_purchase_counts[customer_key] += 1
+    print(f"Incremented session purchase count for customer {customer_key}: {session_purchase_counts[customer_key]}")
+
+@router.get("/session_purchase_counts")
+async def get_session_purchase_counts():
+    """Debug endpoint to check current session purchase counts"""
+    return {"session_purchase_counts": session_purchase_counts}
 
 @router.post("/log_interaction")
 async def log_interaction(request: InteractionRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -51,22 +71,28 @@ async def log_interaction(request: InteractionRequest, background_tasks: Backgro
         request.product_metadata
     )
     
-    # Get recent interaction history for this customer (last 30 minutes)
-    raw_interaction_history = interaction_svc.get_interaction_history(db, request.customer_key, hours_back=0, minutes_back=30)
+    # If this is a purchase, increment session counter
+    if request.event_type == "purchase":
+        increment_session_purchase_count(request.customer_key)
     
-    # Check if we should trigger a persona update
-    if should_update_interaction_based_persona(raw_interaction_history):
-        print(f"Triggering persona update for customer {request.customer_key} - 3+ purchases detected")
+    # Check if we should trigger a persona update (session-based)
+    if should_update_interaction_based_persona(request.customer_key):
+        print(f"Triggering persona update for customer {request.customer_key} - 3+ purchases in session")
         
-        # Process interactions into structured format
-        processed_interactions = interaction_processor.process_user_interactions(db, request.customer_key, hours_back=0, minutes_back=30)
+        # Get all interactions for this customer (no time limit - just session data)
+        # Since we're session-aware, we'll get all interactions logged in this session
+        raw_interaction_history = interaction_svc.get_interaction_history(db, request.customer_key)
         
-        if processed_interactions:
-            # Add background task to update persona with processed data
-            background_tasks.add_task(
-                update_interaction_based_persona_background_task,
-                request.customer_key,
-                [processed_interactions]  # Wrap in list to match expected format
-            )
+        if raw_interaction_history:
+            # Process interactions into structured format
+            processed_interactions = interaction_processor.process_user_interactions_from_list(raw_interaction_history)
+            
+            if processed_interactions:
+                # Add background task to update persona with processed data
+                background_tasks.add_task(
+                    update_interaction_based_persona_background_task,
+                    request.customer_key,
+                    [processed_interactions]  # Wrap in list to match expected format
+                )
     
     return {"message": "Interaction logged successfully", "interaction_id": interaction.id}

@@ -269,9 +269,9 @@ The final output will be used to directly overwrite the existing `persona_summar
 
 interaction_based_persona_updater_system_prompt = {
     "role": "system",
-    "content": """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on processed interaction data.
+    "content": """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on processed interaction data from the current session.
 
-Your task is to examine the structured interaction summary leading upto last 3 purchases and decide whether the existing `persona_summary` needs to be updated. 
+Your task is to examine the structured interaction summary from the current session (3+ purchases made) and decide whether the existing `persona_summary` needs to be updated. 
 
 **Data Structure:**
 The interaction data includes:
@@ -293,7 +293,7 @@ The interaction data includes:
 
 3. Keep the summary **concise**, factual, and consistent in tone. 
 
-4. Make sure to retain existing relevant details when adding new information because you only have access to the last 3 purchases and persona is a summary of all interactions. Fpr example, if they havent bought food in last 3 purchases, dont delete the food preference from the persona.
+4. Make sure to retain existing relevant details when adding new information. The persona should be a cumulative summary of all user preferences, so don't delete existing preferences unless they are clearly contradicted by new session data.
 
 **Output only:**
 * `"no_update"` if no changes are needed,

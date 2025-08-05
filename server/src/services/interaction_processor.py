@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from src.services.interaction_service import interaction_svc
-from typing import List, Dict, Any
-from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
 import statistics
 
 
@@ -9,17 +8,28 @@ class InteractionProcessor:
     def __init__(self):
         pass
 
-    def process_user_interactions(self, db: Session, customer_key: int, hours_back: int = 24, minutes_back: int = 0) -> Dict[str, Any]:
+    def process_user_interactions(self, db: Session, customer_key: int) -> Optional[Dict[str, Any]]:
         """Process raw interactions into structured summaries for persona updates"""
         
         # Get raw interactions
-        raw_interactions = interaction_svc.get_interaction_history(db, customer_key, hours_back, minutes_back)
+        raw_interactions = interaction_svc.get_interaction_history(db, customer_key)
         
         if not raw_interactions:
             return None
         
         # Process into structured format
         processed_data = self._process_interactions(raw_interactions)
+        
+        return processed_data
+
+    def process_user_interactions_from_list(self, interactions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Process raw interactions from a list into structured summaries for persona updates"""
+        
+        if not interactions:
+            return None
+        
+        # Process into structured format
+        processed_data = self._process_interactions(interactions)
         
         return processed_data
 
@@ -206,7 +216,7 @@ class InteractionProcessor:
         purchases.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         return purchases[:limit]
 
-    def _extract_diet_info(self, keywords: List[str]) -> str:
+    def _extract_diet_info(self, keywords: List[str]) -> Optional[str]:
         """Extract diet information from keywords"""
         diet_keywords = ['grain-free', 'organic', 'natural', 'limited ingredient', 'hypoallergenic', 'senior', 'puppy', 'kitten']
         found_diets = [kw for kw in keywords if any(diet in kw.lower() for diet in diet_keywords)]

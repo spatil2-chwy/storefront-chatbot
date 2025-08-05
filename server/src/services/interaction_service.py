@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from src.models.interaction import Interaction
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
 
 
 class InteractionService:
@@ -25,14 +24,10 @@ class InteractionService:
         db.refresh(interaction)
         return interaction
 
-    def get_interaction_history(self, db: Session, customer_key: int, 
-                               hours_back: int = 24, minutes_back: int = 0) -> List[Dict[str, Any]]:
-        """Get interaction history for a customer within the specified time window"""
-        cutoff_time = datetime.now() - timedelta(hours=hours_back, minutes=minutes_back)
-        
+    def get_interaction_history(self, db: Session, customer_key: int) -> List[Dict[str, Any]]:
+        """Get all interaction history for a customer"""
         interactions = db.query(Interaction).filter(
-            Interaction.customer_key == customer_key,
-            Interaction.timestamp >= cutoff_time
+            Interaction.customer_key == customer_key
         ).order_by(Interaction.timestamp.desc()).all()
         
         return [
@@ -48,15 +43,11 @@ class InteractionService:
             for interaction in interactions
         ]
 
-    def get_purchase_count(self, db: Session, customer_key: int, 
-                          hours_back: int = 24) -> int:
-        """Get the count of purchase events for a customer within the specified time window"""
-        cutoff_time = datetime.now() - timedelta(hours=hours_back)
-        
+    def get_purchase_count(self, db: Session, customer_key: int) -> int:
+        """Get the count of all purchase events for a customer"""
         return db.query(Interaction).filter(
             Interaction.customer_key == customer_key,
-            Interaction.event_type == "purchase",
-            Interaction.timestamp >= cutoff_time
+            Interaction.event_type == "purchase"
         ).count()
 
 
