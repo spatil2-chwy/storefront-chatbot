@@ -13,17 +13,25 @@ MODEL = "gpt-4.1"
 
 user_svc = UserService()
 
-MSG_TO_CAPTURE = 7 # how many messages to capture for persona update
+MSG_TO_CAPTURE = 4 # how many USER messages to capture for persona update
 
 def update_persona(customer_key: int, history: list[dict], db: Session) -> bool:
     user_info = user_svc.get_user(db, customer_key).persona_summary
     print(user_info)
 
+    # Extract only user messages from history
+    user_messages = [msg for msg in history if msg.get("role") == "user"]
+    
+    # Take the last MSG_TO_CAPTURE user messages
+    recent_user_messages = user_messages[-MSG_TO_CAPTURE:] if len(user_messages) >= MSG_TO_CAPTURE else user_messages
+    
+    print(f"Capturing {len(recent_user_messages)} user messages for persona update: {recent_user_messages}")
+
     response = client.responses.create(
         model = MODEL,
         input = [
             persona_updater_system_prompt, 
-            {"role": "user", "content": "Chat History:\n" + str(history[1:][-MSG_TO_CAPTURE:]) + "\n\nPrevious persona summary: " + user_info}
+            {"role": "user", "content": "Recent User Messages:\n" + str(recent_user_messages) + "\n\nPrevious persona summary: " + user_info}
         ],
     )
 
@@ -79,12 +87,29 @@ def update_interaction_based_persona(customer_key: int, interaction_history: lis
 if __name__ == "__main__":
     print("Testing persona updater...")
     
-    # Test 1: Chat-based persona update
+    # Test 1: Chat-based persona update with mixed message types
     test_history = [
         {"role": "system", "content": "You are a helpful assistant. (This message gets thrown away)"},
-        {"role": "user", "content": "im so upset, my dog just keeps ruining all his toys. I will just buy cheap toys from now on"},
+        {"role": "user", "content": "I need help finding dog food"},
+        {"role": "assistant", "content": "I'd be happy to help! What type of dog do you have?"},
+        {"role": "user", "content": "I have a golden retriever"},
+        {"role": "assistant", "content": "Great! Golden retrievers are wonderful dogs."},
+        {"role": "user", "content": "He's very active and energetic"},
+        {"role": "assistant", "content": "Active dogs need high-quality nutrition."},
+        {"role": "user", "content": "What about grain-free options?"},
+        {"role": "assistant", "content": "Grain-free can be good for some dogs."},
+        {"role": "user", "content": "I'm so upset, my dog just keeps ruining all his toys. I will just buy cheap toys from now on"},
         {"role": "assistant", "content": "I'm sorry to hear that. It's tough when pets are destructive."},
     ]
+    
+    # Test the user message extraction logic
+    user_messages = [msg for msg in test_history if msg.get("role") == "user"]
+    recent_user_messages = user_messages[-MSG_TO_CAPTURE:] if len(user_messages) >= MSG_TO_CAPTURE else user_messages
+    
+    print(f"Total messages in history: {len(test_history)}")
+    print(f"User messages found: {len(user_messages)}")
+    print(f"Messages to capture (MSG_TO_CAPTURE={MSG_TO_CAPTURE}): {len(recent_user_messages)}")
+    print(f"Recent user messages: {recent_user_messages}")
     
     # Get a database session for testing
     db = next(get_db())

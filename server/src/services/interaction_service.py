@@ -26,9 +26,9 @@ class InteractionService:
         return interaction
 
     def get_interaction_history(self, db: Session, customer_key: int, 
-                               hours_back: int = 24) -> List[Dict[str, Any]]:
+                               hours_back: int = 24, minutes_back: int = 0) -> List[Dict[str, Any]]:
         """Get interaction history for a customer within the specified time window"""
-        cutoff_time = datetime.now() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now() - timedelta(hours=hours_back, minutes=minutes_back)
         
         interactions = db.query(Interaction).filter(
             Interaction.customer_key == customer_key,

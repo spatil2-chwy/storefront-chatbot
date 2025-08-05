@@ -9,11 +9,11 @@ class InteractionProcessor:
     def __init__(self):
         pass
 
-    def process_user_interactions(self, db: Session, customer_key: int, hours_back: int = 24) -> Dict[str, Any]:
+    def process_user_interactions(self, db: Session, customer_key: int, hours_back: int = 24, minutes_back: int = 0) -> Dict[str, Any]:
         """Process raw interactions into structured summaries for persona updates"""
         
         # Get raw interactions
-        raw_interactions = interaction_svc.get_interaction_history(db, customer_key, hours_back)
+        raw_interactions = interaction_svc.get_interaction_history(db, customer_key, hours_back, minutes_back)
         
         if not raw_interactions:
             return None

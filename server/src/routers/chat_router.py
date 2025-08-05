@@ -21,7 +21,7 @@ user_svc = UserService()
 pet_svc = PetService()
 
 # Message counter for persona updates - tracks messages per customer
-PERSONA_UPDATE_INTERVAL = 8  # Update persona every N messages (default: 5)
+PERSONA_UPDATE_INTERVAL = 9  # Update persona every N user messages (default: 9)
 
 def update_persona_background_task(customer_key: int, history: List[Dict[str, Any]]):
     """Background task to update user persona based on chat history"""
@@ -29,6 +29,12 @@ def update_persona_background_task(customer_key: int, history: List[Dict[str, An
     db = next(get_db())
     try:
         print(f"Starting persona update background task for customer {customer_key}")
+        print(f"History length: {len(history)} messages")
+        
+        # Count user messages in the history being sent for update
+        user_messages_in_history = [msg for msg in history if msg.get("role") == "user"]
+        print(f"User messages in history: {len(user_messages_in_history)}")
+        
         success = update_persona(customer_key, history, db)
         if success:
             print(f"Persona updated successfully for customer {customer_key}")
@@ -42,7 +48,7 @@ def update_persona_background_task(customer_key: int, history: List[Dict[str, An
         db.close()
 
 def should_update_persona(history: List[Dict[str, Any]]) -> bool:
-    """Check if we should trigger a persona update based on message count"""
+    """Check if we should trigger a persona update based on user message count"""
     # Count user messages in history (exclude system messages)
     user_message_count = len([msg for msg in history if msg.get("role") == "user"])
     
@@ -105,7 +111,6 @@ async def compare_products_endpoint(request: ComparisonRequest, background_tasks
         # Trigger persona update background task if conditions are met
         updated_history = request.history + [{"role": "user", "content": request.message}]
 
-        print(f"Number of messages in updated history: {len(updated_history)}")
         if request.customer_key and should_update_persona(updated_history):
             print(f"Triggering persona update background task for customer {request.customer_key} (compare endpoint)")
             background_tasks.add_task(
@@ -480,6 +485,7 @@ async def chatbot_stream(request: ChatRequest, background_tasks: BackgroundTasks
     if request.customer_key:
         # Create new history including the current message
         updated_history = request.history + [{"role": "user", "content": request.message}]
+
         if should_update_persona(updated_history):
             print(f"Triggering persona update background task for customer {request.customer_key}")
             background_tasks.add_task(

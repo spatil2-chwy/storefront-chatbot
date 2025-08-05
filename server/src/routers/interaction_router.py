@@ -13,9 +13,6 @@ from src.services.interaction_processor import interaction_processor
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 
-# Message counter for persona updates - tracks messages per customer
-PERSONA_UPDATE_INTERVAL = 5  # Update persona every N messages (default: 5)
-
 def update_interaction_based_persona_background_task(customer_key: int, interaction_history: List[Dict[str, Any]]):
     """Background task to update user persona based on interaction history"""
     # Get a new database session for the background task
@@ -36,7 +33,7 @@ def update_interaction_based_persona_background_task(customer_key: int, interact
 
 def should_update_interaction_based_persona(interaction_history: List[Dict[str, Any]]) -> bool:
     """Check if we should trigger a persona update based on message count"""
-    # count if 3 purchases have been made 
+    # count if 3 purchases have been made in the last 30 minutes
     purchase_count = sum(1 for interaction in interaction_history if interaction.get("event_type") == "purchase")
     return purchase_count >= 3
 
@@ -54,15 +51,15 @@ async def log_interaction(request: InteractionRequest, background_tasks: Backgro
         request.product_metadata
     )
     
-    # Get recent interaction history for this customer (last 24 hours)
-    raw_interaction_history = interaction_svc.get_interaction_history(db, request.customer_key, hours_back=24)
+    # Get recent interaction history for this customer (last 30 minutes)
+    raw_interaction_history = interaction_svc.get_interaction_history(db, request.customer_key, hours_back=0, minutes_back=30)
     
     # Check if we should trigger a persona update
     if should_update_interaction_based_persona(raw_interaction_history):
         print(f"Triggering persona update for customer {request.customer_key} - 3+ purchases detected")
         
         # Process interactions into structured format
-        processed_interactions = interaction_processor.process_user_interactions(db, request.customer_key, hours_back=24)
+        processed_interactions = interaction_processor.process_user_interactions(db, request.customer_key, hours_back=0, minutes_back=30)
         
         if processed_interactions:
             # Add background task to update persona with processed data
