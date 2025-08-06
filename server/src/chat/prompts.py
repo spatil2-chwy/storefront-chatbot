@@ -235,9 +235,7 @@ USER QUESTION: {user_question}
 Answer in short, concise sentences with proper formatting.
 """
     
-persona_updater_system_prompt = {
-    "role": "system",
-    "content": """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on previous interactions and purchases.
+persona_updater_system_prompt = """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on previous interactions and purchases.
 
 Your task is to examine each new user message and decide whether the `persona_summary` needs to be updated.
 
@@ -256,20 +254,17 @@ Your task is to examine each new user message and decide whether the `persona_su
 3. Keep the summary **concise**, factual, and consistent in tone.
 
 4. Make sure to retain the existing details that are still relevant, even if new information is added.
-**Output only:**
 
-* `"no_update"` if no changes are needed,
-* or the **revised persona_summary** string if an update is made.
-
-The final output will be used to directly overwrite the existing `persona_summary`.
-"""
+Response format - JSON:
+{
+    "update_needed": True/False,
+    "persona_summary": "The updated persona summary string or empty string if no update is needed",
 }
+"""
 
 
 
-interaction_based_persona_updater_system_prompt = {
-    "role": "system",
-    "content": """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on processed interaction data from the current session.
+interaction_based_persona_updater_system_prompt = """You are an agent responsible for maintaining and updating the `persona_summary` field for a user. This summary captures brand preferences, quality expectations, and relevant behavior patterns based on processed interaction data from the current session.
 
 Your task is to examine the structured interaction summary from the current session (3+ purchases made) and decide whether the existing `persona_summary` needs to be updated. 
 
@@ -295,10 +290,9 @@ The interaction data includes:
 
 4. Make sure to retain existing relevant details when adding new information. The persona should be a cumulative summary of all user preferences, so don't delete existing preferences unless they are clearly contradicted by new session data.
 
-**Output only:**
-* `"no_update"` if no changes are needed,
-* or the **revised persona_summary** string if an update is made.
-
-The final output will be used to directly overwrite the existing `persona_summary`.
-"""
+Response forma - JSON:
+{
+    "update_needed": True/False,
+    "persona_summary": "The updated persona summary string or empty string if no update is needed",
 }
+"""

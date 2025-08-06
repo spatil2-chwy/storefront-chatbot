@@ -6,6 +6,7 @@ from src.services.user_service import UserService
 from src.database import get_db
 from src.models.user import User
 from typing import List, Dict, Any
+import json
 
 
 client = get_openai_client()
@@ -15,37 +16,68 @@ user_svc = UserService()
 
 MSG_TO_CAPTURE = 4 # how many USER messages to capture for persona update
 
+def clean_message_content(content):
+    """Remove image data from message content, keeping only text"""
+    if isinstance(content, list):
+        # Handle multi-modal content (text + image)
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "input_text":
+                text_parts.append(item.get("text", ""))
+        return " ".join(text_parts) if text_parts else ""
+    elif isinstance(content, str):
+        # Handle plain text content
+        return content
+    else:
+        return str(content) if content else ""
+
 def update_persona(customer_key: int, history: list[dict], db: Session) -> bool:
     user_info = user_svc.get_user(db, customer_key).persona_summary
     print(user_info)
 
-    # Extract only user messages from history
-    user_messages = [msg for msg in history if msg.get("role") == "user"]
+    # Extract only user messages from history and clean them
+    user_messages = []
+    for msg in history:
+        if msg.get("role") == "user":
+            # Create a clean copy of the message without image data
+            clean_msg = {
+                "role": msg["role"],
+                "content": clean_message_content(msg.get("content", ""))
+            }
+            user_messages.append(clean_msg)
     
     # Take the last MSG_TO_CAPTURE user messages
     recent_user_messages = user_messages[-MSG_TO_CAPTURE:] if len(user_messages) >= MSG_TO_CAPTURE else user_messages
+
+    print(user_messages)
     
     print(f"Capturing {len(recent_user_messages)} user messages for persona update: {recent_user_messages}")
 
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model = MODEL,
-        input = [
-            persona_updater_system_prompt, 
+        messages = [
+            {"role": "system", "content": persona_updater_system_prompt},
             {"role": "user", "content": "Recent User Messages:\n" + str(recent_user_messages) + "\n\nPrevious persona summary: " + user_info}
         ],
+        response_format={"type": "json_object"}
     )
 
-    content = response.output[0].content[0].text
+
+    content = response.choices[0].message.content
     print(content)
 
-    if content == "no_update":
-        return False
+    response_json = json.loads(content)
+    if response_json.get("update_needed"):
+        result = response_json.get("persona_summary")
+    else:
+        result = user_info
+
     
     # Update the user's persona summary
     user_svc.update_user(
         db=db,
         customer_key=customer_key,
-        user_data=User(persona_summary=content)
+        user_data=User(persona_summary=result)
     )
 
     return True
@@ -63,22 +95,28 @@ def update_interaction_based_persona(customer_key: int, interaction_history: lis
     response = client.chat.completions.create(
         model = MODEL,
         messages = [
-            interaction_based_persona_updater_system_prompt, 
+            {"role": "system", "content": interaction_based_persona_updater_system_prompt},
             {"role": "user", "content": "Interaction History:\n" + str(interaction_history) + "\n\nPrevious persona summary: " + user_info}
         ],
+        response_format={
+            "type": "json_object"
+        }
     )
 
     content = response.choices[0].message.content
     print(content)
 
-    if content == "no_update":
-        return False
+    response_json = json.loads(content)
+    if response_json.get("update_needed"):
+        result = response_json.get("persona_summary")
+    else:
+        result = user_info
     
     # Update the user's persona summary
     user_svc.update_user(
         db=db,
         customer_key=customer_key,
-        user_data=User(persona_summary=content)
+        user_data=User(persona_summary=result)
     )
 
     return True
